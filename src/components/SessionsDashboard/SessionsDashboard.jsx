@@ -7,27 +7,28 @@ const MOCK_SESSIONS = [
     agent_name: 'Gemini',
     user: 'John Doe',
     average_risk_score: 0.92,
-    start_time: '2025-12-22 22:30:15',
-    end_time: '2025-12-22 22:45:00',
+    start_time: '2025-12-22T22:30:15Z',
+    end_time: '2025-12-22T22:45:00Z',
   },
   {
     session_id: 'SESS-8104',
     agent_name: 'BrowserOS',
     user: 'Alex Smith',
     average_risk_score: 0.55,
-    start_time: '2025-12-22 21:10:04',
-    end_time: '2025-12-22 21:55:20',
+    start_time: '2025-12-22T21:10:04Z',
+    end_time: '2025-12-22T21:55:20Z',
   },
   {
     session_id: 'SESS-6901',
     agent_name: 'Gemini',
     user: 'Sam Taylor',
     average_risk_score: 0.21,
-    start_time: '2025-12-22 20:01:10',
-    end_time: '2025-12-22 20:30:42',
+    start_time: '2025-12-22T20:01:10Z',
+    end_time: '2025-12-22T20:30:42Z',
   },
 ];
 
+// TODO: Risk score thresholds (low, medium, high) are currently hardcoded for the mockup and should be configurable or driven by the backend in the future.
 function getRiskLevel(score) {
   if (score > 0.7) return 'high';
   if (score > 0.4) return 'medium';
@@ -63,30 +64,32 @@ function ShieldIcon() {
 
 const AGENT_OPTIONS = ['Gemini', 'BrowserOS'];
 
-const INITIAL_PROXY_BY_AGENT = Object.fromEntries(
-  AGENT_OPTIONS.map((agent) => [agent, agent === 'BrowserOS']),
-);
-
 function SessionsDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedAgent, setSelectedAgent] = useState('Gemini');
-  const [proxyByAgent, setProxyByAgent] = useState(INITIAL_PROXY_BY_AGENT);
+  const [isProxyActive, setIsProxyActive] = useState(false);
   const [agentDropdownOpen, setAgentDropdownOpen] = useState(false);
 
-  const isProxyActiveForSelected = proxyByAgent[selectedAgent] ?? false;
-
   const handleProxyToggle = () => {
-    setProxyByAgent((prev) => ({
-      ...prev,
-      [selectedAgent]: !prev[selectedAgent],
-    }));
+    setIsProxyActive((prev) => !prev);
+  };
+
+  const handleAgentSelect = (agent) => {
+    if (agent !== selectedAgent) {
+      setIsProxyActive(false);
+    }
+    setSelectedAgent(agent);
+    setAgentDropdownOpen(false);
   };
 
   const filteredSessions = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
     if (!query) return MOCK_SESSIONS;
-    return MOCK_SESSIONS.filter((session) =>
-      session.session_id.toLowerCase().includes(query),
+    return MOCK_SESSIONS.filter(
+      (session) =>
+        session.agent_name.toLowerCase().includes(query) ||
+        session.session_id.toLowerCase().includes(query) ||
+        session.user.toLowerCase().includes(query),
     );
   }, [searchTerm]);
 
@@ -127,8 +130,7 @@ function SessionsDashboard() {
                       className={`agent-select-option ${selectedAgent === agent ? 'agent-select-option--active' : ''}`}
                       onMouseDown={(e) => {
                         e.preventDefault();
-                        setSelectedAgent(agent);
-                        setAgentDropdownOpen(false);
+                        handleAgentSelect(agent);
                       }}
                     >
                       {agent}
@@ -142,9 +144,9 @@ function SessionsDashboard() {
             <span className="proxy-label">PROXY</span>
             <button
               type="button"
-              className={`proxy-toggle ${isProxyActiveForSelected ? 'proxy-toggle--on' : 'proxy-toggle--off'}`}
+              className={`proxy-toggle ${isProxyActive ? 'proxy-toggle--on' : 'proxy-toggle--off'}`}
               onClick={handleProxyToggle}
-              aria-pressed={isProxyActiveForSelected}
+              aria-pressed={isProxyActive}
               aria-label={`Toggle proxy for ${selectedAgent}`}
             >
               <span className="proxy-knob" />
@@ -160,7 +162,7 @@ function SessionsDashboard() {
             <input
               type="text"
               className="session-search-input"
-              placeholder="Search Session ID..."
+              placeholder="Search Session..."
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
             />
@@ -191,15 +193,19 @@ function SessionsDashboard() {
                           {session.average_risk_score.toFixed(2)}
                         </span>
                       </td>
-                      <td className="cell-timestamp td-centered-block">{session.start_time}</td>
-                      <td className="cell-timestamp td-centered-block">{session.end_time}</td>
+                      <td className="cell-timestamp td-centered-block">
+                        {new Date(session.start_time).toLocaleString()}
+                      </td>
+                      <td className="cell-timestamp td-centered-block">
+                        {new Date(session.end_time).toLocaleString()}
+                      </td>
                     </tr>
                   );
                 })}
                 {filteredSessions.length === 0 && (
                   <tr>
                     <td colSpan={6} className="sessions-empty-state">
-                      No sessions match this Session ID.
+                      No sessions match your search.
                     </td>
                   </tr>
                 )}
