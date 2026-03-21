@@ -14,4 +14,9 @@
 #       Port: *PORT FROM .env*
 #    Turn the proxy on
 
+# OR (forces to use proxy no matter what) run this command in a different terminal
+# "C:\Users\*USERNAME*\AppData\Local\Chromium\Application\chrome.exe" --proxy-server="http://127.0.0.1:*PORT FROM .env*" --proxy-bypass-list="<-loopback>"
+
 # 4. Open http://mitm.it/ (not HTTPS) and install the certificate that matches your OS
+
+
