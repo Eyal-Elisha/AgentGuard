@@ -32,4 +32,4 @@ With the venv activated, from the repository root:
 python -m backend.app
 ```
 
-Flask will print the URL it is listening on (host and port come from `app.run()` in `backend/app.py`; default port is **5000** unless you change the code). The health route is **`/api/health`** on that server.
+Flask will print the URL it is listening on (host and port come from `app.run()` in `backend/app.py`; default port is **5000** for now!!!). The health route is **`/api/health`** on that server.
