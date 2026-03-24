@@ -1,6 +1,6 @@
-"""Shared test fixtures."""
+"""Shared test utilities."""
 
-import pytest
+import requests as _requests
 
 from backend.feature_extraction.feature_extractor import ExtractedFeatures, DomFeatures, FormDetails
 
@@ -20,6 +20,24 @@ def make_features(
         headers = {}
 
     return FeatureExtractor().extract(url, "GET", headers, html.encode())
+
+
+def make_features_from_url(url: str, timeout: int = 8) -> ExtractedFeatures:
+    """Fetch a real URL and run it through the FeatureExtractor pipeline.
+
+    Uses allow_redirects=False so the original URL scheme/host is preserved
+    (important for HTTP→HTTPS redirect detection in Rule 2).
+    Raises requests.RequestException if the host is unreachable.
+    """
+    from backend.feature_extraction.feature_extractor import FeatureExtractor
+
+    resp = _requests.get(
+        url,
+        timeout=timeout,
+        allow_redirects=False,
+        headers={"User-Agent": "AgentGuard-SecurityScanner/1.0"},
+    )
+    return FeatureExtractor().extract(url, "GET", dict(resp.headers), resp.content)
 
 
 # ---------------------------------------------------------------------------

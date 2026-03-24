@@ -10,7 +10,7 @@ from backend.feature_extraction.feature_extractor import FeatureExtractor
 from backend.analysis.stages.stage_a import StageAEvaluator
 from backend.analysis.rules import Decision
 
-from tests.conftest import (
+from helpers import (
     make_features,
     HTML_PASSWORD_FORM,
     HTML_BENIGN,

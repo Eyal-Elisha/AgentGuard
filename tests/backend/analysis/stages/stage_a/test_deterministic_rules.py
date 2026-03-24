@@ -10,7 +10,7 @@ Rule 1 (domain blacklist) mocks the external API so no network calls are made.
 import pytest
 from unittest.mock import patch
 
-from tests.conftest import (
+from helpers import (
     make_features,
     HTML_PASSWORD_FORM,
     HTML_CREDIT_CARD_FORM,
