@@ -1,11 +1,10 @@
 # 1. Bash:
 
-    # 1. cd AgentGuard/Proxy
-    # 2. python -m venv .venv
-    # 3. .venv\Scripts\activate      # Windows
+    # 1. .venv\Scripts\activate      # Windows
         # source .venv/bin/activate # macOS/Linux
-    # 4. pip install -r requirements.txt
-    # 5. mitmweb -s traffic_interception.py --listen-port *PORT FROM .env*
+    # 2. pip install -r requirements.txt
+    # 3. cd backend/proxy
+    # 4. mitmweb -s traffic_interception.py --listen-port *PORT FROM .env*
 
 # 2. In chrome://flags/ disable QUIC
 
