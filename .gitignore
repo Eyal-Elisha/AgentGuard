@@ -37,4 +37,4 @@ __pycache__/
 # Logs
 *.log
 
-.env
+backend/proxy/.env
