@@ -97,12 +97,11 @@ def delete_session(session_id: int):
 @app_bp.route("/sessions/<int:session_id>/close", methods=["POST"])
 @require_jwt
 def close_session(session_id: int):
-    sess, not_found = _get_session_or_404(session_id)
-    if not_found:
-        return not_found
-    if sess["end_time"] is not None:
+    result = store.session_try_close(session_id, datetime.now(timezone.utc))
+    if result == "not_found":
+        return jsonify({"error": "Session not found"}), 404
+    if result == "already_closed":
         return jsonify({"error": "Session is already closed"}), 409
-    store.session_update_end(session_id, datetime.now(timezone.utc))
     return jsonify({"message": "Session closed successfully"}), 200
 
 

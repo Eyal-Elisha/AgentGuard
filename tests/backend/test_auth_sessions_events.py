@@ -1,5 +1,6 @@
-from backend.auth import decode_token
+from backend.auth import decode_token, hash_password
 from backend.storage import sqlite_store as store
+from backend.storage.sqlite_store import UsernameTakenError
 
 from backend_api_test_base import BackendApiTestCase
 
@@ -36,6 +37,18 @@ class AuthSessionsEventsTestCase(BackendApiTestCase):
         stored = store.session_get(session_id)
         self.assertIsNotNone(stored)
         self.assertEqual(stored["user_id"], 1)
+
+    def test_signup_duplicate_username_returns_400(self):
+        first = self.client.post("/signup", json={"username": "dupuser", "password": "a"})
+        second = self.client.post("/signup", json={"username": "dupuser", "password": "b"})
+        self.assertEqual(first.status_code, 201)
+        self.assertEqual(second.status_code, 400)
+        self.assertEqual(second.get_json()["error"], "Username already exists")
+
+    def test_user_create_duplicate_raises_username_taken(self):
+        store.user_create("race-user", hash_password("x"), False)
+        with self.assertRaises(UsernameTakenError):
+            store.user_create("race-user", hash_password("y"), False)
 
     def test_invalid_bearer_token_is_rejected_for_session_creation(self):
         response = self.client.post(
@@ -106,6 +119,14 @@ class AuthSessionsEventsTestCase(BackendApiTestCase):
         self.assertEqual(body["warn"], 1)
         self.assertEqual(body["block"], 0)
         self.assertAlmostEqual(body["average_risk_score"], 0.525)
+
+    def test_second_close_returns_409(self):
+        session_id = self.create_session().get_json()["session_id"]
+        first = self.client.post(f"/sessions/{session_id}/close")
+        second = self.client.post(f"/sessions/{session_id}/close")
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 409)
+        self.assertEqual(second.get_json()["error"], "Session is already closed")
 
     def test_validation_and_empty_result_behaviors(self):
         empty_sessions = self.client.get("/sessions")

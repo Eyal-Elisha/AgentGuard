@@ -5,7 +5,7 @@ Sessions table CRUD and stats.
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Literal
 
 from .db import _connect, _dt_iso
 
@@ -52,6 +52,23 @@ def session_update_end(session_id: int, end_time: datetime) -> None:
     with _connect() as conn:
         conn.execute("UPDATE sessions SET end_time = ? WHERE session_id = ?", (et, session_id))
         conn.commit()
+
+
+def session_try_close(
+    session_id: int, end_time: datetime
+) -> Literal["closed", "not_found", "already_closed"]:
+    et = _dt_iso(end_time)
+    with _connect() as conn:
+        cur = conn.execute(
+            "UPDATE sessions SET end_time = ? WHERE session_id = ? AND end_time IS NULL",
+            (et, session_id),
+        )
+        conn.commit()
+        if cur.rowcount > 0:
+            return "closed"
+    if session_get(session_id) is None:
+        return "not_found"
+    return "already_closed"
 
 
 def session_delete(session_id: int) -> bool:

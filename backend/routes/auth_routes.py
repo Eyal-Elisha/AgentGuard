@@ -5,6 +5,7 @@ from __future__ import annotations
 from flask import jsonify, request
 
 from ..auth import hash_password, issue_token, verify_password
+from ..storage.sqlite_store import UsernameTakenError
 from ..storage import sqlite_store as store
 from ..validation import validate_login_signup
 from . import app_bp
@@ -27,7 +28,10 @@ def signup():
     payload, err = validate_login_signup(request.get_json(silent=True))
     if err:
         return jsonify({"error": err}), 400
-    if store.user_get_by_username(payload["username"]):
+    try:
+        uid = store.user_create(
+            payload["username"], hash_password(payload["password"]), is_admin=False
+        )
+    except UsernameTakenError:
         return jsonify({"error": "Username already exists"}), 400
-    uid = store.user_create(payload["username"], hash_password(payload["password"]), is_admin=False)
     return jsonify({"message": "User created successfully", "user_id": uid}), 201
