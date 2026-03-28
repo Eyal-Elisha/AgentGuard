@@ -10,8 +10,6 @@ try:
 except ModuleNotFoundError:  # pragma: no cover - fallback used when dependency is absent
     load_dotenv = None
 
-TRUE_VALUES = frozenset({"1", "true", "yes"})
-
 _ENV_PATH = Path(__file__).resolve().parent / ".env"
 
 
@@ -36,11 +34,12 @@ def env_flag(name: str, default: bool = False) -> bool:
     value = os.environ.get(name)
     if value is None:
         return default
-    return value.strip().lower() in TRUE_VALUES
+    return value.strip().lower() == "true"
 
 
 def resolve_jwt_secret() -> str:
-    secret = os.environ.get("JWT_SECRET")
+    raw = os.environ.get("JWT_SECRET")
+    secret = raw.strip() if isinstance(raw, str) else ""
     if secret:
         return secret
     raise RuntimeError("JWT_SECRET must be set")

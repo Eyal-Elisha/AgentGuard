@@ -85,3 +85,4 @@ class RulesAnalysisTestCase(BackendApiTestCase):
 
         trimmed_query = self.client.get("/rules-analysis", query_string={"rule_code": "  TRIMMED  ", "limit": "5"})
         self.assertEqual(trimmed_query.status_code, 200)
+        self.assertEqual(trimmed_query.get_json(), [])

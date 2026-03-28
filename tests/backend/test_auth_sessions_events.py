@@ -139,6 +139,7 @@ class AuthSessionsEventsTestCase(BackendApiTestCase):
 
         missing_event = self.client.get("/events/999")
         self.assertEqual(missing_event.status_code, 404)
+        self.assertEqual(missing_event.get_json()["error"], "Event not found")
 
         bad_filters = self.client.get("/events", query_string={"min_risk_score": "not-a-number"})
         self.assertEqual(bad_filters.status_code, 400)

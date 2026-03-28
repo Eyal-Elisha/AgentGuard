@@ -1,8 +1,15 @@
-"""Shared Flask client + temp SQLite DB for backend API integration tests."""
+"""Shared Flask client + temp SQLite DB for backend API integration tests.
+
+Run from the repo root, e.g. ``python -m unittest discover -s tests/backend -p "test_*.py" -v``,
+so ``tests/backend`` is on ``sys.path`` and ``backend`` resolves as the package under test.
+"""
+
+from __future__ import annotations
 
 import os
 import tempfile
 import unittest
+from pathlib import Path
 
 from backend import create_app
 
@@ -16,7 +23,8 @@ class BackendApiTestCase(unittest.TestCase):
             "JWT_SECRET": os.environ.get("JWT_SECRET"),
             "REQUIRE_AUTH": os.environ.get("REQUIRE_AUTH"),
         }
-        os.environ["DATABASE_URL"] = f"sqlite:///{self.db_path}"
+        db_url_path = Path(self.db_path).resolve().as_posix()
+        os.environ["DATABASE_URL"] = f"sqlite:///{db_url_path}"
         os.environ["JWT_SECRET"] = "test-secret"
         os.environ["REQUIRE_AUTH"] = "false"
 

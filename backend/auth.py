@@ -1,4 +1,5 @@
-"""Password hashing and JWT helpers."""
+"""Password hashing and JWT helpers (minimal for now).
+Later: tighten JWT issue/decode (claims, TTL, optional revocation) and add production auth hygiene (rate limits, secret handling, HTTPS)."""
 
 from __future__ import annotations
 

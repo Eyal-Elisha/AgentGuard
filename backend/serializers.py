@@ -1,4 +1,7 @@
-"""Serialize SQLite row dicts to API JSON shapes."""
+"""Serialize SQLite row dicts to API JSON shapes.
+
+May need tweaks (e.g. exposing HTTP method/headers on events) once wired to real HTTP traffic.
+"""
 
 from __future__ import annotations
 

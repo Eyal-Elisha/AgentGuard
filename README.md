@@ -35,7 +35,7 @@ Configuration is loaded from `backend/.env`. Copy `backend/.env.example` to `bac
 
 - `JWT_SECRET`: long random secret used to sign and verify JWTs
 - `REQUIRE_AUTH`: `true` to require bearer tokens on protected routes (default off when unset)
-- `FLASK_DEBUG`: `true` only for local debugging (default off when unset)
+- `FLASK_DEBUG`: `true` to run the dev server with Flask debug mode (default off when unset)
 - `PORT`: HTTP port for the dev server (default **3000** when unset or invalid)
 - `DATABASE_URL`: SQLite URL; if unset, the app defaults to `backend/agentguard.db` under the package
 

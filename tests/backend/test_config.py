@@ -1,13 +1,15 @@
 import os
 import tempfile
 import unittest
+from pathlib import Path
 
 from backend import create_app
 from backend.auth import issue_token
 
 
 class ConfigTestCase(unittest.TestCase):
-    def test_create_app_requires_secret_when_auth_is_enabled(self):
+    def test_create_app_requires_jwt_secret(self):
+        """``create_app`` always resolves ``JWT_SECRET`` (login issues JWTs even when REQUIRE_AUTH is off)."""
         old_env = {
             "DATABASE_URL": os.environ.get("DATABASE_URL"),
             "JWT_SECRET": os.environ.get("JWT_SECRET"),
@@ -35,7 +37,8 @@ class ConfigTestCase(unittest.TestCase):
         }
         with tempfile.TemporaryDirectory() as temp_dir:
             try:
-                os.environ["DATABASE_URL"] = f"sqlite:///{os.path.join(temp_dir, 'test.db')}"
+                db_url_path = Path(temp_dir, "test.db").resolve().as_posix()
+                os.environ["DATABASE_URL"] = f"sqlite:///{db_url_path}"
                 os.environ["JWT_SECRET"] = "test-secret"
                 os.environ["REQUIRE_AUTH"] = "true"
 
@@ -66,7 +69,8 @@ class ConfigTestCase(unittest.TestCase):
         }
         with tempfile.TemporaryDirectory() as temp_dir:
             try:
-                os.environ["DATABASE_URL"] = f"sqlite:///{os.path.join(temp_dir, 'test.db')}"
+                db_url_path = Path(temp_dir, "test.db").resolve().as_posix()
+                os.environ["DATABASE_URL"] = f"sqlite:///{db_url_path}"
                 os.environ["JWT_SECRET"] = "test-secret"
                 os.environ["REQUIRE_AUTH"] = "true"
 
