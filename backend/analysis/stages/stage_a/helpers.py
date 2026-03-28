@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ipaddress
 import re
+import warnings
 from typing import List
 
 from publicsuffix2 import get_public_suffix, get_sld
@@ -57,10 +58,12 @@ def get_sld_label(host: str) -> str:
     e.g. 'login.paypal.com'   → 'paypal'
          'evil.paypal.co.uk'  → 'evil'   (correct — not impersonating paypal)
     """
-    registrable = get_sld(host)
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=UserWarning, module="publicsuffix2")
+        registrable = get_sld(host)
+        public_suffix = get_public_suffix(host)
     if not registrable:
         return host
-    public_suffix = get_public_suffix(host)
     if public_suffix:
         suffix_dot = "." + public_suffix
         if registrable.endswith(suffix_dot):
