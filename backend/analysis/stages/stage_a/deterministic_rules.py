@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from functools import lru_cache
 from typing import Dict, Tuple
 from urllib.parse import urlparse
 
@@ -18,6 +19,20 @@ from backend.analysis.stages.stage_a.helpers import (
     normalize_confusables,
     strip_www,
 )
+
+
+@lru_cache(maxsize=1)
+def _official_sld_labels() -> frozenset[str]:
+    """Every registrable SLD label listed as an official brand domain.
+
+    Used so legitimate domains (e.g. spotify vs shopify) are not flagged as mutual
+    typosquats — Levenshtein cannot tell them from real attacks.
+    """
+    labels: set[str] = set()
+    for domains in BRAND_DOMAINS.values():
+        for official in domains:
+            labels.add(get_sld_label(official))
+    return frozenset(labels)
 
 
 def rule_domain_blacklist(features: ExtractedFeatures) -> Tuple[float, str]:
@@ -133,7 +148,7 @@ def rule_typosquatting(features: ExtractedFeatures) -> Tuple[float, str]:
     Detects two attack patterns:
       1. Confusable/homoglyph — normalized label matches official but original doesn't
          (e.g. paypa1.com, pаypal.com with Cyrillic а)
-      2. Edit-distance typosquat — normalized label is ≤2 edits from official
+      2. Edit-distance typosquat — see ``is_typosquat`` (not raw ≤2 edits on short strings)
          (e.g. payal.com, papyal.com)
     """
     host = strip_www(features.host)
@@ -142,6 +157,15 @@ def rule_typosquatting(features: ExtractedFeatures) -> Tuple[float, str]:
 
     original_label = get_sld_label(host)
     normalized_label = get_sld_label(normalize_confusables(host))
+
+    # Legitimate brand site (spotify.com, shopify.com, …): do not compare to other brands.
+    # Only when the label is unchanged by confusable normalization — otherwise paypa1→paypal
+    # must still be caught by the confusable / edit-distance logic below.
+    if (
+        original_label == normalized_label
+        and normalized_label in _official_sld_labels()
+    ):
+        return 0.0, "Domain label is a known official brand (not a typosquat of another brand)"
 
     for _, official_domains in BRAND_DOMAINS.items():
         for official in official_domains:

@@ -84,6 +84,26 @@ class FeatureExtractor:
                 })
             dom.forms.append(f_details)
 
+        # Inputs outside any <form> (common on sloppy / test / phishing pages)
+        orphan_inputs: List[Dict[str, str]] = []
+        for inp in soup.find_all("input"):
+            if inp.find_parent("form") is not None:
+                continue
+            orphan_inputs.append({
+                "type": inp.get("type", "text").lower(),
+                "name": inp.get("name", ""),
+                "id": inp.get("id", ""),
+            })
+        if orphan_inputs:
+            dom.forms.append(
+                FormDetails(
+                    action="",
+                    method="get",
+                    action_host="",
+                    inputs=orphan_inputs,
+                )
+            )
+
         # Extract Links and Scripts
         dom.links = [urljoin(url, a.get("href")) for a in soup.find_all("a", href=True)]
         dom.scripts = [urljoin(url, s.get("src")) for s in soup.find_all("script", src=True)]

@@ -91,8 +91,20 @@ def levenshtein(a: str, b: str) -> int:
 
 
 def is_typosquat(candidate: str, target: str) -> bool:
+    """Heuristic: Levenshtein alone is too loose on short labels (e.g. forter vs force).
+
+    - Distance 1: treat as typosquat (single typo / insertion / deletion).
+    - Distance 2: only if first and last characters match the target — catches swaps and
+      middle edits (papyal vs paypal) while rejecting many unrelated 2-edit collisions.
+    """
     if len(candidate) < 3 or len(target) < 3:
         return False
     if abs(len(candidate) - len(target)) > 2:
         return False
-    return 0 < levenshtein(candidate, target) <= 2
+    d = levenshtein(candidate, target)
+    if d <= 0 or d > 2:
+        return False
+    if d == 1:
+        return True
+    # d == 2
+    return candidate[0] == target[0] and candidate[-1] == target[-1]

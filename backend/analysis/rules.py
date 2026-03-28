@@ -89,7 +89,7 @@ STAGE_B_HIGH: float = HIGH_RISK_THRESHOLD
 RULE_WEIGHTS: Dict[str, float] = {
     "domain_blacklist":       0.25,
     "unencrypted_connection": 0.20,
-    "sensitive_fields":       0.10,
+    "sensitive_fields":       0.20,
     "brand_domain_mismatch":  0.15,
     "unexpected_redirect":    0.10,
     "external_form_action":   0.10,

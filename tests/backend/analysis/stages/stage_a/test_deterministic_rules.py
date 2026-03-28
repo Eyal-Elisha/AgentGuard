@@ -149,6 +149,15 @@ class TestRuleSensitiveFields:
         score, _ = rule_sensitive_fields(features)
         assert score == 1.0
 
+    def test_password_input_outside_form_triggers(self):
+        """Matches pages like testsafebrowsing.appspot.com/s/phishing.html (no <form>)."""
+        html = """<html><body>
+          <div><label>Password:</label><input type="password"/></div>
+        </body></html>"""
+        features = make_features("https://example.com/p", html)
+        score, _ = rule_sensitive_fields(features)
+        assert score == 1.0
+
 
 # ---------------------------------------------------------------------------
 # Rule 4 — Brand Domain Mismatch
@@ -300,6 +309,22 @@ class TestRuleTyposquatting:
         features = make_features("https://p\u0430ypal.com/login")  # Cyrillic а
         score, _ = rule_typosquatting(features)
         assert score == 1.0
+
+    def test_legitimate_forter_not_typosquat_of_force(self):
+        """Forter CDN is not Salesforce force.com; Levenshtein-2 alone used to false-positive."""
+        features = make_features(
+            "https://6ce2e2fa7a434671bc9d5f20115e67c0-e44177b6b805.cdn.forter.com/prop.json"
+        )
+        score, explanation = rule_typosquatting(features)
+        assert score == 0.0
+        assert "No typosquatting pattern detected" in explanation
+
+    def test_spotify_not_flagged_as_typosquat_of_shopify(self):
+        """Both are official brands; edit distance is small — must not cross-flag."""
+        features = make_features("https://open.spotify.com/browse")
+        score, explanation = rule_typosquatting(features)
+        assert score == 0.0
+        assert "official brand" in explanation.lower()
 
 
 # ---------------------------------------------------------------------------
