@@ -22,7 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-﻿# Virtual environment
+# Virtual environment
 .venv/
 venv/
 
@@ -38,3 +38,7 @@ __pycache__/
 *.log
 
 .env
+backend/.env
+
+# Local SQLite DB (Flask backend)
+backend/agentguard.db
