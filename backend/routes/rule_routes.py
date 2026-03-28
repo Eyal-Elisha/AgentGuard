@@ -7,7 +7,7 @@ from flask import jsonify, request
 from ..auth import require_jwt
 from ..serializers import analysis_to_dict, rule_to_dict
 from ..storage import sqlite_store as store
-from ..validators import (
+from ..validation import (
     validate_rule_payload,
     validate_rules_analysis_list_query,
     validate_rules_analysis_payload,

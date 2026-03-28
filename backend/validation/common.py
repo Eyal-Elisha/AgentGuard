@@ -12,13 +12,9 @@ ALLOWED_RULE_TYPES = frozenset({"deterministic", "contextual", "semantic"})
 ALLOWED_COMPUTE_CLASSES = frozenset({"cheap", "expensive"})
 
 
-def invalid_json() -> tuple[None, str]:
-    return None, "Invalid JSON body"
-
-
-def require_dict(payload: dict | None) -> tuple[dict, None] | tuple[None, str]:
+def require_dict(payload: dict | None) -> tuple[dict | None, str | None]:
     if not isinstance(payload, dict):
-        return invalid_json()
+        return None, "Invalid JSON body"
     return payload, None
 
 

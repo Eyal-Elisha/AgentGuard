@@ -7,7 +7,7 @@ from flask import jsonify, request
 from ..auth import require_jwt
 from ..serializers import event_to_dict
 from ..storage import sqlite_store as store
-from ..validators import parse_event_filters
+from ..validation import parse_event_filters
 from . import app_bp
 
 

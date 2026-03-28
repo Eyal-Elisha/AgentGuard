@@ -1,9 +1,4 @@
-"""
-Facade module for SQLite store functions.
-
-Routes import `backend.storage.sqlite_store as store` and call functions on it.
-This facade re-exports the same public function names from smaller modules.
-"""
+"""SQLite storage surface: one module to import from; logic lives in the smaller *_store files."""
 
 from __future__ import annotations
 

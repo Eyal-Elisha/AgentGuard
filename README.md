@@ -9,7 +9,6 @@ Modular Python package under `backend/`:
 | `routes/` | HTTP API routing |
 | `analysis/` | Analysis logic (future) |
 | `storage/` | Persistence (future) |
-| `models/` | Data models (future) |
 
 Entry: `python -m backend.app` (Flask app factory in `backend/__init__.py`).
 

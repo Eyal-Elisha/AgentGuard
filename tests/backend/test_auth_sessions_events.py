@@ -1,7 +1,7 @@
 from backend.auth import decode_token
 from backend.storage import sqlite_store as store
 
-from tests.backend.backend_api_test_base import BackendApiTestCase
+from backend_api_test_base import BackendApiTestCase
 
 
 class AuthSessionsEventsTestCase(BackendApiTestCase):

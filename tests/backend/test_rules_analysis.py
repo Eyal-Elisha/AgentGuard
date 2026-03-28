@@ -1,4 +1,4 @@
-from tests.backend.backend_api_test_base import BackendApiTestCase
+from backend_api_test_base import BackendApiTestCase
 
 
 class RulesAnalysisTestCase(BackendApiTestCase):

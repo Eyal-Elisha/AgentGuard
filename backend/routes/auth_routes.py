@@ -6,7 +6,7 @@ from flask import jsonify, request
 
 from ..auth import hash_password, issue_token, verify_password
 from ..storage import sqlite_store as store
-from ..validators import validate_login_signup
+from ..validation import validate_login_signup
 from . import app_bp
 
 

@@ -10,7 +10,12 @@ from flask import jsonify, request
 from ..auth import get_optional_auth_payload, require_jwt
 from ..serializers import event_to_dict, session_to_dict
 from ..storage import sqlite_store as store
-from ..validators import parse_event_filters, validate_create_session, validate_event_payload, validate_update_session
+from ..validation import (
+    parse_event_filters,
+    validate_create_session,
+    validate_event_payload,
+    validate_update_session,
+)
 from . import app_bp
 
 
