@@ -16,7 +16,7 @@ def is_browser_user_agent(user_agent: str) -> bool:
     return any(re.search(pat, user_agent, re.IGNORECASE) for pat in browser_patterns)
 
 
-# 🔥 MAIN ENTRY POINT
+# MAIN ENTRY POINT
 def should_forward(flow: http.HTTPFlow) -> bool:
     ua = flow.request.headers.get("user-agent", "")
 
