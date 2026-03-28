@@ -1,1 +1,1 @@
-"""Data models package — schema and types will be added as the project evolves."""
+"""Data shapes are plain dicts returned by `backend.storage.sqlite_store`."""

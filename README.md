@@ -32,4 +32,18 @@ With the venv activated, from the repository root:
 python -m backend.app
 ```
 
-Flask will print the URL it is listening on (host and port come from `app.run()` in `backend/app.py`; default port is **5000** for now!!!). The health route is **`/api/health`** on that server.
+Configuration is loaded from `backend/.env`. Copy `backend/.env.example` to `backend/.env`. The example file lists keys only (no sample values); you must set `JWT_SECRET`, and you may leave the other variables blank to use built-in defaults. Optional settings:
+
+- `JWT_SECRET`: long random secret used to sign and verify JWTs
+- `REQUIRE_AUTH`: `true` to require bearer tokens on protected routes (default off when unset)
+- `FLASK_DEBUG`: `true` only for local debugging (default off when unset)
+- `PORT`: HTTP port for the dev server (default **3000** when unset or invalid)
+- `DATABASE_URL`: SQLite URL; if unset, the app defaults to `backend/agentguard.db` under the package
+
+Flask will print the URL it is listening on (host and port come from `app.run()` in `backend/app.py`; default port is **3000** when `PORT` is unset or invalid). The health route is **`/health`** on that server.
+
+## Run tests
+
+```bash
+python -m unittest discover -s tests/backend -p "test_*.py" -v
+```
