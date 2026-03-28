@@ -281,6 +281,31 @@
   border-color: transparent;
 }
 
+.session-search-input:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.sessions-loading {
+  margin: 2.5rem 0 2rem;
+  padding: 2rem 1.5rem;
+  text-align: center;
+  font-size: 0.95rem;
+  color: #9ca3af;
+  letter-spacing: 0.02em;
+}
+
+.sessions-error-alert {
+  margin: 0 0 1.5rem;
+  padding: 1rem 1.25rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(220, 38, 38, 0.45);
+  background: rgba(127, 29, 29, 0.25);
+  color: #fecaca;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
 .sessions-table-wrapper {
   border-radius: 1rem;
   border: 1px solid rgba(55, 65, 81, 0.9);
