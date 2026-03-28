@@ -7,6 +7,7 @@ def safe_get_text(message):
 
     try:
         return message.get_text()
+
     except Exception:
         return f"<{len(message.content)} bytes binary>"
 

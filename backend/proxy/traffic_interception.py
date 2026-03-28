@@ -1,6 +1,6 @@
 from mitmproxy import http
 from backend.proxy.filter_requests import should_forward
-from utils import build_request_data, build_response_data, pretty_print
+from backend.proxy.utils import build_request_data, build_response_data, pretty_print
 
 def request(flow: http.HTTPFlow):
     if not should_forward(flow):
