@@ -30,7 +30,6 @@ def rule_analysis_create(
             "INSERT INTO rules_analysis (event_id, rule_code, rule_score, details) VALUES (?, ?, ?, ?)",
             (event_id, rule_code, rule_score, details),
         )
-        conn.commit()
         return int(cur.lastrowid)
 
 

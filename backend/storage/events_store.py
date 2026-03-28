@@ -26,7 +26,6 @@ def event_create(
             "VALUES (?, ?, ?, ?, ?, ?, ?)",
             (session_id, ts, url, guard_action, risk_score, http_method, headers_json),
         )
-        conn.commit()
         return int(cur.lastrowid)
 
 

@@ -33,6 +33,5 @@ def user_create(username: str, password_hash: str, is_admin: bool = False) -> in
             )
         except sqlite3.IntegrityError as exc:
             raise UsernameTakenError from exc
-        conn.commit()
         return int(cur.lastrowid)
 

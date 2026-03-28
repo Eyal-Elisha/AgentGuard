@@ -60,5 +60,4 @@ def init_schema() -> None:
             CREATE INDEX IF NOT EXISTS idx_ra_rule ON rules_analysis(rule_code);
             """
         )
-        conn.commit()
 

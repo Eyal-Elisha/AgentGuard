@@ -52,5 +52,4 @@ def rule_create(
                 description,
             ),
         )
-        conn.commit()
 

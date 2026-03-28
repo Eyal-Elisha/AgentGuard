@@ -43,7 +43,6 @@ def session_create(
             "VALUES (?, ?, NULL, ?, ?)",
             (user_id, st, environment, agent_name),
         )
-        conn.commit()
         return int(cur.lastrowid)
 
 
@@ -51,7 +50,6 @@ def session_update_end(session_id: int, end_time: datetime) -> None:
     et = _dt_iso(end_time)
     with _connect() as conn:
         conn.execute("UPDATE sessions SET end_time = ? WHERE session_id = ?", (et, session_id))
-        conn.commit()
 
 
 def session_try_close(
@@ -63,7 +61,6 @@ def session_try_close(
             "UPDATE sessions SET end_time = ? WHERE session_id = ? AND end_time IS NULL",
             (et, session_id),
         )
-        conn.commit()
         if cur.rowcount > 0:
             return "closed"
     if session_get(session_id) is None:
@@ -74,7 +71,6 @@ def session_try_close(
 def session_delete(session_id: int) -> bool:
     with _connect() as conn:
         cur = conn.execute("DELETE FROM sessions WHERE session_id = ?", (session_id,))
-        conn.commit()
         return cur.rowcount > 0
 
 
