@@ -2,7 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import SessionSearchBar from './SessionSearchBar.jsx';
 import SessionsDashboardHeader from './SessionsDashboardHeader.jsx';
 import SessionsTable from './SessionsTable.jsx';
-import { normalizeSession, readErrorMessage } from './sessionUtils.js';
+import {
+  fetchSessionEventStats,
+  normalizeSession,
+  readErrorMessage,
+} from './sessionUtils.js';
 import './SessionsDashboard.css';
 
 function SessionsDashboard() {
@@ -30,7 +34,6 @@ function SessionsDashboard() {
     let cancelled = false;
 
     async function loadSessions() {
-      // TODO: Integrate session stats endpoint (e.g. average_risk_score per session) when loading session list.
       const base = import.meta.env.VITE_API_BASE_URL;
       if (base == null || String(base).trim() === '') {
         if (!cancelled) {
@@ -65,7 +68,20 @@ function SessionsDashboard() {
         }
 
         if (!cancelled) {
-          setSessions(data.map(normalizeSession));
+          const merged = await Promise.all(
+            data.map(async (raw) => {
+              const avg = await fetchSessionEventStats(
+                baseUrl,
+                raw.session_id,
+              );
+              return normalizeSession({
+                ...raw,
+                average_risk_score:
+                  avg !== null ? avg : raw.average_risk_score,
+              });
+            }),
+          );
+          setSessions(merged);
           setError(null);
         }
       } catch {

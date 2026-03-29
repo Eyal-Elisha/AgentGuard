@@ -1,3 +1,21 @@
+/**
+ * Loads per-session aggregates from the backend (list `/sessions` does not include average risk).
+ * Returns null if the request fails or the payload is invalid.
+ */
+export async function fetchSessionEventStats(baseUrl, sessionId) {
+  const url = `${baseUrl}/sessions/${Number(sessionId)}/events/stats`;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const data = await response.json();
+    const avg = data?.average_risk_score;
+    if (typeof avg === 'number' && !Number.isNaN(avg)) return avg;
+    return 0;
+  } catch {
+    return null;
+  }
+}
+
 /** Maps API session objects to the shape used by the table (list endpoint may omit some fields). */
 export function normalizeSession(sessionData) {
   const avg = sessionData.average_risk_score;
