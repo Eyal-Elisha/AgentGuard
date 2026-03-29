@@ -2,13 +2,16 @@ export default function EventAnalysis({
   selectedEvent,
   ruleAnalysisRows,
 }) {
+  const guardAction = selectedEvent?.guard_action?.toLowerCase() || '';
+  const riskColorClass = guardAction ? ` events-risk-value--${guardAction}` : '';
+
   return (
     <section className="events-analysis-pane">
       <h2 className="events-pane-title">Analysis Evidence</h2>
 
       <div className="events-risk-card">
         <p className="events-risk-label">Event Risk Score</p>
-        <p className="events-risk-value">
+        <p className={`events-risk-value${riskColorClass}`}>
           {selectedEvent ? selectedEvent.risk_score.toFixed(2) : '0.00'}
         </p>
       </div>
@@ -19,6 +22,8 @@ export default function EventAnalysis({
           <thead>
             <tr>
               <th>RULE CODE</th>
+              <th>RULE TYPE</th>
+              <th>WEIGHT</th>
               <th>RULE SCORE</th>
               <th>DETAILS</th>
             </tr>
@@ -27,13 +32,15 @@ export default function EventAnalysis({
             {ruleAnalysisRows.map((row) => (
               <tr key={row.analysis_id} className="sessions-row">
                 <td>{row.rule_code}</td>
-                <td>{row.rule_score.toFixed(2)}</td>
+                <td>{row.rule_type || '-'}</td>
+                <td>{row.weight !== undefined && row.weight !== null ? row.weight : '-'}</td>
+                <td>{row.rule_score !== undefined && row.rule_score !== null ? row.rule_score.toFixed(2) : '-'}</td>
                 <td>{row.details}</td>
               </tr>
             ))}
             {ruleAnalysisRows.length === 0 && (
               <tr>
-                <td colSpan={3} className="sessions-empty-state">
+                <td colSpan={5} className="sessions-empty-state">
                   No analysis for this event yet.
                 </td>
               </tr>

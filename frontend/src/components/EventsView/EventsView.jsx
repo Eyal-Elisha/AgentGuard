@@ -1,77 +1,145 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import SessionsDashboardHeader from '../SessionsDashboard/SessionsDashboardHeader.jsx';
 import '../SessionsDashboard/SessionsDashboard.css';
 import './EventsView.css';
 import EventAnalysis from './EventAnalysis.jsx';
 import EventTimeline from './EventTimeline.jsx';
+import { readErrorMessage } from '../SessionsDashboard/sessionUtils.js';
 
-const mockEvents = [
-  {
-    event_id: 5,
-    timestamp: '2025-12-22 22:35:12',
-    url: 'secure-login-bank.net/auth',
-    guard_action: 'Block',
-    risk_score: 0.92,
-  },
-  {
-    event_id: 6,
-    timestamp: '2025-12-22 22:32:45',
-    url: 'api.currency-exchange.com/rates',
-    guard_action: 'Warn',
-    risk_score: 0.66,
-  },
-  {
-    event_id: 7,
-    timestamp: '2025-12-22 22:31:10',
-    url: 'google.com/search?q=news',
-    guard_action: 'Allow',
-    risk_score: 0.12,
-  },
-];
-
-const mockRuleAnalysis = [
-  {
-    analysis_id: 123,
-    event_id: 5,
-    rule_code: 'rule_typosquatting',
-    rule_score: 1.0,
-    details: "Domain 'secure-login-bank.net' mimics 'bank.com'",
-  },
-  {
-    analysis_id: 124,
-    event_id: 5,
-    rule_code: 'rule_pii_transfer',
-    rule_score: 0.85,
-    details: 'Detected clear-text password pattern in POST body',
-  },
-];
-
-function EventsView() {
+function EventsView({ selectedAgent, onAgentSelect, isProxyActive, onProxyToggle }) {
   const navigate = useNavigate();
   const { sessionId } = useParams();
   const resolvedSessionId =
     typeof sessionId === 'string' && sessionId.startsWith(':')
       ? sessionId.slice(1)
       : sessionId;
-  const [selectedAgent, setSelectedAgent] = useState('Gemini');
   const [agentDropdownOpen, setAgentDropdownOpen] = useState(false);
-  const [isProxyActive, setIsProxyActive] = useState(true);
-  const [selectedEventId, setSelectedEventId] = useState(mockEvents[0]?.event_id ?? null);
 
-  const selectedEvent =
-    mockEvents.find((event) => event.event_id === selectedEventId) ?? mockEvents[0] ?? null;
+  const [events, setEvents] = useState([]);
+  const [ruleAnalysis, setRuleAnalysis] = useState([]);
+  const [selectedEventId, setSelectedEventId] = useState(null);
 
-  const selectedEventRules = useMemo(() => {
-    if (!selectedEvent) return [];
-    return mockRuleAnalysis.filter((row) => row.event_id === selectedEvent.event_id);
-  }, [selectedEvent]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const handleAgentSelect = (agent) => {
-    if (agent !== selectedAgent) {
-      setIsProxyActive(false);
+  // Fetch Session Events
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadEvents() {
+      setIsLoading(true);
+      setError(null);
+      const base = import.meta.env.VITE_API_BASE_URL;
+      
+      if (!base) {
+        if (!cancelled) {
+          setError('API base URL is not configured. Set VITE_API_BASE_URL in your .env file.');
+          setIsLoading(false);
+        }
+        return;
+      }
+
+      const baseUrl = String(base).replace(/\/$/, '');
+      const url = `${baseUrl}/sessions/${resolvedSessionId}/events`;
+
+      try {
+        const response = await fetch(url);
+
+        if (!response.ok) {
+          const message = await readErrorMessage(response);
+          if (!cancelled) {
+            setEvents([]);
+            setError(message);
+          }
+          return;
+        }
+
+        const data = await response.json();
+        if (!Array.isArray(data)) {
+          if (!cancelled) {
+            setEvents([]);
+            setError('Received an unexpected response from the server.');
+          }
+          return;
+        }
+
+        if (!cancelled) {
+          setEvents(data);
+          if (data.length > 0) {
+            setSelectedEventId(data[0].event_id);
+          } else {
+            setSelectedEventId(null);
+            setRuleAnalysis([]);
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          setEvents([]);
+          setError(
+            'Unable to reach the server. Check your connection and that the API is running.',
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
     }
-    setSelectedAgent(agent);
+
+    if (resolvedSessionId) {
+      loadEvents();
+    }
+    
+    return () => {
+      cancelled = true;
+    };
+  }, [resolvedSessionId]);
+
+  // Fetch Rule Analysis for selectedEventId
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadRuleAnalysis() {
+      if (!selectedEventId) {
+        if (!cancelled) setRuleAnalysis([]);
+        return;
+      }
+      
+      const base = import.meta.env.VITE_API_BASE_URL;
+      if (!base) return;
+      const baseUrl = String(base).replace(/\/$/, '');
+      const url = `${baseUrl}/events/${selectedEventId}/rules-analysis`;
+
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          if (!cancelled) setRuleAnalysis([]);
+          return;
+        }
+        const data = await response.json();
+        if (!cancelled) {
+          setRuleAnalysis(Array.isArray(data) ? data : []);
+        }
+      } catch {
+        if (!cancelled) setRuleAnalysis([]);
+      }
+    }
+
+    loadRuleAnalysis();
+    
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedEventId]);
+
+  const selectedEvent = useMemo(() => {
+    if (!selectedEventId || !events) return null;
+    return events.find((e) => e.event_id === selectedEventId) ?? null;
+  }, [selectedEventId, events]);
+
+  const handleAgentSelectLocal = (agent) => {
+    onAgentSelect(agent);
     setAgentDropdownOpen(false);
   };
 
@@ -82,9 +150,9 @@ function EventsView() {
         agentDropdownOpen={agentDropdownOpen}
         onToggleAgentDropdown={() => setAgentDropdownOpen((open) => !open)}
         onCloseAgentDropdown={() => setAgentDropdownOpen(false)}
-        onAgentSelect={handleAgentSelect}
+        onAgentSelect={handleAgentSelectLocal}
         isProxyActive={isProxyActive}
-        onProxyToggle={() => setIsProxyActive((prev) => !prev)}
+        onProxyToggle={onProxyToggle}
       />
 
       <main className="sessions-dashboard-main events-view-main">
@@ -108,17 +176,37 @@ function EventsView() {
             </p>
           </div>
 
-          <div className="events-view-grid">
-            <EventTimeline
-              events={mockEvents}
-              selectedEventId={selectedEvent?.event_id ?? null}
-              onSelectEvent={setSelectedEventId}
-            />
-            <EventAnalysis
-              selectedEvent={selectedEvent}
-              ruleAnalysisRows={selectedEventRules}
-            />
-          </div>
+          {isLoading && (
+            <div className="sessions-loading" role="status" aria-live="polite">
+              Loading events...
+            </div>
+          )}
+
+          {error && (
+            <div className="sessions-error-alert" role="alert">
+              {error}
+            </div>
+          )}
+
+          {!isLoading && !error && events.length === 0 && (
+            <div className="sessions-empty-state">
+              No events recorded for this session.
+            </div>
+          )}
+
+          {!isLoading && !error && events.length > 0 && (
+            <div className="events-view-grid">
+              <EventTimeline
+                events={events}
+                selectedEventId={selectedEventId}
+                onSelectEvent={setSelectedEventId}
+              />
+              <EventAnalysis
+                selectedEvent={selectedEvent}
+                ruleAnalysisRows={ruleAnalysis}
+              />
+            </div>
+          )}
         </section>
       </main>
     </div>

@@ -9,24 +9,15 @@ import {
 } from './sessionUtils.js';
 import './SessionsDashboard.css';
 
-function SessionsDashboard() {
+function SessionsDashboard({ selectedAgent, onAgentSelect, isProxyActive, onProxyToggle }) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedAgent, setSelectedAgent] = useState('Gemini');
-  const [isProxyActive, setIsProxyActive] = useState(false);
   const [agentDropdownOpen, setAgentDropdownOpen] = useState(false);
   const [sessions, setSessions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const handleProxyToggle = () => {
-    setIsProxyActive((prev) => !prev);
-  };
-
-  const handleAgentSelect = (agent) => {
-    if (agent !== selectedAgent) {
-      setIsProxyActive(false);
-    }
-    setSelectedAgent(agent);
+  const handleAgentSelectLocal = (agent) => {
+    onAgentSelect(agent);
     setAgentDropdownOpen(false);
   };
 
@@ -127,9 +118,9 @@ function SessionsDashboard() {
           setAgentDropdownOpen((open) => !open)
         }
         onCloseAgentDropdown={() => setAgentDropdownOpen(false)}
-        onAgentSelect={handleAgentSelect}
+        onAgentSelect={handleAgentSelectLocal}
         isProxyActive={isProxyActive}
-        onProxyToggle={handleProxyToggle}
+        onProxyToggle={onProxyToggle}
       />
 
       <main className="sessions-dashboard-main">

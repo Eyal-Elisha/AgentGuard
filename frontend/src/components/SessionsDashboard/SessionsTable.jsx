@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import {
   EMPTY_CELL_DISPLAY,
   formatIsoLocal,
@@ -15,6 +16,8 @@ export default function SessionsTable({
   filteredSessions,
   sessions,
 }) {
+  const navigate = useNavigate();
+
   return (
     <div className="sessions-table-wrapper">
       <table className="sessions-table">
@@ -35,7 +38,11 @@ export default function SessionsTable({
             const startEmpty = isIsoEmpty(session.start_time);
             const endEmpty = isIsoEmpty(session.end_time);
             return (
-              <tr key={session.session_id} className="sessions-row">
+              <tr 
+                key={session.session_id} 
+                className="sessions-row" 
+                onClick={() => navigate(`/sessions/${session.session_id}/events`)}
+              >
                 <td className="cell-agent-name">{session.agent_name}</td>
                 <td className="cell-session-id">{session.session_id}</td>
                 <td
