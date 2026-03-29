@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import SessionsDashboardHeader from '../SessionsDashboard/SessionsDashboardHeader.jsx';
 import { getApiBaseUrl, apiFetchHeaders } from '../../api/client.js';
 import { readErrorMessage } from '../SessionsDashboard/sessionUtils.js';
 import RulesTable from './RulesTable.jsx';
@@ -139,18 +138,7 @@ export default function RulesDashboard() {
   const showTable = !isLoading && !error;
 
   return (
-    <div className="sessions-dashboard-root">
-      <SessionsDashboardHeader
-        selectedAgent="Gemini"
-        agentDropdownOpen={false}
-        onToggleAgentDropdown={() => {}}
-        onCloseAgentDropdown={() => {}}
-        onAgentSelect={() => {}}
-        isProxyActive={false}
-        onProxyToggle={() => {}}
-        showAgentControls={false}
-      />
-
+    <div className="sessions-page">
       <main className="sessions-dashboard-main">
         <div className="sessions-dashboard-card rules-dashboard-card">
           <RulesToolbar

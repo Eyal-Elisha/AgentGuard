@@ -4,8 +4,8 @@ export const EMPTY_CELL_DISPLAY = '–';
 /**
  * Loads per-session aggregates from the backend (list `/sessions` does not include average risk).
  * Returns null if the request fails or the payload is invalid.
+ * @param {Record<string, string>} [headers]
  */
-/** @param {Record<string, string>} [headers] */
 export async function fetchSessionEventStats(baseUrl, sessionId, headers) {
   const url = `${baseUrl}/sessions/${Number(sessionId)}/events/stats`;
   try {

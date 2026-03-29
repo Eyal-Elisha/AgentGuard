@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import SessionSearchBar from './SessionSearchBar.jsx';
-import SessionsDashboardHeader from './SessionsDashboardHeader.jsx';
 import SessionsTable from './SessionsTable.jsx';
-import { getApiBaseUrl, apiFetchHeaders } from '../../api/client.js';
 import {
   fetchSessionEventStats,
   normalizeSession,
@@ -12,31 +10,16 @@ import './SessionsDashboard.css';
 
 function SessionsDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedAgent, setSelectedAgent] = useState('Gemini');
-  const [isProxyActive, setIsProxyActive] = useState(false);
-  const [agentDropdownOpen, setAgentDropdownOpen] = useState(false);
   const [sessions, setSessions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  const handleProxyToggle = () => {
-    setIsProxyActive((prev) => !prev);
-  };
-
-  const handleAgentSelect = (agent) => {
-    if (agent !== selectedAgent) {
-      setIsProxyActive(false);
-    }
-    setSelectedAgent(agent);
-    setAgentDropdownOpen(false);
-  };
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadSessions() {
-      const baseUrl = getApiBaseUrl();
-      if (baseUrl == null) {
+      const base = import.meta.env.VITE_API_BASE_URL;
+      if (base == null || String(base).trim() === '') {
         if (!cancelled) {
           setError('API base URL is not configured. Set VITE_API_BASE_URL in your .env file.');
           setIsLoading(false);
@@ -44,14 +27,14 @@ function SessionsDashboard() {
         return;
       }
 
+      const baseUrl = String(base).replace(/\/$/, '');
       const url = `${baseUrl}/sessions`;
-      const headers = apiFetchHeaders();
 
       try {
-        const response = await fetch(url, { headers });
+        const response = await fetch(url);
 
         if (!response.ok) {
-          const message = await readErrorMessage(response, 'sessions');
+          const message = await readErrorMessage(response);
           if (!cancelled) {
             setSessions([]);
             setError(message);
@@ -74,7 +57,6 @@ function SessionsDashboard() {
               const avg = await fetchSessionEventStats(
                 baseUrl,
                 raw.session_id,
-                headers,
               );
               return normalizeSession({
                 ...raw,
@@ -121,26 +103,17 @@ function SessionsDashboard() {
   const showTable = !isLoading && !error;
 
   return (
-    <div className="sessions-dashboard-root">
-      <SessionsDashboardHeader
-        selectedAgent={selectedAgent}
-        agentDropdownOpen={agentDropdownOpen}
-        onToggleAgentDropdown={() =>
-          setAgentDropdownOpen((open) => !open)
-        }
-        onCloseAgentDropdown={() => setAgentDropdownOpen(false)}
-        onAgentSelect={handleAgentSelect}
-        isProxyActive={isProxyActive}
-        onProxyToggle={handleProxyToggle}
-      />
-
+    <div className="sessions-page">
       <main className="sessions-dashboard-main">
         <div className="sessions-dashboard-card">
-          <SessionSearchBar
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-            disabled={!showTable}
-          />
+          <div className="sessions-dashboard-card-header">
+            <h1 className="sessions-title">Sessions</h1>
+            <SessionSearchBar
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              disabled={!showTable}
+            />
+          </div>
 
           {isLoading && (
             <div className="sessions-loading" role="status" aria-live="polite">

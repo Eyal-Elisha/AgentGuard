@@ -9,6 +9,17 @@ from backend.proxy.utils import evaluation_result_to_dict
 
 from . import api_bp
 
+try:
+    from proxy_launcher import (
+        proxy_is_running,
+        start_proxy_process,
+        stop_proxy_process,
+    )
+except ImportError:  # pragma: no cover - alternate cwd
+    proxy_is_running = None  # type: ignore[assignment, misc]
+    start_proxy_process = None  # type: ignore[assignment, misc]
+    stop_proxy_process = None  # type: ignore[assignment, misc]
+
 _LOCALHOST_ADDRS = frozenset({"127.0.0.1", "::1", "localhost"})
 
 
@@ -71,3 +82,40 @@ def proxy_decision():
             "evaluation": evaluation_result_to_dict(result),
         }
     ), 200
+
+
+@api_bp.route("/proxy/status", methods=["GET"])
+def proxy_status():
+    if request.remote_addr not in _LOCALHOST_ADDRS:
+        return jsonify({"error": "This endpoint is only available from localhost"}), 403
+    if proxy_is_running is None:
+        return jsonify({"error": "Proxy launcher is not available on this server"}), 503
+    return jsonify({"active": proxy_is_running()}), 200
+
+
+@api_bp.route("/proxy/control", methods=["POST", "OPTIONS"])
+def proxy_control():
+    """Start or stop mitmweb with `traffic_interception.py` (same as `python proxy_launcher.py`)."""
+    if request.method == "OPTIONS":
+        return "", 204
+    if request.remote_addr not in _LOCALHOST_ADDRS:
+        return jsonify({"error": "This endpoint is only available from localhost"}), 403
+    if start_proxy_process is None or stop_proxy_process is None:
+        return jsonify({"error": "Proxy launcher is not available on this server"}), 503
+
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"error": "JSON request body is required"}), 400
+    active = payload.get("active")
+    if not isinstance(active, bool):
+        return jsonify({"error": "'active' must be a boolean"}), 400
+
+    if active:
+        ok, message = start_proxy_process()
+    else:
+        ok, message = stop_proxy_process()
+
+    running = proxy_is_running()
+    if not ok:
+        return jsonify({"error": message, "active": running}), 500
+    return jsonify({"active": running, "message": message}), 200
