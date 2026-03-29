@@ -23,6 +23,7 @@ dist-ssr
 *.sln
 *.sw?
 # Virtual environment
+# Virtual environment
 .venv/
 venv/
 

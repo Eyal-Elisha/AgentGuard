@@ -1,0 +1,22 @@
+.logo-shield-icon {
+  width: var(--shield-icon-size, 1.5rem);
+  height: var(--shield-icon-size, 1.5rem);
+  flex-shrink: 0;
+  fill: none;
+  color: var(--color-text-primary);
+}
+
+.logo-shield-icon__outline,
+.logo-shield-icon__check {
+  stroke: currentColor;
+  stroke-width: 1.8;
+}
+
+.logo-shield-icon__outline {
+  stroke-linejoin: round;
+}
+
+.logo-shield-icon__check {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}

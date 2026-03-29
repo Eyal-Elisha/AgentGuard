@@ -41,7 +41,9 @@ def load_settings_env() -> None:
 
 def get_api_port() -> int:
     load_settings_env()
-    raw = (os.getenv(_ENV_API_PORT) or "").strip()
+    # Prefer API_PORT for the proxy decision URL; fall back to PORT so one env var
+    # can drive both Flask (config.server_port) and the addon.
+    raw = (os.getenv(_ENV_API_PORT) or os.getenv("PORT") or "").strip()
     return _validated_port(raw, env_name=_ENV_API_PORT, default_port=_DEFAULT_API_PORT)
 
 

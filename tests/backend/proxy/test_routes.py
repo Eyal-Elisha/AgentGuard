@@ -1,9 +1,30 @@
 from __future__ import annotations
 
+import os
+import tempfile
+from pathlib import Path
 from unittest.mock import patch
+
+import pytest
 
 from backend import create_app
 from backend.analysis.rules import Decision, EvaluationResult
+
+
+@pytest.fixture
+def proxy_test_client():
+    """create_app() requires JWT and a database URL; isolate env for proxy route tests."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        db_url_path = Path(temp_dir, "test.db").resolve().as_posix()
+        with patch.dict(
+            os.environ,
+            {
+                "JWT_SECRET": "test-jwt-secret-proxy-routes",
+                "DATABASE_URL": f"sqlite:///{db_url_path}",
+            },
+            clear=False,
+        ):
+            yield create_app().test_client()
 
 
 def _make_result(decision: Decision) -> EvaluationResult:
@@ -16,11 +37,9 @@ def _make_result(decision: Decision) -> EvaluationResult:
     )
 
 
-def test_proxy_decision_route_returns_backend_decision():
-    client = create_app().test_client()
-
+def test_proxy_decision_route_returns_backend_decision(proxy_test_client):
     with patch("backend.routes.proxy.evaluate_http_payload", return_value=_make_result(Decision.WARN)):
-        response = client.post(
+        response = proxy_test_client.post(
             "/api/proxy/decision",
             json={
                 "url": "https://example.com/login",
@@ -35,10 +54,8 @@ def test_proxy_decision_route_returns_backend_decision():
     assert response.json["evaluation"]["decision"] == "warn"
 
 
-def test_proxy_decision_route_rejects_missing_fields():
-    client = create_app().test_client()
-
-    response = client.post(
+def test_proxy_decision_route_rejects_missing_fields(proxy_test_client):
+    response = proxy_test_client.post(
         "/api/proxy/decision",
         json={
             "url": "https://example.com/login",
@@ -50,10 +67,8 @@ def test_proxy_decision_route_rejects_missing_fields():
     assert "Missing required fields" in response.json["error"]
 
 
-def test_proxy_decision_route_rejects_non_object_headers():
-    client = create_app().test_client()
-
-    response = client.post(
+def test_proxy_decision_route_rejects_non_object_headers(proxy_test_client):
+    response = proxy_test_client.post(
         "/api/proxy/decision",
         json={
             "url": "https://example.com/login",
@@ -67,10 +82,8 @@ def test_proxy_decision_route_rejects_non_object_headers():
     assert "'headers' must be an object" == response.json["error"]
 
 
-def test_proxy_decision_route_rejects_blank_url():
-    client = create_app().test_client()
-
-    response = client.post(
+def test_proxy_decision_route_rejects_blank_url(proxy_test_client):
+    response = proxy_test_client.post(
         "/api/proxy/decision",
         json={
             "url": "   ",
@@ -84,11 +97,9 @@ def test_proxy_decision_route_rejects_blank_url():
     assert "'url' must be a non-empty string" == response.json["error"]
 
 
-def test_proxy_decision_route_normalizes_method_and_headers():
-    client = create_app().test_client()
-
+def test_proxy_decision_route_normalizes_method_and_headers(proxy_test_client):
     with patch("backend.routes.proxy.evaluate_http_payload", return_value=_make_result(Decision.ALLOW)) as mocked:
-        response = client.post(
+        response = proxy_test_client.post(
             "/api/proxy/decision",
             json={
                 "url": "https://example.com/login",
@@ -107,10 +118,8 @@ def test_proxy_decision_route_normalizes_method_and_headers():
     )
 
 
-def test_proxy_decision_route_rejects_non_local_requests():
-    client = create_app().test_client()
-
-    response = client.post(
+def test_proxy_decision_route_rejects_non_local_requests(proxy_test_client):
+    response = proxy_test_client.post(
         "/api/proxy/decision",
         json={
             "url": "https://example.com/login",
