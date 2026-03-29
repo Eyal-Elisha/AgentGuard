@@ -1,11 +1,10 @@
-"""Mitmproxy addon: log flows and run Stage A on eligible HTML responses (see `response_analysis.py`)."""
 
 from __future__ import annotations
 
 from mitmproxy import http
 
 from backend.proxy.filter_requests import should_forward
-from backend.proxy.filters.analysis_eligibility import should_log_request, should_log_response
+from backend.proxy.filter_responses import should_log_request, should_log_response
 from backend.proxy.response_analysis import analyze_response_safe
 from backend.proxy.utils import build_request_data, pretty_print, response_data_with_evaluation
 
