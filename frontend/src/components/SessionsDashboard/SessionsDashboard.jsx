@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import SessionSearchBar from './SessionSearchBar.jsx';
 import SessionsDashboardHeader from './SessionsDashboardHeader.jsx';
 import SessionsTable from './SessionsTable.jsx';
+import { getApiBaseUrl, apiFetchHeaders } from '../../api/client.js';
 import {
   fetchSessionEventStats,
   normalizeSession,
@@ -34,8 +35,8 @@ function SessionsDashboard() {
     let cancelled = false;
 
     async function loadSessions() {
-      const base = import.meta.env.VITE_API_BASE_URL;
-      if (base == null || String(base).trim() === '') {
+      const baseUrl = getApiBaseUrl();
+      if (baseUrl == null) {
         if (!cancelled) {
           setError('API base URL is not configured. Set VITE_API_BASE_URL in your .env file.');
           setIsLoading(false);
@@ -43,14 +44,14 @@ function SessionsDashboard() {
         return;
       }
 
-      const baseUrl = String(base).replace(/\/$/, '');
       const url = `${baseUrl}/sessions`;
+      const headers = apiFetchHeaders();
 
       try {
-        const response = await fetch(url);
+        const response = await fetch(url, { headers });
 
         if (!response.ok) {
-          const message = await readErrorMessage(response);
+          const message = await readErrorMessage(response, 'sessions');
           if (!cancelled) {
             setSessions([]);
             setError(message);
@@ -73,6 +74,7 @@ function SessionsDashboard() {
               const avg = await fetchSessionEventStats(
                 baseUrl,
                 raw.session_id,
+                headers,
               );
               return normalizeSession({
                 ...raw,

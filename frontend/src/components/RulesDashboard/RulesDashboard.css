@@ -1,0 +1,230 @@
+/* Rules dashboard — extends SessionsDashboard.css tokens via imported file in RulesDashboard.jsx */
+
+.rules-dashboard-card {
+  max-width: min(100%, 1280px);
+}
+
+.rules-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.rules-toolbar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-lg);
+}
+
+.rules-toolbar-row--primary {
+  justify-content: space-between;
+}
+
+.rules-toolbar-row--filters {
+  gap: var(--space-md) var(--space-xl);
+  padding-top: var(--space-xs);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+/* Wider than Sessions search; inherits `.session-search-input` font (see RulesToolbar) */
+.rules-search-input {
+  max-width: min(100%, 360px);
+}
+
+.rules-filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.rules-filter-label {
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-label);
+}
+
+.rules-filter-select {
+  min-width: 10rem;
+  max-width: 100%;
+  padding: 0.45rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-subtle);
+  background-color: rgba(15, 23, 42, 0.85);
+  color: var(--color-text-body);
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  font-weight: 400;
+}
+
+.rules-filter-select:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 1px;
+}
+
+.rules-filter-select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.rules-table-wrapper {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border-subtle);
+  background: linear-gradient(to bottom, rgba(15, 23, 42, 0.9), var(--color-bg-table-gradient-end));
+  overflow: hidden;
+}
+
+.rules-table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.rules-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+}
+
+.rules-table thead {
+  background: var(--color-bg-thead);
+}
+
+.rules-table th,
+.rules-table td {
+  padding: var(--space-md) 1.1rem;
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--color-border-row);
+}
+
+.rules-table th {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--color-text-label);
+  border-bottom: 1px solid var(--color-border-subtle);
+  white-space: nowrap;
+}
+
+.rules-th-description {
+  min-width: 12rem;
+}
+
+/* Must beat `.rules-table th, td { padding: … }` specificity */
+.rules-table th.rules-th-compute,
+.rules-table td.rules-cell-compute {
+  padding-left: 2.5rem;
+}
+
+/* Match `.sessions-table td` — body text, then column overrides like SessionsTable */
+.rules-table td {
+  font-size: 0.8rem;
+  color: var(--color-text-body);
+}
+
+/* Rule code: session-id color, bold sans (UI font only on this column) */
+.rules-cell-code {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--color-text-session-id);
+}
+
+/* Rule type: same emphasis as `.cell-agent-name` */
+.rules-cell-rule-type {
+  font-weight: 500;
+}
+
+.rules-cell-description {
+  white-space: normal;
+  max-width: 28rem;
+  line-height: 1.45;
+}
+
+.rules-cell-numeric {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Amber–orange: cross-cultural “caution / attention” (warnings, hazards) — alerts without “fatal error” red */
+.rules-row--hard-block {
+  background: linear-gradient(
+    90deg,
+    rgba(234, 88, 12, 0.12) 0,
+    rgba(245, 158, 11, 0.06) 0.5rem,
+    rgba(15, 23, 42, 0.35) 100%
+  );
+  box-shadow: inset 3px 0 0 0 #ea580c;
+}
+
+.rules-row--hard-block:hover {
+  background: linear-gradient(
+    90deg,
+    rgba(234, 88, 12, 0.18) 0,
+    rgba(245, 158, 11, 0.09) 0.5rem,
+    rgba(31, 41, 55, 0.5) 100%
+  );
+}
+
+.rules-row--disabled {
+  opacity: 0.55;
+}
+
+.rules-row--disabled.rules-row--hard-block {
+  opacity: 0.65;
+}
+
+.rules-row--disabled .rules-cell-code,
+.rules-row--disabled .rules-cell-mono,
+.rules-row--disabled .rules-cell-rule-type,
+.rules-row--disabled .rules-cell-description {
+  color: var(--color-text-muted);
+}
+
+.rules-badge {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.rules-badge--hard-block {
+  background: rgba(234, 88, 12, 0.28);
+  color: #ffedd5;
+}
+
+.rules-badge--neutral {
+  background: rgba(55, 65, 81, 0.5);
+  color: var(--color-text-muted);
+}
+
+.rules-badge--ok {
+  background: rgba(34, 197, 94, 0.18);
+  color: #bbf7d0;
+}
+
+.rules-badge--muted {
+  background: rgba(75, 85, 99, 0.45);
+  color: var(--color-text-muted);
+}
+
+.rules-empty-state {
+  padding: var(--space-xl) 1.1rem;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.rules-table tbody tr.rules-row:hover {
+  background-color: var(--color-bg-row-hover);
+}
+
+.rules-table .cell-value-empty {
+  color: var(--color-text-muted);
+}

@@ -1,6 +1,11 @@
+import { NavLink } from 'react-router-dom';
 import ShieldIcon from './ShieldIcon.jsx';
 
 const AGENT_OPTIONS = ['Gemini', 'BrowserOS'];
+
+function navTabClass({ isActive }) {
+  return `nav-tab${isActive ? ' nav-tab--active' : ''}`;
+}
 
 export default function SessionsDashboardHeader({
   selectedAgent,
@@ -10,6 +15,7 @@ export default function SessionsDashboardHeader({
   onAgentSelect,
   isProxyActive,
   onProxyToggle,
+  showAgentControls = true,
 }) {
   return (
     <header className="sessions-dashboard-header">
@@ -17,14 +23,15 @@ export default function SessionsDashboardHeader({
         <ShieldIcon />
         <span>AgentGuard</span>
       </div>
-      <nav className="sessions-dashboard-nav">
-        <button type="button" className="nav-tab nav-tab--active">
+      <nav className="sessions-dashboard-nav" aria-label="Primary">
+        <NavLink to="/" end className={navTabClass}>
           Sessions
-        </button>
-        <button type="button" className="nav-tab">
+        </NavLink>
+        <NavLink to="/rules" className={navTabClass}>
           Rules
-        </button>
+        </NavLink>
       </nav>
+      {showAgentControls ? (
       <div className="sessions-dashboard-header-right">
         <div className="agent-selector">
           <span className="agent-selector-label">SELECT AGENT</span>
@@ -74,6 +81,9 @@ export default function SessionsDashboardHeader({
           </button>
         </div>
       </div>
+      ) : (
+        <div className="sessions-dashboard-header-right sessions-dashboard-header-right--spacer" aria-hidden="true" />
+      )}
     </header>
   );
 }
