@@ -4,7 +4,7 @@ from typing import Any
 
 from flask import jsonify, request
 
-from backend.proxy.policy_engine import evaluate_http_payload
+from backend.proxy.rule_engine import evaluate_http_payload
 from backend.proxy.utils import evaluation_result_to_dict
 
 from . import api_bp

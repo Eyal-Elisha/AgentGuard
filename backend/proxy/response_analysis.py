@@ -17,7 +17,7 @@ from mitmproxy import http
 
 from backend.analysis.rules import EvaluationResult
 from backend.proxy.filters.analysis_eligibility import is_eligible_for_response_analysis
-from backend.proxy.policy_engine import evaluate_http_payload
+from backend.proxy.rule_engine import evaluate_http_payload
 
 _logger = logging.getLogger(__name__)
 

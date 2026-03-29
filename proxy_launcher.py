@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import sys
@@ -31,7 +32,10 @@ def main() -> int:
         str(get_proxy_port()),
         *sys.argv[1:],
     ]
-    return subprocess.call(command, cwd=repo_root)
+    env = os.environ.copy()
+    # TODO: Remove this once the project is packaged/installable and mitm can import `backend` without PYTHONPATH.
+    env["PYTHONPATH"] = str(repo_root)
+    return subprocess.call(command, cwd=repo_root, env=env)
 
 
 if __name__ == "__main__":

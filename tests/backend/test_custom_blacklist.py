@@ -1,17 +1,15 @@
 from __future__ import annotations
 
 from pathlib import Path
-from types import SimpleNamespace
-from unittest.mock import patch
 
-from backend.analysis.stages.stage_a.deterministic_rules import custom_blacklist_entry_matches
-
-from backend.proxy.policy_engine import (
+from backend.custom_blacklist import (
+    custom_blacklist_entry_matches,
     custom_blacklist_file_path,
-    flow_matches_custom_blacklist,
+    custom_blacklist_matches,
     load_custom_blacklist_file,
     parse_custom_blacklist_file_content,
 )
+
 
 def test_parse_blacklist_file_skips_comments_and_blank_lines():
     text = """
@@ -35,7 +33,7 @@ def test_load_custom_blacklist_file_reads_file(tmp_path: Path):
     assert load_custom_blacklist_file(p) == frozenset({"one.com", "two.org"})
 
 
-def test_custom_blacklist_file_path_uses_default_policy_file():
+def test_custom_blacklist_file_path_uses_default_file():
     path = custom_blacklist_file_path()
     assert path.name == "custom_blacklist.txt"
 
@@ -62,15 +60,9 @@ def test_custom_blacklist_entry_matches_trailing_slash_url_with_query():
     )
 
 
-def test_flow_matches_custom_blacklist_for_subdomain():
-    flow = SimpleNamespace(
-        request=SimpleNamespace(
-            host="www.youtube.com",
-            pretty_url="https://www.youtube.com/watch?v=123",
-        )
-    )
-    with patch(
-        "backend.proxy.policy_engine._CUSTOM_BLACKLIST",
+def test_custom_blacklist_matches_subdomain():
+    assert custom_blacklist_matches(
+        "www.youtube.com",
+        "https://www.youtube.com/watch?v=123",
         frozenset({"youtube.com"}),
-    ):
-        assert flow_matches_custom_blacklist(flow) is True
+    ) is True

@@ -28,9 +28,10 @@
 
 8. Open `http://mitm.it/` and install the certificate that matches your OS.
 
-If you prefer to start mitmweb manually, use:
-   From the repo root:
-   `mitmweb -s backend/proxy/traffic_interception.py --listen-port <PROXY_PORT>`
+**Manual mitmweb (optional):** the supported entry point is `python proxy_launcher.py` from the repo root (it picks `mitmweb` from your venv, sets `PROXY_PORT`, and sets `PYTHONPATH` so the addon can import `backend`). If you run `mitmweb` yourself, use the same working directory and env, for example from the repo root with venv active:
+
+- PowerShell: `$env:PYTHONPATH = (Get-Location).Path; mitmweb -s backend/proxy/traffic_interception.py --listen-port 8080`
+- bash: `PYTHONPATH=. mitmweb -s backend/proxy/traffic_interception.py --listen-port 8080`
 
 If the backend decision API is unreachable, the proxy follows `AGENTGUARD_BACKEND_FAILURE_MODE`.
 `fail_closed` blocks the request with a 503 response; `fail_open` allows the request and logs the backend failure.

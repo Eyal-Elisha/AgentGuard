@@ -31,11 +31,7 @@ def is_ip(host: str) -> bool:
 
 
 def is_loopback_host(host: str) -> bool:
-    """True if the host is localhost or a loopback IP (127.0.0.0/8, ::1, etc.).
-
-    Used so HTTP to local dev servers is not treated like cleartext traffic to the
-    public internet.
-    """
+    """True if host is localhost or a loopback IP (so local HTTP is not flagged)."""
     if not host:
         return False
     host = strip_www(host)

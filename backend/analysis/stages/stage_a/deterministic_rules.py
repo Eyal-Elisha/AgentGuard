@@ -7,6 +7,7 @@ from functools import lru_cache
 from typing import Dict, Tuple
 from urllib.parse import urlparse
 
+from backend.custom_blacklist import custom_blacklist_entry_matches, custom_blacklist_matches
 from backend.feature_extraction.feature_extractor import ExtractedFeatures
 from backend.analysis.stages.stage_a.blacklist import blacklist_cache
 from backend.analysis.stages.stage_a.data import BRAND_DOMAINS, SENSITIVE_INPUT_TYPES, SENSITIVE_NAME_RE
@@ -198,39 +199,6 @@ def _host_matches_blacklist_entry(host_stripped: str, entry_host: str) -> bool:
     )
 
 
-def _url_matches_blacklist_entry(entry: str, url_lc: str) -> bool:
-    entry_base, has_entry_query, entry_query = entry.partition("?")
-    url_base, has_url_query, url_query = url_lc.partition("?")
-
-    if url_base.rstrip("/") != entry_base.rstrip("/"):
-        return False
-    if has_entry_query:
-        return has_url_query and url_query == entry_query
-    return True
-
-
-def custom_blacklist_entry_matches(entry: str, *, host_stripped: str, url_lc: str) -> bool:
-    """Host entries match subdomains; URL/path entries match the normalized target exactly."""
-    entry = entry.strip().lower()
-    if not entry:
-        return False
-    if "://" in entry:
-        parsed = urlparse(entry)
-        entry_host = strip_www(parsed.hostname or "")
-        if not (parsed.path or "").strip("/") and not parsed.query:
-            return _host_matches_blacklist_entry(host_stripped, entry_host)
-        return _url_matches_blacklist_entry(entry, url_lc)
-    if "/" in entry or "?" in entry:
-        return _url_matches_blacklist_entry(entry, url_lc)
-    entry_host = strip_www(entry.strip("."))
-    return _host_matches_blacklist_entry(host_stripped, entry_host)
-
-
-def _custom_blacklist_entry_matches(entry: str, *, host_stripped: str, url_lc: str) -> bool:
-    """Backward-compatible alias for older imports."""
-    return custom_blacklist_entry_matches(entry, host_stripped=host_stripped, url_lc=url_lc)
-
-
 def rule_custom_blacklist(
     features: ExtractedFeatures,
     custom_blacklist: frozenset,
@@ -238,11 +206,8 @@ def rule_custom_blacklist(
     """Rule 9 — Custom Local Blacklist. Hard block."""
     if not custom_blacklist:
         return 0.0, "Custom blacklist not configured"
-    host_stripped = strip_www(features.host)
-    url_lc = features.url.lower()
-    for entry in custom_blacklist:
-        if custom_blacklist_entry_matches(entry, host_stripped=host_stripped, url_lc=url_lc):
-            return 1.0, f"URL '{features.url}' matches the custom local blacklist"
+    if custom_blacklist_matches(features.host, features.url, custom_blacklist):
+        return 1.0, f"URL '{features.url}' matches the custom local blacklist"
     return 0.0, "Not found in custom local blacklist"
 
 
