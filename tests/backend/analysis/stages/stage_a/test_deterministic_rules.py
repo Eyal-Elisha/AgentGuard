@@ -10,6 +10,7 @@ Rule 1 (domain blacklist) mocks the external API so no network calls are made.
 import pytest
 from unittest.mock import patch
 
+from backend.custom_blacklist import custom_blacklist_entry_matches
 from helpers import (
     make_features,
     HTML_PASSWORD_FORM,
@@ -100,6 +101,22 @@ class TestRuleUnencryptedConnection:
 
     def test_https_no_html_passes(self):
         features = make_features("https://api.example.com/data")
+        score, _ = rule_unencrypted_connection(features)
+        assert score == 0.0
+
+    def test_http_localhost_passes(self):
+        features = make_features("http://localhost:3000/", HTML_BENIGN)
+        score, explanation = rule_unencrypted_connection(features)
+        assert score == 0.0
+        assert "loopback" in explanation.lower()
+
+    def test_http_127_passes(self):
+        features = make_features("http://127.0.0.1/api", HTML_BENIGN)
+        score, _ = rule_unencrypted_connection(features)
+        assert score == 0.0
+
+    def test_http_ipv6_loopback_passes(self):
+        features = make_features("http://[::1]:8080/", HTML_BENIGN)
         score, _ = rule_unencrypted_connection(features)
         assert score == 0.0
 
@@ -354,6 +371,26 @@ class TestRuleIpBasedUrl:
 # ---------------------------------------------------------------------------
 
 class TestRuleCustomBlacklist:
+    def test_public_blacklist_matcher_normalizes_trailing_slash_before_query(self):
+        assert (
+            custom_blacklist_entry_matches(
+                "https://example.com/login/",
+                host_stripped="example.com",
+                url_lc="https://example.com/login/?next=%2Fhome",
+            )
+            is True
+        )
+
+    def test_public_blacklist_matcher_respects_explicit_query_strings(self):
+        assert (
+            custom_blacklist_entry_matches(
+                "https://example.com/login?next=%2Fhome",
+                host_stripped="example.com",
+                url_lc="https://example.com/login?next=%2Fdashboard",
+            )
+            is False
+        )
+
     def test_domain_in_blacklist_triggers(self):
         features = make_features("https://blocked-site.com/login")
         score, explanation = rule_custom_blacklist(

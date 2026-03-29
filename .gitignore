@@ -37,9 +37,8 @@ __pycache__/
 # Logs
 *.log
 
+# Legacy local-only proxy env file (unused by current config flow)
+backend/proxy/.env
 .env
 backend/.env
-
-# Local SQLite DB (Flask backend)
 backend/agentguard.db
-backend/proxy/.env

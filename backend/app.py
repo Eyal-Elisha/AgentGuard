@@ -1,10 +1,18 @@
-from .config import env_flag, load_environment, server_port
 from . import create_app
-
-load_environment()
+from .config import env_flag, server_port
+from backend.settings import get_api_host
 
 app = create_app()
 
 
+def main() -> None:
+    """Run the local backend API server."""
+    app.run(
+        host=get_api_host(),
+        port=server_port(),
+        debug=env_flag("FLASK_DEBUG", default=False),
+    )
+
+
 if __name__ == "__main__":
-    app.run(debug=env_flag("FLASK_DEBUG"), port=server_port())
+    main()

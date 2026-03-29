@@ -30,6 +30,19 @@ def is_ip(host: str) -> bool:
         return False
 
 
+def is_loopback_host(host: str) -> bool:
+    """True if host is localhost or a loopback IP (so local HTTP is not flagged)."""
+    if not host:
+        return False
+    host = strip_www(host)
+    if host == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
 def domain_matches(host: str, official_domains: List[str]) -> bool:
     """True if host equals or is a subdomain of any official domain."""
     host = strip_www(host)

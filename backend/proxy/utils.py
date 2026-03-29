@@ -28,8 +28,15 @@ def build_request_data(flow):
         "url": flow.request.pretty_url,
         "host": flow.request.host,
         "headers": dict(flow.request.headers),
-        "body": safe_get_text(flow.request)
+        "body": safe_get_text(flow.request),
     }
+
+
+def build_enforcement_data(flow: http.HTTPFlow) -> Optional[Dict[str, Any]]:
+    enforcement = flow.metadata.get("agentguard_enforcement")
+    if isinstance(enforcement, dict):
+        return enforcement
+    return None
 
 
 def build_response_data(flow):
@@ -49,6 +56,9 @@ def response_data_with_evaluation(
 ) -> Dict[str, Any]:
     """Single log blob: response fields plus `evaluation` when Stage A ran."""
     data: Dict[str, Any] = build_response_data(flow)
+    enforcement = build_enforcement_data(flow)
+    if enforcement is not None:
+        data["request_enforcement"] = enforcement
     if result is not None:
         data["evaluation"] = evaluation_result_to_dict(result)
     return data
