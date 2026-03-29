@@ -15,6 +15,7 @@ from backend.analysis.stages.stage_a.helpers import (
     get_sld_label,
     has_sensitive_inputs,
     is_ip,
+    is_loopback_host,
     is_typosquat,
     normalize_confusables,
     strip_www,
@@ -50,6 +51,8 @@ def rule_domain_blacklist(features: ExtractedFeatures) -> Tuple[float, str]:
 def rule_unencrypted_connection(features: ExtractedFeatures) -> Tuple[float, str]:
     """Rule 2 — Unencrypted or Invalid Secure Connection. Hard block."""
     if features.scheme != "https":
+        if is_loopback_host(features.host):
+            return 0.0, "Local loopback; HTTP is acceptable for local development"
         return 1.0, f"Connection is unencrypted ('{features.scheme}://')"
     return 0.0, "Connection is encrypted (HTTPS)"
 
@@ -189,6 +192,45 @@ def rule_ip_based_url(features: ExtractedFeatures) -> Tuple[float, str]:
     return 0.0, "Page uses a registered domain name"
 
 
+def _host_matches_blacklist_entry(host_stripped: str, entry_host: str) -> bool:
+    return bool(entry_host) and (
+        host_stripped == entry_host or host_stripped.endswith("." + entry_host)
+    )
+
+
+def _url_matches_blacklist_entry(entry: str, url_lc: str) -> bool:
+    entry_base, has_entry_query, entry_query = entry.partition("?")
+    url_base, has_url_query, url_query = url_lc.partition("?")
+
+    if url_base.rstrip("/") != entry_base.rstrip("/"):
+        return False
+    if has_entry_query:
+        return has_url_query and url_query == entry_query
+    return True
+
+
+def custom_blacklist_entry_matches(entry: str, *, host_stripped: str, url_lc: str) -> bool:
+    """Host entries match subdomains; URL/path entries match the normalized target exactly."""
+    entry = entry.strip().lower()
+    if not entry:
+        return False
+    if "://" in entry:
+        parsed = urlparse(entry)
+        entry_host = strip_www(parsed.hostname or "")
+        if not (parsed.path or "").strip("/") and not parsed.query:
+            return _host_matches_blacklist_entry(host_stripped, entry_host)
+        return _url_matches_blacklist_entry(entry, url_lc)
+    if "/" in entry or "?" in entry:
+        return _url_matches_blacklist_entry(entry, url_lc)
+    entry_host = strip_www(entry.strip("."))
+    return _host_matches_blacklist_entry(host_stripped, entry_host)
+
+
+def _custom_blacklist_entry_matches(entry: str, *, host_stripped: str, url_lc: str) -> bool:
+    """Backward-compatible alias for older imports."""
+    return custom_blacklist_entry_matches(entry, host_stripped=host_stripped, url_lc=url_lc)
+
+
 def rule_custom_blacklist(
     features: ExtractedFeatures,
     custom_blacklist: frozenset,
@@ -196,9 +238,11 @@ def rule_custom_blacklist(
     """Rule 9 — Custom Local Blacklist. Hard block."""
     if not custom_blacklist:
         return 0.0, "Custom blacklist not configured"
-    host = strip_www(features.host)
-    if host in custom_blacklist or features.url in custom_blacklist:
-        return 1.0, f"URL '{features.url}' matches the custom local blacklist"
+    host_stripped = strip_www(features.host)
+    url_lc = features.url.lower()
+    for entry in custom_blacklist:
+        if custom_blacklist_entry_matches(entry, host_stripped=host_stripped, url_lc=url_lc):
+            return 1.0, f"URL '{features.url}' matches the custom local blacklist"
     return 0.0, "Not found in custom local blacklist"
 
 

@@ -32,4 +32,14 @@ With the venv activated, from the repository root:
 python -m backend.app
 ```
 
-Flask will print the URL it is listening on (host and port come from `app.run()` in `backend/app.py`; default port is **5000** for now!!!). The health route is **`/api/health`** on that server.
+Flask will print the URL it is listening on. The backend API port comes from `API_PORT` in `backend/.env` and defaults to `3000`. The health route is **`/api/health`** on that server.
+
+## Run the proxy
+
+From the repository root:
+
+```bash
+python proxy_launcher.py
+```
+
+The proxy listen port comes from `PROXY_PORT` in `backend/.env` and defaults to `8080`.
