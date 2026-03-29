@@ -7,6 +7,7 @@ from functools import lru_cache
 from typing import Dict, Tuple
 from urllib.parse import urlparse
 
+from backend.custom_blacklist import custom_blacklist_entry_matches, custom_blacklist_matches
 from backend.feature_extraction.feature_extractor import ExtractedFeatures
 from backend.analysis.stages.stage_a.blacklist import blacklist_cache
 from backend.analysis.stages.stage_a.data import BRAND_DOMAINS, SENSITIVE_INPUT_TYPES, SENSITIVE_NAME_RE
@@ -15,6 +16,7 @@ from backend.analysis.stages.stage_a.helpers import (
     get_sld_label,
     has_sensitive_inputs,
     is_ip,
+    is_loopback_host,
     is_typosquat,
     normalize_confusables,
     strip_www,
@@ -50,6 +52,8 @@ def rule_domain_blacklist(features: ExtractedFeatures) -> Tuple[float, str]:
 def rule_unencrypted_connection(features: ExtractedFeatures) -> Tuple[float, str]:
     """Rule 2 — Unencrypted or Invalid Secure Connection. Hard block."""
     if features.scheme != "https":
+        if is_loopback_host(features.host):
+            return 0.0, "Local loopback; HTTP is acceptable for local development"
         return 1.0, f"Connection is unencrypted ('{features.scheme}://')"
     return 0.0, "Connection is encrypted (HTTPS)"
 
@@ -189,6 +193,12 @@ def rule_ip_based_url(features: ExtractedFeatures) -> Tuple[float, str]:
     return 0.0, "Page uses a registered domain name"
 
 
+def _host_matches_blacklist_entry(host_stripped: str, entry_host: str) -> bool:
+    return bool(entry_host) and (
+        host_stripped == entry_host or host_stripped.endswith("." + entry_host)
+    )
+
+
 def rule_custom_blacklist(
     features: ExtractedFeatures,
     custom_blacklist: frozenset,
@@ -196,8 +206,7 @@ def rule_custom_blacklist(
     """Rule 9 — Custom Local Blacklist. Hard block."""
     if not custom_blacklist:
         return 0.0, "Custom blacklist not configured"
-    host = strip_www(features.host)
-    if host in custom_blacklist or features.url in custom_blacklist:
+    if custom_blacklist_matches(features.host, features.url, custom_blacklist):
         return 1.0, f"URL '{features.url}' matches the custom local blacklist"
     return 0.0, "Not found in custom local blacklist"
 

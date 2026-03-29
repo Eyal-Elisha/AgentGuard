@@ -1,9 +1,12 @@
 from mitmproxy import http
 
+_ENFORCED_REQUEST_METHODS = frozenset({"GET", "POST", "PUT", "PATCH", "DELETE"})
+
+def is_enforced_request_method(flow: http.HTTPFlow) -> bool:
+    """Methods that AgentGuard actively inspects in the proxy pipeline."""
+    return flow.request.method.upper() in _ENFORCED_REQUEST_METHODS
+
+
 def is_action_request(flow: http.HTTPFlow) -> bool:
-    method = flow.request.method.upper()
-
-    if method in ["POST", "PUT", "PATCH", "DELETE", "GET"]:
-        return True
-
-    return False
+    """Backward-compatible alias for older imports/tests."""
+    return is_enforced_request_method(flow)

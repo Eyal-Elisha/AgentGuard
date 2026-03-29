@@ -4,9 +4,9 @@ Typical flow: browser GET → server returns HTML → `response` hook runs with 
 That is *before* the next user/agent action on that document (typing, submitting). Rules that
 need DOM (forms, text) run here.
 
-A separate problem is POST/PUT that *already carry* secrets in the body: by the `request`
-hook the payload is ready to leave; blocking that requires a dedicated request-time gate (not
-implemented here). This module only scores from the response body for eligible HTML flows.
+A separate problem is POST/PUT that *already carry* secrets in the body: those are handled by
+the request-time backend enforcement path. This module only scores from the response body for
+eligible HTML flows.
 """
 
 from __future__ import annotations
@@ -15,31 +15,14 @@ import logging
 
 from mitmproxy import http
 
-from backend.analysis.stages.stage_a import StageAEvaluator
 from backend.analysis.rules import EvaluationResult
+
 from backend.feature_extraction.feature_extractor import FeatureExtractor
 from backend.proxy.filter_responses import is_eligible_for_response_analysis
+from backend.proxy.filters.analysis_eligibility import is_eligible_for_response_analysis
+from backend.proxy.rule_engine import evaluate_http_payload
 
 _logger = logging.getLogger(__name__)
-
-_extractor = FeatureExtractor()
-_evaluator = StageAEvaluator()
-
-
-def _run_stage_a(
-    *,
-    url: str,
-    method: str,
-    headers: dict,
-    body: bytes,
-) -> EvaluationResult:
-    features = _extractor.extract(
-        url=url,
-        method=method,
-        headers=headers,
-        body=body,
-    )
-    return _evaluator.evaluate(features)
 
 
 def _looks_like_navigation(flow: http.HTTPFlow) -> bool:
@@ -65,6 +48,8 @@ def analyze_response(flow: http.HTTPFlow) -> EvaluationResult | None:
 
     headers = dict(flow.response.headers)
     body = flow.response.content or b""
+
+    
 
     _logger.debug(f"[AgentGuard] analyze_response: url={flow.request.pretty_url} status={getattr(flow.response,'status_code',None)} body_len={len(body)}")
 
@@ -165,7 +150,7 @@ def analyze_response(flow: http.HTTPFlow) -> EvaluationResult | None:
             print(f"[AgentGuard] REFETCH ERROR: {e}")
             _logger.exception("[AgentGuard] refetch for analysis failed, falling back to available response: %s", e)
 
-    result = _run_stage_a(
+    return evaluate_http_payload(
         url=flow.request.pretty_url,
         method=flow.request.method,
         headers=headers,
@@ -177,9 +162,9 @@ def analyze_response(flow: http.HTTPFlow) -> EvaluationResult | None:
 
 
 def analyze_response_safe(flow: http.HTTPFlow) -> EvaluationResult | None:
-
     try:
         return analyze_response(flow)
+      
     except Exception:
         _logger.exception("[AgentGuard] Stage A failed in safe wrapper")
         return None

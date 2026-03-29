@@ -22,7 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-﻿# Virtual environment
+# Virtual environment
 .venv/
 venv/
 
@@ -37,4 +37,8 @@ __pycache__/
 # Logs
 *.log
 
+# Legacy local-only proxy env file (unused by current config flow)
 backend/proxy/.env
+.env
+backend/.env
+backend/agentguard.db
