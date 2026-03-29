@@ -33,6 +33,7 @@ def iso_z(value: datetime | str | None) -> str | None:
 def session_to_dict(row: dict[str, Any]) -> dict:
     return {
         "session_id": row["session_id"],
+        "user_id": row["user_id"],
         "start_time": iso_z(row["start_time"]),
         "agent_name": row["agent_name"],
         "end_time": iso_z(row["end_time"]),
