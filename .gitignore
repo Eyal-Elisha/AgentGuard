@@ -28,8 +28,8 @@ venv/
 
 # Python cache
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
+*$py.class
 
 # PyCharm
 .idea/
@@ -42,3 +42,4 @@ backend/.env
 
 # Local SQLite DB (Flask backend)
 backend/agentguard.db
+backend/proxy/.env
