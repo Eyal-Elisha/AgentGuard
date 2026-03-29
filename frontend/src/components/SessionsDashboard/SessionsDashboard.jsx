@@ -111,7 +111,8 @@ function SessionsDashboard() {
       (session) =>
         session.agent_name.toLowerCase().includes(query) ||
         session.session_id.toLowerCase().includes(query) ||
-        session.user_id.toLowerCase().includes(query),
+        (session.user_id != null &&
+          String(session.user_id).includes(query)),
     );
   }, [searchTerm, sessions]);
 

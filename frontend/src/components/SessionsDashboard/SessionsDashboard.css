@@ -434,6 +434,8 @@
 
 .cell-agent-name {
   font-weight: 500;
+  /* Explicit sans stack so this column never picks up monospace from table/session styles. */
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
 }
 
 .cell-session-id {
@@ -447,10 +449,17 @@
   color: var(--color-text-body);
 }
 
-.cell-timestamp {
+/* Placeholder glyph (user id, empty start/end time): same monospace as session id dash width. */
+.sessions-table td.cell-value-empty {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
     'Courier New', monospace;
-  color: var(--color-text-muted);
+}
+
+/* Match risk column typeface; normal weight (risk stays bold via .cell-risk). */
+.sessions-table td.cell-timestamp {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
 }
 
 .cell-risk {
