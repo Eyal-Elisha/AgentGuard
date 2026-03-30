@@ -5,7 +5,7 @@ from __future__ import annotations
 from flask import jsonify, request
 
 from ..auth import require_jwt
-from ..serializers import analysis_to_dict, rule_to_dict
+from ..serializers import analysis_to_dict, rule_analysis_to_dict, rule_to_dict
 from ..storage import sqlite_store as store
 from ..validation import (
     validate_rule_payload,
@@ -59,8 +59,8 @@ def create_rule():
 def list_event_rules_analysis(event_id: int):
     if not store.event_get(event_id):
         return jsonify({"error": "Event not found"}), 404
-    rows = store.rule_analysis_list_for_event(event_id)
-    return jsonify([analysis_to_dict(a) for a in rows]), 200
+    rows = store.rule_analysis_list_for_event_with_rule_meta(event_id)
+    return jsonify([rule_analysis_to_dict(a) for a in rows]), 200
 
 
 @app_bp.route("/rules-analysis", methods=["POST"])
@@ -93,5 +93,5 @@ def list_rules_analysis():
         return jsonify({"error": err}), 400
     if not store.rule_get(query["rule_code"]):
         return jsonify({"error": "Rule not found"}), 404
-    rows = store.rule_analysis_list_for_rule(query["rule_code"], query["limit"])
-    return jsonify([analysis_to_dict(a) for a in rows]), 200
+    rows = store.rule_analysis_list_for_rule_with_rule_meta(query["rule_code"], query["limit"])
+    return jsonify([rule_analysis_to_dict(a) for a in rows]), 200

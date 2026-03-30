@@ -74,3 +74,11 @@ def analysis_to_dict(row: dict[str, Any]) -> dict:
         "rule_score": float(row["rule_score"]) if row["rule_score"] is not None else None,
         "details": row["details"],
     }
+
+
+def rule_analysis_to_dict(row: dict[str, Any]) -> dict:
+    out = analysis_to_dict(row)
+    out["rule_type"] = row.get("rule_type")
+    out["weight"] = float(row["weight"]) if row.get("weight") is not None else None
+    out["rule_score"] = float(row["rule_score"]) if row.get("rule_score") is not None else None
+    return out
