@@ -43,11 +43,48 @@
   font-size: 2rem;
   font-weight: 700;
   color: var(--color-text-primary);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-lg);
+  width: 100%;
 }
 
 .events-view-title span {
   color: var(--color-text-primary);
 }
+
+.events-view-title-left {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.events-view-title-metric {
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  white-space: nowrap;
+}
+
+.events-view-title-metric-label {
+  color: var(--color-text-muted);
+  font-weight: 700;
+}
+
+.events-view-title-metric-value {
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+/* Risk colors (Sessions table styles are scoped to td; mirror them here for title usage) */
+.events-view-title .cell-risk--high { color: var(--color-risk-high); }
+.events-view-title .cell-risk--medium { color: var(--color-risk-medium); }
+.events-view-title .cell-risk--low { color: var(--color-risk-low); }
 
 .events-view-subtitle {
   margin: 0;
@@ -83,6 +120,8 @@
 .events-timeline-pane {
   max-width: 100%;
   overflow-x: hidden;
+  overflow-y: auto;
+  max-height: min(42rem, calc(100vh - 18rem));
 }
 
 .events-pane-title {
@@ -91,6 +130,33 @@
   font-size: 1.65rem;
   font-weight: 700;
   line-height: 1.2;
+}
+
+.events-pane-title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.events-pane-title-row .events-pane-title {
+  margin: 0;
+}
+
+.events-pane-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--radius-pill);
+  padding: 0.2rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-body);
+  border: 1px solid rgba(55, 65, 81, 0.65);
+  background: rgba(2, 6, 23, 0.55);
+  white-space: nowrap;
 }
 
 .events-timeline-list {
@@ -107,9 +173,24 @@
   background: rgba(15, 23, 42, 0.45);
   color: inherit;
   text-align: left;
-  padding: 0.85rem 0.9rem 0.85rem 1.75rem;
+  padding: 1.05rem 0.95rem 1.0rem 1.75rem;
   cursor: pointer;
   transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.events-corner-id {
+  position: absolute;
+  top: 0.35rem;
+  left: 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: rgba(148, 163, 184, 0.85);
+  background: rgba(2, 6, 23, 0.5);
+  border: 1px solid rgba(55, 65, 81, 0.55);
+  border-radius: var(--radius-pill);
+  padding: 0.12rem 0.45rem;
+  pointer-events: none;
 }
 
 .events-timeline-item:hover {
@@ -155,6 +236,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
+  padding-top: 0.7rem;
 }
 
 .events-timeline-row {
@@ -164,6 +246,14 @@
   gap: var(--space-md);
 }
 
+.events-timeline-meta {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
 .events-timestamp {
   color: var(--color-text-body);
   font-size: 0.86rem;
@@ -171,12 +261,56 @@
   font-variant-numeric: tabular-nums;
 }
 
-.events-url {
-  margin: 0;
+.events-url-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.1rem;
+}
+
+.events-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 1.25rem;
+  transform: translateX(-50%);
+  z-index: 1000;
+  background: rgba(2, 6, 23, 0.9);
+  border: 1px solid rgba(55, 65, 81, 0.65);
+  color: var(--color-text-body);
+  padding: 0.5rem 0.8rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.82rem;
+  font-weight: 650;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+}
+
+.events-url-text {
   color: var(--color-text-muted);
   font-size: 0.82rem;
   word-break: break-word;
   overflow-wrap: break-word;
+  text-align: left;
+}
+
+.events-url-copy {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-family: inherit;
+  line-height: inherit;
+  cursor: pointer;
+}
+
+.events-url-copy:hover {
+  color: var(--color-text-body);
+  text-decoration: underline;
+  text-decoration-color: rgba(148, 163, 184, 0.55);
+}
+
+.events-url-copy:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
 }
 
 .events-action-badge {
@@ -235,6 +369,7 @@
   font-size: 0.82rem;
   font-weight: 600;
 }
+
 
 .events-risk-value {
   margin: 0;

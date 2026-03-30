@@ -7,7 +7,12 @@ export default function EventAnalysis({
 
   return (
     <section className="events-analysis-pane">
-      <h2 className="events-pane-title">Analysis Evidence</h2>
+      <div className="events-pane-title-row">
+        <h2 className="events-pane-title">Analysis Evidence</h2>
+        <span className="events-pane-pill">
+          Event ID: {selectedEvent ? selectedEvent.event_id : '–'}
+        </span>
+      </div>
 
       <div className="events-risk-card">
         <p className="events-risk-label">Event Risk Score</p>

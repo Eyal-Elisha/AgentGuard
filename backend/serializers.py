@@ -71,8 +71,14 @@ def analysis_to_dict(row: dict[str, Any]) -> dict:
         "analysis_id": row["analysis_id"],
         "event_id": row["event_id"],
         "rule_code": row["rule_code"],
-        "rule_score": float(row["rule_score"]) if row.get("rule_score") is not None else None,
+        "rule_score": float(row["rule_score"]) if row["rule_score"] is not None else None,
         "details": row["details"],
-        "rule_type": row.get("rule_type"),
-        "weight": float(row["weight"]) if row.get("weight") is not None else None,
     }
+
+
+def rule_analysis_to_dict(row: dict[str, Any]) -> dict:
+    out = analysis_to_dict(row)
+    out["rule_type"] = row.get("rule_type")
+    out["weight"] = float(row["weight"]) if row.get("weight") is not None else None
+    out["rule_score"] = float(row["rule_score"]) if row.get("rule_score") is not None else None
+    return out

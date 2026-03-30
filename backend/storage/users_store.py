@@ -35,3 +35,13 @@ def user_create(username: str, password_hash: str, is_admin: bool = False) -> in
             raise UsernameTakenError from exc
         return int(cur.lastrowid)
 
+
+def user_get(user_id: int) -> dict[str, Any] | None:
+    with _connect() as conn:
+        cur = conn.execute(
+            "SELECT user_id, username, is_admin FROM users WHERE user_id = ?",
+            (user_id,),
+        )
+        row = cur.fetchone()
+        return dict(row) if row else None
+

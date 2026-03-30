@@ -5,7 +5,7 @@ import '../SessionsDashboard/SessionsDashboard.css';
 import './EventsView.css';
 import EventAnalysis from './EventAnalysis.jsx';
 import EventTimeline from './EventTimeline.jsx';
-import { readErrorMessage } from '../SessionsDashboard/sessionUtils.js';
+import { EMPTY_CELL_DISPLAY, fetchSessionEventStats, readErrorMessage } from '../SessionsDashboard/sessionUtils.js';
 
 function EventsView({ selectedAgent, onAgentSelect, isProxyActive, onProxyToggle }) {
   const navigate = useNavigate();
@@ -19,9 +19,19 @@ function EventsView({ selectedAgent, onAgentSelect, isProxyActive, onProxyToggle
   const [events, setEvents] = useState([]);
   const [ruleAnalysis, setRuleAnalysis] = useState([]);
   const [selectedEventId, setSelectedEventId] = useState(null);
+  const [sessionAverageRiskScore, setSessionAverageRiskScore] = useState(null);
+  const [sessionUserId, setSessionUserId] = useState(null);
+  const [sessionUsername, setSessionUsername] = useState(null);
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  function getRiskLevel(score) {
+    if (typeof score !== 'number' || Number.isNaN(score)) return 'low';
+    if (score > 0.7) return 'high';
+    if (score > 0.4) return 'medium';
+    return 'low';
+  }
 
   // Fetch Session Events
   useEffect(() => {
@@ -96,6 +106,84 @@ function EventsView({ selectedAgent, onAgentSelect, isProxyActive, onProxyToggle
     };
   }, [resolvedSessionId]);
 
+  // Fetch Session metadata (user_id)
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadSessionMeta() {
+      const base = import.meta.env.VITE_API_BASE_URL;
+      if (!base || !resolvedSessionId) {
+        if (!cancelled) setSessionUserId(null);
+        if (!cancelled) setSessionUsername(null);
+        return;
+      }
+      const baseUrl = String(base).replace(/\/$/, '');
+      const url = `${baseUrl}/sessions/${Number(resolvedSessionId)}`;
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          if (!cancelled) setSessionUserId(null);
+          if (!cancelled) setSessionUsername(null);
+          return;
+        }
+        const data = await response.json();
+        const rawUserId = data?.user_id;
+        const user_id =
+          typeof rawUserId === 'number' && Number.isFinite(rawUserId)
+            ? rawUserId
+            : null;
+        if (!cancelled) setSessionUserId(user_id);
+
+        if (user_id == null) {
+          if (!cancelled) setSessionUsername(null);
+          return;
+        }
+
+        const userUrl = `${baseUrl}/users/${user_id}`;
+        const userRes = await fetch(userUrl);
+        if (!userRes.ok) {
+          if (!cancelled) setSessionUsername(null);
+          return;
+        }
+        const userData = await userRes.json();
+        const username = typeof userData?.username === 'string' ? userData.username : null;
+        if (!cancelled) setSessionUsername(username);
+      } catch {
+        if (!cancelled) setSessionUserId(null);
+        if (!cancelled) setSessionUsername(null);
+      }
+    }
+
+    loadSessionMeta();
+    return () => {
+      cancelled = true;
+    };
+  }, [resolvedSessionId]);
+
+  // Fetch Session Average Risk Score
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadAverageRiskScore() {
+      const base = import.meta.env.VITE_API_BASE_URL;
+      if (!base || !resolvedSessionId) {
+        if (!cancelled) setSessionAverageRiskScore(null);
+        return;
+      }
+      const baseUrl = String(base).replace(/\/$/, '');
+      const avg = await fetchSessionEventStats(baseUrl, resolvedSessionId);
+      if (!cancelled) {
+        setSessionAverageRiskScore(avg);
+      }
+    }
+
+    loadAverageRiskScore();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [resolvedSessionId]);
+
   // Fetch Rule Analysis for selectedEventId
   useEffect(() => {
     let cancelled = false;
@@ -143,6 +231,11 @@ function EventsView({ selectedAgent, onAgentSelect, isProxyActive, onProxyToggle
     setAgentDropdownOpen(false);
   };
 
+  const sessionAvgRiskLevel = useMemo(
+    () => getRiskLevel(sessionAverageRiskScore),
+    [sessionAverageRiskScore],
+  );
+
   return (
     <div className="sessions-dashboard-root events-view-root">
       <SessionsDashboardHeader
@@ -167,12 +260,26 @@ function EventsView({ selectedAgent, onAgentSelect, isProxyActive, onProxyToggle
               <span>Back to Sessions</span>
             </button>
             <h1 className="events-view-title">
-              Agent: <span>{selectedAgent}</span>
+              <span className="events-view-title-left">
+                Agent: <span>{selectedAgent}</span>
+              </span>
+              <span className="events-view-title-metric">
+                <span className="events-view-title-metric-label">Average Risk Score:</span>
+                <span
+                  className={`cell-risk cell-risk--${sessionAvgRiskLevel} events-view-title-metric-value`}
+                >
+                  {typeof sessionAverageRiskScore === 'number'
+                    ? sessionAverageRiskScore.toFixed(2)
+                    : '–'}
+                </span>
+              </span>
             </h1>
             <p className="events-view-subtitle">
-              Session Events: <strong>{resolvedSessionId ?? 'SESS-7729'}</strong>
-              <span className="events-view-subtitle-sep">User:</span>
-              <strong>test</strong>
+              Session ID: <strong>{resolvedSessionId ?? 'SESS-7729'}</strong>
+              <span className="events-view-subtitle-sep">User ID:</span>
+              <strong>{sessionUserId == null ? EMPTY_CELL_DISPLAY : sessionUserId}</strong>
+              <span className="events-view-subtitle-sep">Username:</span>
+              <strong>{sessionUsername == null ? EMPTY_CELL_DISPLAY : sessionUsername}</strong>
             </p>
           </div>
 
