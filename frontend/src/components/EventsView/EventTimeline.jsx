@@ -70,20 +70,28 @@ export default function EventTimeline({
                   </span>
                 </div>
                 <div className="events-url-row">
-                  <button
-                    type="button"
+                  <span
                     className="events-url-text events-url-copy"
+                    role="button"
+                    tabIndex={0}
                     title="Click to copy URL"
+                    aria-label={`Copy URL for event ${event.event_id}`}
                     onClick={async (e) => {
                       e.preventDefault();
                       e.stopPropagation();
                       const ok = await copyTextToClipboard(event.url);
                       setToast(ok ? 'Copied URL to clipboard' : 'Failed to copy URL');
                     }}
-                    aria-label={`Copy URL for event ${event.event_id}`}
+                    onKeyDown={async (e) => {
+                      if (e.key !== 'Enter' && e.key !== ' ') return;
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const ok = await copyTextToClipboard(event.url);
+                      setToast(ok ? 'Copied URL to clipboard' : 'Failed to copy URL');
+                    }}
                   >
                     {event.url}
-                  </button>
+                  </span>
                 </div>
               </div>
             </button>
