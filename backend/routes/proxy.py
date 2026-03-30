@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ipaddress
 from typing import Any
 
 from flask import jsonify, request
@@ -20,7 +21,20 @@ except ImportError:  # pragma: no cover - alternate cwd
     start_proxy_process = None  # type: ignore[assignment, misc]
     stop_proxy_process = None  # type: ignore[assignment, misc]
 
-_LOCALHOST_ADDRS = frozenset({"127.0.0.1", "::1", "localhost"})
+_LOCALHOST_ADDRS = frozenset({"127.0.0.1", "::1"})
+
+
+def _is_trusted_client(remote_addr: str | None) -> bool:
+    """Allow localhost and RFC1918 private LAN clients (dev-friendly)."""
+    if not remote_addr:
+        return False
+    if remote_addr in _LOCALHOST_ADDRS:
+        return True
+    try:
+        ip = ipaddress.ip_address(remote_addr)
+    except ValueError:
+        return False
+    return ip.is_private
 
 
 def _require_non_empty_string(payload: dict[str, Any], field: str) -> str | None:
@@ -38,8 +52,8 @@ def _normalize_headers(value: Any) -> dict[str, str] | None:
 
 @api_bp.route("/proxy/decision", methods=["POST"])
 def proxy_decision():
-    if request.remote_addr not in _LOCALHOST_ADDRS:
-        return jsonify({"error": "This endpoint is only available from localhost"}), 403
+    if not _is_trusted_client(request.remote_addr):
+        return jsonify({"error": "This endpoint is only available from a trusted local network client"}), 403
 
     payload = request.get_json(silent=True)
     if not isinstance(payload, dict):
@@ -86,8 +100,8 @@ def proxy_decision():
 
 @api_bp.route("/proxy/status", methods=["GET"])
 def proxy_status():
-    if request.remote_addr not in _LOCALHOST_ADDRS:
-        return jsonify({"error": "This endpoint is only available from localhost"}), 403
+    if not _is_trusted_client(request.remote_addr):
+        return jsonify({"error": "This endpoint is only available from a trusted local network client"}), 403
     if proxy_is_running is None:
         return jsonify({"error": "Proxy launcher is not available on this server"}), 503
     return jsonify({"active": proxy_is_running()}), 200
@@ -98,8 +112,8 @@ def proxy_control():
     """Start or stop mitmweb with `traffic_interception.py` (same as `python proxy_launcher.py`)."""
     if request.method == "OPTIONS":
         return "", 204
-    if request.remote_addr not in _LOCALHOST_ADDRS:
-        return jsonify({"error": "This endpoint is only available from localhost"}), 403
+    if not _is_trusted_client(request.remote_addr):
+        return jsonify({"error": "This endpoint is only available from a trusted local network client"}), 403
     if start_proxy_process is None or stop_proxy_process is None:
         return jsonify({"error": "Proxy launcher is not available on this server"}), 503
 

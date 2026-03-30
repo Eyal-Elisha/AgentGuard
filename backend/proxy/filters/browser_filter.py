@@ -1,4 +1,4 @@
-from mitmproxy import http
+
 import re
 
 def is_browser_user_agent(user_agent: str) -> bool:

@@ -54,7 +54,6 @@ def response_data_with_evaluation(
     flow: http.HTTPFlow,
     result: Optional[EvaluationResult],
 ) -> Dict[str, Any]:
-    """Single log blob: response fields plus `evaluation` when Stage A ran."""
     data: Dict[str, Any] = build_response_data(flow)
     enforcement = build_enforcement_data(flow)
     if enforcement is not None:
@@ -66,7 +65,19 @@ def response_data_with_evaluation(
 
 def pretty_print(title, data):
     print(f"\n===== {title} =====", flush=True)
-    print(json.dumps(data, indent=2, ensure_ascii=False), flush=True)
+    try:
+        display = data
+        if isinstance(data, dict) and "evaluation" in data:
+            ev = data.get("evaluation") or {}
+            if isinstance(ev, dict) and "rule_results" in ev:
+                display = dict(data)
+                display_ev = dict(ev)
+                display_ev["rule_results"] = [r for r in ev.get("rule_results", []) if r.get("score", None) not in (None, 0)]
+                display["evaluation"] = display_ev
+        print(json.dumps(display, indent=2, ensure_ascii=False), flush=True)
+    except Exception:
+        # Fallback to printing the original data if anything goes wrong
+        print(json.dumps(data, indent=2, ensure_ascii=False), flush=True)
     print(f"===== End =====\n", flush=True)
 
 

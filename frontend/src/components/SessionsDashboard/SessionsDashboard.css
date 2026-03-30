@@ -155,6 +155,7 @@
 
 .sessions-row:hover {
   background: var(--color-bg-row-hover);
+  cursor: pointer;
 }
 
 .sessions-table td {
