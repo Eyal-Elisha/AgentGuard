@@ -4,11 +4,12 @@ export const EMPTY_CELL_DISPLAY = '–';
 /**
  * Loads per-session aggregates from the backend (list `/sessions` does not include average risk).
  * Returns null if the request fails or the payload is invalid.
+ * @param {Record<string, string>} [headers]
  */
-export async function fetchSessionEventStats(baseUrl, sessionId) {
+export async function fetchSessionEventStats(baseUrl, sessionId, headers) {
   const url = `${baseUrl}/sessions/${Number(sessionId)}/events/stats`;
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, headers ? { headers } : undefined);
     if (!response.ok) return null;
     const data = await response.json();
     const avg = data?.average_risk_score;
@@ -51,7 +52,11 @@ export function formatIsoLocal(iso) {
   return new Date(iso).toLocaleString();
 }
 
-export async function readErrorMessage(response) {
+/**
+ * @param {Response} response
+ * @param {string} [resourceLabel] noun phrase for errors, e.g. "sessions" or "rules"
+ */
+export async function readErrorMessage(response, resourceLabel = 'data') {
   try {
     const body = await response.json();
     if (body && typeof body.error === 'string' && body.error) {
@@ -63,5 +68,5 @@ export async function readErrorMessage(response) {
   if (response.status >= 500) {
     return 'The server had a problem. Please try again later.';
   }
-  return `Could not load sessions (${response.status}).`;
+  return `Could not load ${resourceLabel} (${response.status}).`;
 }

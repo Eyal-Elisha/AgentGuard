@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import SessionSearchBar from './SessionSearchBar.jsx';
-import SessionsDashboardHeader from './SessionsDashboardHeader.jsx';
 import SessionsTable from './SessionsTable.jsx';
 import {
   fetchSessionEventStats,
@@ -9,17 +8,11 @@ import {
 } from './sessionUtils.js';
 import './SessionsDashboard.css';
 
-function SessionsDashboard({ selectedAgent, onAgentSelect, isProxyActive, onProxyToggle }) {
+function SessionsDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [agentDropdownOpen, setAgentDropdownOpen] = useState(false);
   const [sessions, setSessions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  const handleAgentSelectLocal = (agent) => {
-    onAgentSelect(agent);
-    setAgentDropdownOpen(false);
-  };
 
   useEffect(() => {
     let cancelled = false;
@@ -110,26 +103,17 @@ function SessionsDashboard({ selectedAgent, onAgentSelect, isProxyActive, onProx
   const showTable = !isLoading && !error;
 
   return (
-    <div className="sessions-dashboard-root">
-      <SessionsDashboardHeader
-        selectedAgent={selectedAgent}
-        agentDropdownOpen={agentDropdownOpen}
-        onToggleAgentDropdown={() =>
-          setAgentDropdownOpen((open) => !open)
-        }
-        onCloseAgentDropdown={() => setAgentDropdownOpen(false)}
-        onAgentSelect={handleAgentSelectLocal}
-        isProxyActive={isProxyActive}
-        onProxyToggle={onProxyToggle}
-      />
-
+    <div className="sessions-page">
       <main className="sessions-dashboard-main">
         <div className="sessions-dashboard-card">
-          <SessionSearchBar
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-            disabled={!showTable}
-          />
+          <div className="sessions-dashboard-card-header">
+            <h1 className="sessions-title">Sessions</h1>
+            <SessionSearchBar
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              disabled={!showTable}
+            />
+          </div>
 
           {isLoading && (
             <div className="sessions-loading" role="status" aria-live="polite">

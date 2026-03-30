@@ -39,6 +39,7 @@ __pycache__/
 
 # Legacy local-only proxy env file (unused by current config flow)
 backend/proxy/.env
+.agentguard/
 .env
 backend/.env
 backend/agentguard.db

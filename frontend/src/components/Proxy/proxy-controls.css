@@ -1,0 +1,74 @@
+.proxy-toggle {
+  margin: 0;
+  padding: 0;
+  border: none;
+  outline: none;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  box-sizing: border-box;
+  width: 40px;
+  height: 20px;
+  border-radius: var(--radius-pill);
+  display: flex;
+  align-items: center;
+  transition: background-color 200ms ease;
+}
+
+.proxy-toggle:focus {
+  outline: none;
+}
+
+.proxy-toggle:focus-visible {
+  outline: none;
+}
+
+.proxy-toggle--on {
+  background: linear-gradient(to right, var(--color-proxy-on-start), var(--color-proxy-on-end));
+  justify-content: flex-end;
+}
+
+.proxy-toggle--off {
+  background-color: var(--color-proxy-off);
+  justify-content: flex-start;
+}
+
+.proxy-knob {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-pill);
+  background-color: var(--color-text-primary);
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: transform 200ms ease;
+  flex-shrink: 0;
+}
+
+.navbar-proxy-control {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-md);
+  flex-shrink: 0;
+}
+
+/* Match `.agent-selector-label` in agent-selector.css; fixed slot so toggling doesn’t reflow the header */
+.navbar-proxy-control__title {
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  display: inline-block;
+  min-width: 10.75rem;
+  text-align: right;
+  box-sizing: border-box;
+}
+
+.navbar-proxy-control__title--active {
+  color: var(--color-proxy-on-end);
+}

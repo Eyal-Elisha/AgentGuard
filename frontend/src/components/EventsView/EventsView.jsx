@@ -1,20 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import SessionsDashboardHeader from '../SessionsDashboard/SessionsDashboardHeader.jsx';
+import { useAgent } from '../../context/AgentContext.jsx';
 import '../SessionsDashboard/SessionsDashboard.css';
 import './EventsView.css';
 import EventAnalysis from './EventAnalysis.jsx';
 import EventTimeline from './EventTimeline.jsx';
 import { EMPTY_CELL_DISPLAY, fetchSessionEventStats, readErrorMessage } from '../SessionsDashboard/sessionUtils.js';
 
-function EventsView({ selectedAgent, onAgentSelect, isProxyActive, onProxyToggle }) {
+function EventsView() {
   const navigate = useNavigate();
+  const { selectedAgent } = useAgent();
   const { sessionId } = useParams();
   const resolvedSessionId =
     typeof sessionId === 'string' && sessionId.startsWith(':')
       ? sessionId.slice(1)
       : sessionId;
-  const [agentDropdownOpen, setAgentDropdownOpen] = useState(false);
 
   const [events, setEvents] = useState([]);
   const [ruleAnalysis, setRuleAnalysis] = useState([]);
@@ -226,35 +226,20 @@ function EventsView({ selectedAgent, onAgentSelect, isProxyActive, onProxyToggle
     return events.find((e) => e.event_id === selectedEventId) ?? null;
   }, [selectedEventId, events]);
 
-  const handleAgentSelectLocal = (agent) => {
-    onAgentSelect(agent);
-    setAgentDropdownOpen(false);
-  };
-
   const sessionAvgRiskLevel = useMemo(
     () => getRiskLevel(sessionAverageRiskScore),
     [sessionAverageRiskScore],
   );
 
   return (
-    <div className="sessions-dashboard-root events-view-root">
-      <SessionsDashboardHeader
-        selectedAgent={selectedAgent}
-        agentDropdownOpen={agentDropdownOpen}
-        onToggleAgentDropdown={() => setAgentDropdownOpen((open) => !open)}
-        onCloseAgentDropdown={() => setAgentDropdownOpen(false)}
-        onAgentSelect={handleAgentSelectLocal}
-        isProxyActive={isProxyActive}
-        onProxyToggle={onProxyToggle}
-      />
-
+    <div className="sessions-page events-view-root">
       <main className="sessions-dashboard-main events-view-main">
         <section className="sessions-dashboard-card events-view-card">
           <div className="events-view-title-area">
             <button
               type="button"
               className="events-view-back-button"
-              onClick={() => navigate('/')}
+              onClick={() => navigate('/sessions')}
             >
               <span aria-hidden="true">←</span>
               <span>Back to Sessions</span>
