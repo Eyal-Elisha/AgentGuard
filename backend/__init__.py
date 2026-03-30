@@ -22,4 +22,18 @@ def create_app() -> Flask:
 
     register_blueprints(app)
 
+    @app.after_request
+    def _cors(response):
+        """Allow the Vite dev server (or other local UIs) to call the API from the browser."""
+        response.headers.setdefault("Access-Control-Allow-Origin", "*")
+        response.headers.setdefault(
+            "Access-Control-Allow-Headers",
+            "Content-Type, Authorization",
+        )
+        response.headers.setdefault(
+            "Access-Control-Allow-Methods",
+            "GET, POST, PUT, DELETE, OPTIONS",
+        )
+        return response
+
     return app

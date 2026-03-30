@@ -1,0 +1,62 @@
+/* Shared design tokens for AgentGuard shell, Home, and Sessions */
+.agentguard-theme {
+  --space-xs: 0.4rem;
+  --space-sm: 0.5rem;
+  --space-md: 0.75rem;
+  --space-lg: 1rem;
+  --space-xl: 1.25rem;
+  --space-2xl: 1.5rem;
+  --space-3xl: 1.75rem;
+  --space-header-x: 3.5rem;
+  --space-main-y: 2.5rem;
+  --max-content-width: 1100px;
+
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --radius-pill: 999px;
+
+  --color-bg-deep: #020617;
+  --color-bg-elevated: #0f172a;
+  --color-bg-card-gradient-start: #111827;
+  --color-bg-row: rgba(15, 23, 42, 0.9);
+  --color-bg-row-hover: rgba(31, 41, 55, 0.95);
+  --color-bg-thead: rgba(15, 23, 42, 0.98);
+  --color-bg-table-gradient-end: rgba(15, 23, 42, 0.98);
+
+  --color-text-primary: #f9fafb;
+  --color-text-body: #e5e7eb;
+  --color-text-muted: #9ca3af;
+  --color-text-label: #6b7280;
+  --color-text-placeholder: #6b7280;
+  --color-text-session-id: #cbd5f5;
+
+  --color-border-subtle: rgba(55, 65, 81, 0.9);
+  --color-border-header: rgba(55, 65, 81, 0.8);
+  --color-border-row: rgba(31, 41, 55, 0.9);
+  --color-border-focus: #38bdf8;
+  --shadow-dropdown: 0 10px 25px rgba(0, 0, 0, 0.4);
+  --shadow-card:
+    0 22px 45px rgba(15, 23, 42, 0.9),
+    0 0 0 1px rgba(15, 23, 42, 0.9);
+
+  --color-nav-hover: rgba(55, 65, 81, 0.4);
+  --color-nav-active-bg: rgba(55, 65, 81, 0.6);
+  --color-option-active: rgba(59, 130, 246, 0.25);
+  --color-option-active-text: #93c5fd;
+  --color-proxy-off: #374151;
+  --color-proxy-on-start: #4ade80;
+  --color-proxy-on-end: #22c55e;
+  --color-risk-high: #ef4444;
+  --color-risk-medium: #eab308;
+  --color-risk-low: #22c55e;
+
+  --color-error-border: rgba(220, 38, 38, 0.45);
+  --color-error-bg: rgba(127, 29, 29, 0.25);
+  --color-error-text: #fecaca;
+
+  --shield-icon-size: 1.5rem;
+
+  font-family: var(--font-sans);
+}

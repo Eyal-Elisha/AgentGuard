@@ -7,6 +7,7 @@ from flask import jsonify, request
 from ..auth import hash_password, issue_token, verify_password
 from ..storage.sqlite_store import UsernameTakenError
 from ..storage import sqlite_store as store
+from ..auth import require_jwt
 from ..validation import validate_login_signup
 from . import app_bp
 
@@ -35,3 +36,12 @@ def signup():
     except UsernameTakenError:
         return jsonify({"error": "Username already exists"}), 400
     return jsonify({"message": "User created successfully", "user_id": uid}), 201
+
+
+@app_bp.route("/users/<int:user_id>", methods=["GET"])
+@require_jwt
+def get_user(user_id: int):
+    user = store.user_get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    return jsonify(user), 200
