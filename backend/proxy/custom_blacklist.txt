@@ -1,0 +1,9 @@
+# AgentGuard custom blacklist — one hostname or full URL per line.
+# This file is the custom blacklist policy source for the proxy and Stage A rule 9.
+# Lines starting with # are ignored; inline comments:  evil.com  # note
+#
+#
+# Examples (uncomment to block):
+# bad.example.com
+monkeytype.com
+# https://untrusted.example/login
