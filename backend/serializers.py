@@ -5,6 +5,7 @@ May need tweaks (e.g. exposing HTTP method/headers on events) once wired to real
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 from typing import Any
 
@@ -42,12 +43,23 @@ def session_to_dict(row: dict[str, Any]) -> dict:
 
 
 def event_to_dict(row: dict[str, Any], include_session: bool = False) -> dict:
+    headers: dict[str, Any] | None = None
+    raw_headers = row.get("headers_json")
+    if isinstance(raw_headers, str):
+        try:
+            parsed_headers = json.loads(raw_headers)
+        except json.JSONDecodeError:
+            parsed_headers = raw_headers
+        headers = parsed_headers
+
     out = {
         "event_id": row["event_id"],
         "timestamp": iso_z(row["timestamp"]),
         "url": row["url"],
         "guard_action": row["guard_action"],
         "risk_score": float(row["risk_score"]),
+        "http_method": row.get("http_method"),
+        "headers": headers,
     }
     if include_session:
         out["session_id"] = row["session_id"]

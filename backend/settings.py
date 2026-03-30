@@ -19,6 +19,7 @@ _ENV_API_PORT = "API_PORT"
 _ENV_PROXY_PORT = "PROXY_PORT"
 _ENV_TIMEOUT_SECONDS = "AGENTGUARD_BACKEND_TIMEOUT_SECONDS"
 _ENV_FAILURE_MODE = "AGENTGUARD_BACKEND_FAILURE_MODE"
+_ENV_AUDIT_LOG_PATH = "AGENTGUARD_AUDIT_LOG_PATH"
 _DEFAULT_API_HOST = "127.0.0.1"
 _DEFAULT_API_PORT = 3000
 _DEFAULT_PROXY_PORT = 8080
@@ -136,3 +137,14 @@ def get_backend_failure_mode() -> BackendFailureMode:
             BackendFailureMode.FAIL_CLOSED.value,
         )
         return BackendFailureMode.FAIL_CLOSED
+
+
+def get_audit_log_path() -> Path:
+    load_settings_env()
+    raw = (os.getenv(_ENV_AUDIT_LOG_PATH) or "").strip()
+    if raw:
+        path = Path(raw).expanduser()
+        if path.is_absolute():
+            return path
+        return (_BACKEND_DIR.parent / path).resolve()
+    return _BACKEND_DIR.parent / "logs" / "agentguard_audit.jsonl"

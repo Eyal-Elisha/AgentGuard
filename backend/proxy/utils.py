@@ -9,6 +9,10 @@ from mitmproxy import http
 from backend.analysis.rules import EvaluationResult, RuleResult
 
 
+def _utc_timestamp() -> str:
+    return datetime.datetime.now(datetime.timezone.utc).isoformat().replace("+00:00", "Z")
+
+
 def safe_get_text(message):
     if not message or not message.content:
         return ""
@@ -21,15 +25,20 @@ def safe_get_text(message):
 
 
 def build_request_data(flow):
-    return {
-        "timestamp": str(datetime.datetime.now()),
+    data = {
+        "timestamp": _utc_timestamp(),
         "type": "REQUEST",
         "method": flow.request.method,
         "url": flow.request.pretty_url,
         "host": flow.request.host,
+        "environment": "prod",
         "headers": dict(flow.request.headers),
         "body": safe_get_text(flow.request),
     }
+    agent_name = flow.request.headers.get("x-agentguard-agent") or flow.request.headers.get("x-agent-name")
+    if isinstance(agent_name, str) and agent_name.strip():
+        data["agent_name"] = agent_name
+    return data
 
 
 def build_enforcement_data(flow: http.HTTPFlow) -> Optional[Dict[str, Any]]:
@@ -41,7 +50,7 @@ def build_enforcement_data(flow: http.HTTPFlow) -> Optional[Dict[str, Any]]:
 
 def build_response_data(flow):
     return {
-        "timestamp": str(datetime.datetime.now()),
+        "timestamp": _utc_timestamp(),
         "type": "RESPONSE",
         "status_code": flow.response.status_code,
         "url": flow.request.pretty_url,
