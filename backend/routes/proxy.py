@@ -6,7 +6,12 @@ from typing import Any
 
 from flask import jsonify, request
 
-from backend.proxy.audit import normalize_proxy_agent_name, record_proxy_decision
+from backend.proxy.audit import (
+    close_proxy_session,
+    ensure_proxy_session_started,
+    normalize_proxy_agent_name,
+    record_proxy_decision,
+)
 from backend.proxy.rule_engine import evaluate_http_payload
 from backend.proxy.utils import evaluation_result_to_dict
 from backend.storage import sqlite_store as store
@@ -89,6 +94,22 @@ def _payload_session_id(payload: dict[str, Any]) -> int | None:
     return parse_positive_int(payload["session_id"])
 
 
+def _proxy_control_environment(payload: dict[str, Any]) -> str:
+    environment = _payload_environment(payload)
+    if environment is None:
+        raise ValueError("'environment' must be one of: prod, test")
+    return environment
+
+
+def _proxy_control_agent_name(payload: dict[str, Any]) -> str:
+    raw_agent_name = payload.get("agent_name")
+    if raw_agent_name is None:
+        return normalize_proxy_agent_name(None)
+    if not isinstance(raw_agent_name, str) or not raw_agent_name.strip():
+        raise ValueError("'agent_name' must be a non-empty string when provided")
+    return normalize_proxy_agent_name(raw_agent_name)
+
+
 @api_bp.route("/proxy/decision", methods=["POST"])
 def proxy_decision():
     if not _is_trusted_client(request.remote_addr):
@@ -137,6 +158,8 @@ def proxy_decision():
         session = store.session_get(session_id)
         if session is None:
             return jsonify({"error": "Provided session_id does not reference an existing session"}), 400
+        if session.get("end_time") is not None:
+            return jsonify({"error": "Provided session_id is already closed"}), 400
         session_environment = str(session["environment"])
         session_agent_name = str(session["agent_name"])
         if environment_was_provided and session_environment != environment:
@@ -207,13 +230,27 @@ def proxy_control():
     active = payload.get("active")
     if not isinstance(active, bool):
         return jsonify({"error": "'active' must be a boolean"}), 400
+    try:
+        environment = _proxy_control_environment(payload)
+        agent_name = _proxy_control_agent_name(payload)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
 
     if active:
         ok, message = start_proxy_process()
+        session = None
+        if ok and message != "already_running":
+            session = ensure_proxy_session_started(environment=environment, agent_name=agent_name)
     else:
         ok, message = stop_proxy_process()
+        session = None
+        if ok:
+            session = close_proxy_session(environment=environment, agent_name=agent_name)
 
     running = proxy_is_running()
     if not ok:
         return jsonify({"error": message, "active": running}), 500
-    return jsonify({"active": running, "message": message}), 200
+    response = {"active": running, "message": message}
+    if session is not None:
+        response["session"] = session
+    return jsonify(response), 200

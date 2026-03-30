@@ -5,6 +5,7 @@ import logging
 import os
 import tempfile
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
 
@@ -86,6 +87,8 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         return payload
 
     def test_proxy_decision_defaults_to_browseros_agent(self):
+        started = ensure_proxy_session_started(environment="test")
+
         with patch("backend.routes.proxy.evaluate_http_payload", return_value=_make_result(Decision.WARN)):
             response = self.client.post("/api/proxy/decision", json=self._payload())
 
@@ -97,6 +100,7 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         self.assertEqual(audit["environment"], "test")
         self.assertEqual(audit["decision"], "warn")
         self.assertEqual(audit["risk_score"], 0.42)
+        self.assertEqual(audit["session_id"], started["session_id"])
 
         session = store.session_get(audit["session_id"])
         self.assertIsNotNone(session)
@@ -117,8 +121,9 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         self.assertIsNotNone(store.rule_get("custom_blacklist"))
 
         log_lines = Path(self.log_path).read_text(encoding="utf-8").splitlines()
-        self.assertEqual(len(log_lines), 1)
-        log_entry = json.loads(log_lines[0])
+        self.assertEqual(len(log_lines), 2)
+        self.assertEqual(json.loads(log_lines[0])["event"], "proxy_session_started")
+        log_entry = json.loads(log_lines[1])
         self.assertEqual(log_entry["session_id"], audit["session_id"])
         self.assertEqual(log_entry["event_id"], audit["event_id"])
         self.assertEqual(log_entry["timestamp"], "2026-03-29T22:30:00Z")
@@ -128,6 +133,8 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         self.assertEqual(log_entry["decision"], "warn")
 
     def test_proxy_decision_reuses_open_session_for_same_agent(self):
+        started = ensure_proxy_session_started(environment="test")
+
         with patch("backend.routes.proxy.evaluate_http_payload", return_value=_make_result(Decision.ALLOW)):
             first = self.client.post("/api/proxy/decision", json=self._payload(timestamp="2026-03-29T22:30:00Z"))
             second = self.client.post("/api/proxy/decision", json=self._payload(timestamp="2026-03-29T22:31:00Z"))
@@ -137,6 +144,7 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
 
         first_audit = first.get_json()["audit"]
         second_audit = second.get_json()["audit"]
+        self.assertEqual(first_audit["session_id"], started["session_id"])
         self.assertEqual(first_audit["session_id"], second_audit["session_id"])
         self.assertNotEqual(first_audit["event_id"], second_audit["event_id"])
         self.assertEqual(len(store.sessions_list_desc()), 1)
@@ -215,6 +223,13 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
             {"error": "Provided session_id does not reference an existing session"},
         )
 
+    def test_proxy_decision_requires_active_session(self):
+        with patch("backend.routes.proxy.evaluate_http_payload", return_value=_make_result(Decision.ALLOW)):
+            response = self.client.post("/api/proxy/decision", json=self._payload())
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.get_json(), {"error": "No active proxy session is available"})
+
     def test_proxy_decision_rejects_mismatched_session_environment(self):
         started = ensure_proxy_session_started(environment="test")
 
@@ -229,6 +244,67 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
             response.get_json(),
             {"error": "Provided environment does not match the referenced session"},
         )
+
+    def test_proxy_decision_rejects_closed_session_id(self):
+        started = ensure_proxy_session_started(environment="test")
+        closed = store.session_try_close(started["session_id"], datetime.now(timezone.utc))
+        self.assertEqual(closed, "closed")
+
+        with patch("backend.routes.proxy.evaluate_http_payload", return_value=_make_result(Decision.ALLOW)):
+            response = self.client.post(
+                "/api/proxy/decision",
+                json=self._payload(session_id=started["session_id"]),
+            )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.get_json(), {"error": "Provided session_id is already closed"})
+
+    def test_proxy_control_start_creates_session(self):
+        with (
+            patch("backend.routes.proxy.start_proxy_process", return_value=(True, "started")),
+            patch("backend.routes.proxy.proxy_is_running", return_value=True),
+        ):
+            response = self.client.post("/api/proxy/control", json={"active": True, "environment": "test"})
+
+        self.assertEqual(response.status_code, 200)
+        body = response.get_json()
+        self.assertEqual(body["active"], True)
+        self.assertEqual(body["message"], "started")
+        self.assertEqual(body["session"]["agent"], "browserOS")
+        self.assertEqual(body["session"]["environment"], "test")
+        self.assertTrue(body["session"]["created"])
+
+        session = store.session_get(body["session"]["session_id"])
+        self.assertIsNotNone(session)
+        self.assertIsNone(session["end_time"])
+        self.assertEqual(session["environment"], "test")
+
+    def test_proxy_control_stop_closes_open_session(self):
+        started = ensure_proxy_session_started(environment="test")
+
+        with (
+            patch("backend.routes.proxy.stop_proxy_process", return_value=(True, "stopped")),
+            patch("backend.routes.proxy.proxy_is_running", return_value=False),
+        ):
+            response = self.client.post("/api/proxy/control", json={"active": False, "environment": "test"})
+
+        self.assertEqual(response.status_code, 200)
+        body = response.get_json()
+        self.assertEqual(body["active"], False)
+        self.assertEqual(body["message"], "stopped")
+        self.assertTrue(body["session"]["closed"])
+        self.assertEqual(body["session"]["session_id"], started["session_id"])
+
+        session = store.session_get(started["session_id"])
+        self.assertIsNotNone(session)
+        self.assertIsNotNone(session["end_time"])
+
+        log_lines = Path(self.log_path).read_text(encoding="utf-8").splitlines()
+        self.assertEqual(len(log_lines), 2)
+        self.assertEqual(json.loads(log_lines[0])["event"], "proxy_session_started")
+        closed = json.loads(log_lines[1])
+        self.assertEqual(closed["event"], "proxy_session_closed")
+        self.assertEqual(closed["reason"], "proxy_stopped")
 
 
 if __name__ == "__main__":

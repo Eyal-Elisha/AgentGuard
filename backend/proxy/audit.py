@@ -95,6 +95,8 @@ def _resolve_session_id(
     if session_id is not None:
         session = store.session_get(session_id)
         if session is not None:
+            if session.get("end_time") is not None:
+                raise ValueError("Provided session_id is already closed")
             session_environment = str(session["environment"])
             session_agent_name = str(session["agent_name"])
             if session_environment != environment:
@@ -108,12 +110,7 @@ def _resolve_session_id(
     if existing_session is not None:
         return int(existing_session["session_id"])
 
-    return store.session_create(
-        user_id=None,
-        start_time=timestamp,
-        environment=environment,
-        agent_name=agent_name,
-    )
+    raise ValueError("No active proxy session is available")
 
 
 def ensure_proxy_session_started(
@@ -167,6 +164,53 @@ def ensure_proxy_session_started(
     if replaced_session_id is not None:
         response["replaced_session_id"] = replaced_session_id
     return response
+
+
+def close_proxy_session(
+    *,
+    timestamp: datetime | None = None,
+    environment: str = _DEFAULT_PROXY_ENVIRONMENT,
+    agent_name: str = _DEFAULT_PROXY_AGENT_NAME,
+    reason: str = "proxy_stopped",
+) -> dict[str, Any]:
+    _ensure_storage_ready()
+
+    ended_at = timestamp or datetime.now(timezone.utc)
+    resolved_agent_name = _resolve_agent_name(agent_name)
+    existing_session = store.session_get_latest_open_by_agent(resolved_agent_name, environment)
+    if existing_session is None:
+        return {
+            "closed": False,
+            "agent": resolved_agent_name,
+            "environment": environment,
+        }
+
+    session_id = int(existing_session["session_id"])
+    result = store.session_try_close(session_id, ended_at)
+    if result != "closed":
+        return {
+            "closed": False,
+            "agent": resolved_agent_name,
+            "environment": environment,
+            "session_id": session_id,
+        }
+
+    _log_audit_record(
+        {
+            "timestamp": _iso_z(ended_at),
+            "agent": resolved_agent_name,
+            "environment": environment,
+            "session_id": session_id,
+            "event": "proxy_session_closed",
+            "reason": reason,
+        }
+    )
+    return {
+        "closed": True,
+        "agent": resolved_agent_name,
+        "environment": environment,
+        "session_id": session_id,
+    }
 
 
 def record_proxy_decision(
