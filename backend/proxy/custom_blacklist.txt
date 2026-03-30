@@ -5,5 +5,5 @@
 #
 # Examples (uncomment to block):
 # bad.example.com
-# monkeytype.com
+monkeytype.com
 # https://untrusted.example/login

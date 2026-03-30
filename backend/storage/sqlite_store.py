@@ -10,6 +10,7 @@ from .sessions_store import (
     session_create,
     session_delete,
     session_get,
+    session_get_latest_open_by_agent,
     sessions_list_desc,
     session_stats,
     session_update_end,
@@ -37,6 +38,7 @@ __all__ = [
     # Sessions
     "sessions_list_desc",
     "session_get",
+    "session_get_latest_open_by_agent",
     "session_create",
     "session_update_end",
     "session_try_close",

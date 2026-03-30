@@ -30,6 +30,22 @@ def session_get(session_id: int) -> dict[str, Any] | None:
         return dict(row) if row else None
 
 
+def session_get_latest_open_by_agent(
+    agent_name: str,
+    environment: str,
+) -> dict[str, Any] | None:
+    with _connect() as conn:
+        cur = conn.execute(
+            "SELECT session_id, user_id, start_time, end_time, environment, agent_name "
+            "FROM sessions "
+            "WHERE agent_name = ? AND environment = ? AND end_time IS NULL "
+            "ORDER BY session_id DESC LIMIT 1",
+            (agent_name, environment),
+        )
+        row = cur.fetchone()
+        return dict(row) if row else None
+
+
 def session_create(
     user_id: int | None,
     start_time: datetime,
