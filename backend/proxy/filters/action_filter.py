@@ -1,3 +1,5 @@
+"""Filters requests by HTTP method to decide what AgentGuard enforces."""
+
 from mitmproxy import http
 
 _ENFORCED_REQUEST_METHODS = frozenset({"GET", "POST", "PUT", "PATCH", "DELETE"})

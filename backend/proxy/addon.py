@@ -3,8 +3,8 @@ from __future__ import annotations
 from mitmproxy import http
 
 from backend.analysis.rules import Decision
+from backend.proxy.filter_logging import should_log_request, should_log_response
 from backend.proxy.filter_requests import should_forward
-from backend.proxy.filters.response_logging import should_log_request, should_log_response
 from backend.proxy.request_decision import build_enforcement_response, fetch_backend_decision
 from backend.proxy.response_analysis import analyze_response_safe
 from backend.proxy.utils import build_request_data, pretty_print, response_data_with_evaluation
