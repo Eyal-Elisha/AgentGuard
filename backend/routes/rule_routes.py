@@ -8,6 +8,7 @@ from ..auth import require_jwt
 from ..serializers import analysis_to_dict, rule_analysis_to_dict, rule_to_dict
 from ..storage import sqlite_store as store
 from ..validation import (
+    validate_rule_enabled_payload,
     validate_rule_payload,
     validate_rules_analysis_list_query,
     validate_rules_analysis_payload,
@@ -52,6 +53,27 @@ def create_rule():
     if created_rule is None:
         return jsonify({"error": "Failed to load created rule"}), 500
     return jsonify({"message": "Rule created successfully", "rule": rule_to_dict(created_rule)}), 201
+
+
+@app_bp.route("/rules/<string:rule_code>/enabled", methods=["PATCH"])
+@require_jwt
+def set_rule_enabled(rule_code: str):
+    existing = store.rule_get(rule_code)
+    if not existing:
+        return jsonify({"error": "Rule not found"}), 404
+
+    data, err = validate_rule_enabled_payload(request.get_json(silent=True))
+    if err:
+        return jsonify({"error": err}), 400
+
+    updated = store.rule_set_enabled(rule_code, data["is_enabled"])
+    if not updated:
+        return jsonify({"error": "Rule not found"}), 404
+
+    refreshed = store.rule_get(rule_code)
+    if refreshed is None:
+        return jsonify({"error": "Failed to load updated rule"}), 500
+    return jsonify(rule_to_dict(refreshed)), 200
 
 
 @app_bp.route("/events/<int:event_id>/rules-analysis", methods=["GET"])

@@ -86,3 +86,22 @@ class RulesAnalysisTestCase(BackendApiTestCase):
         trimmed_query = self.client.get("/rules-analysis", query_string={"rule_code": "  TRIMMED  ", "limit": "5"})
         self.assertEqual(trimmed_query.status_code, 200)
         self.assertEqual(trimmed_query.get_json(), [])
+
+    def test_rule_enable_toggle_endpoint(self):
+        self.assertEqual(self.create_rule(rule_code="TOGGLE_ME").status_code, 201)
+
+        disabled = self.client.patch("/rules/TOGGLE_ME/enabled", json={"is_enabled": False})
+        self.assertEqual(disabled.status_code, 200)
+        self.assertEqual(disabled.get_json()["rule_code"], "TOGGLE_ME")
+        self.assertFalse(disabled.get_json()["is_enabled"])
+
+        enabled = self.client.patch("/rules/TOGGLE_ME/enabled", json={"is_enabled": True})
+        self.assertEqual(enabled.status_code, 200)
+        self.assertTrue(enabled.get_json()["is_enabled"])
+
+        bad_payload = self.client.patch("/rules/TOGGLE_ME/enabled", json={"is_enabled": "yes"})
+        self.assertEqual(bad_payload.status_code, 400)
+        self.assertEqual(bad_payload.get_json()["error"], "Invalid is_enabled")
+
+        missing_rule = self.client.patch("/rules/NO_SUCH_RULE/enabled", json={"is_enabled": False})
+        self.assertEqual(missing_rule.status_code, 404)

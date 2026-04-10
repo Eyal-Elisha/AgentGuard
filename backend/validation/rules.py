@@ -122,3 +122,14 @@ def validate_rules_analysis_payload(payload: dict | None) -> tuple[dict | None, 
         "rule_score": rule_score,
         "details": details,
     }, None
+
+
+def validate_rule_enabled_payload(payload: dict | None) -> tuple[dict | None, str | None]:
+    payload, err = require_dict(payload)
+    if err:
+        return None, err
+
+    if "is_enabled" not in payload or not isinstance(payload.get("is_enabled"), bool):
+        return None, "Invalid is_enabled"
+
+    return {"is_enabled": payload["is_enabled"]}, None

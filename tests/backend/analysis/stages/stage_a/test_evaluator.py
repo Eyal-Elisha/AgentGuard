@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from backend.feature_extraction.feature_extractor import FeatureExtractor
 from backend.analysis.stages.stage_a import StageAEvaluator
-from backend.analysis.rules import Decision
+from backend.analysis.rules import Decision, RuleResult, RuleType
 
 from helpers import (
     make_features,
@@ -137,3 +137,49 @@ class TestStageADecisions:
         with patch(_BLACKLIST_MOCK, return_value=(False, "not listed")):
             result = StageAEvaluator().evaluate(features)
         assert result.risk_score > 0.0
+
+    def test_disabled_unencrypted_rule_is_skipped(self):
+        features = make_features("http://example.com", HTML_BENIGN)
+        with patch(_BLACKLIST_MOCK, return_value=(False, "not listed")):
+            result = StageAEvaluator().evaluate(
+                features,
+                enabled_rules={"unencrypted_connection": False},
+            )
+        assert all(r.rule_id != "unencrypted_connection" for r in result.rule_results)
+        assert result.decision == Decision.ALLOW
+
+    def test_disabled_custom_blacklist_rule_does_not_block(self):
+        features = make_features("https://internal-blocked.com/login", HTML_BENIGN)
+        with patch(_BLACKLIST_MOCK, return_value=(False, "not listed")):
+            result = StageAEvaluator(
+                custom_blacklist=frozenset({"internal-blocked.com"})
+            ).evaluate(
+                features,
+                enabled_rules={"custom_blacklist": False},
+            )
+        assert all(r.rule_id != "custom_blacklist" for r in result.rule_results)
+        assert not result.hard_block_triggered
+
+    def test_disabled_contextual_rule_is_skipped_generically(self):
+        features = make_features("https://example.com/login", HTML_PASSWORD_FORM)
+        contextual_result = RuleResult(
+            rule_id="session_velocity",
+            rule_type=RuleType.CONTEXTUAL,
+            score=1.0,
+            hard_block=False,
+            explanation="Session looks suspicious",
+            triggered=True,
+        )
+        with (
+            patch(_BLACKLIST_MOCK, return_value=(False, "not listed")),
+            patch(
+                "backend.analysis.stages.stage_a.evaluator._run_contextual_rules",
+                return_value=[contextual_result],
+            ),
+        ):
+            result = StageAEvaluator().evaluate(
+                features,
+                enabled_rules={"session_velocity": False},
+            )
+
+        assert all(r.rule_id != "session_velocity" for r in result.rule_results)
