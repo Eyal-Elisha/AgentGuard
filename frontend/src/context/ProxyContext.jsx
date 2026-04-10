@@ -6,28 +6,16 @@ import {
   useMemo,
   useSyncExternalStore,
 } from 'react';
+import {
+  subscribe as subscribePassiveMode,
+  getSnapshot as getPassiveModeSnapshot,
+  syncFromServer as syncPassiveModeFromServer,
+  toggle as togglePassiveModeAsync,
+} from './passiveMode.js';
 
 const STORAGE_KEY = 'agentguard-proxy-active';
 
-function readStored() {
-  if (typeof window === 'undefined') return false;
-  try {
-    return window.localStorage.getItem(STORAGE_KEY) === '1';
-  } catch {
-    return false;
-  }
-}
-
-function writeStored(active) {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(STORAGE_KEY, active ? '1' : '0');
-  } catch {
-    /* ignore quota / private mode */
-  }
-}
-
-let proxyActive = readStored();
+let proxyActive = localStorage.getItem(STORAGE_KEY) === '1';
 const listeners = new Set();
 
 function subscribe(callback) {
@@ -39,11 +27,14 @@ function getSnapshot() {
   return proxyActive;
 }
 
-function setProxyActive(next) {
-  const value = typeof next === 'function' ? next(proxyActive) : next;
+function setProxyActive(value) {
   if (value === proxyActive) return;
   proxyActive = value;
-  writeStored(value);
+  try {
+    localStorage.setItem(STORAGE_KEY, value ? '1' : '0');
+  } catch (_) {
+    /* ignore quota errors */
+  }
   listeners.forEach((fn) => fn());
 }
 
@@ -66,8 +57,8 @@ async function callProxyControl(active) {
   let data = {};
   try {
     data = await res.json();
-  } catch {
-    /* ignore */
+  } catch (_) {
+    /* ignore JSON parse errors */
   }
   if (!res.ok) {
     throw new Error(data.error || res.statusText || 'Proxy control failed');
@@ -82,7 +73,7 @@ async function fetchProxyStatus() {
     const res = await fetch(`${base}/api/proxy/status`);
     if (!res.ok) return null;
     return res.json();
-  } catch {
+  } catch (_) {
     return null;
   }
 }
@@ -100,6 +91,7 @@ const ProxyContext = createContext(null);
 
 export function ProxyProvider({ children }) {
   const isProxyActive = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const isPassiveMode = useSyncExternalStore(subscribePassiveMode, getPassiveModeSnapshot, getPassiveModeSnapshot);
 
   useEffect(() => {
     let cancelled = false;
@@ -113,27 +105,14 @@ export function ProxyProvider({ children }) {
     };
   }, []);
 
-  const setActive = useCallback((next) => {
-    const current = getSnapshot();
-    const value = typeof next === 'function' ? next(current) : next;
+  useEffect(() => {
+    let cancelled = false;
     void (async () => {
-      if (value) {
-        try {
-          await callProxyControl(true);
-          setProxyActive(true);
-        } catch (e) {
-          console.error(e);
-        }
-      } else {
-        setProxyActive(false);
-        try {
-          await callProxyControl(false);
-        } catch (e) {
-          console.error(e);
-          setProxyActive(true);
-        }
-      }
+      await syncPassiveModeFromServer();
     })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const toggleProxy = useCallback(() => {
@@ -159,13 +138,17 @@ export function ProxyProvider({ children }) {
     })();
   }, []);
 
+  const togglePassiveMode = useCallback(togglePassiveModeAsync, []);
+
   const value = useMemo(
     () => ({
       isProxyActive,
-      setProxyActive: setActive,
+      setProxyActive: setProxyActive,
       toggleProxy,
+      isPassiveMode,
+      togglePassiveMode,
     }),
-    [isProxyActive, setActive, toggleProxy],
+    [isProxyActive, toggleProxy, isPassiveMode, togglePassiveMode],
   );
 
   return (

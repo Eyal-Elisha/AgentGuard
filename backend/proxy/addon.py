@@ -23,7 +23,7 @@ def handle_request(flow: http.HTTPFlow) -> None:
         data["enforcement"] = decision.as_log_dict()
         pretty_print(f"{flow.request.method} {flow.request.host}", data)
 
-    if decision.decision == Decision.BLOCK:
+    if decision.decision == Decision.BLOCK and not decision.passive_mode:
         flow.response = build_enforcement_response(decision)
 
 
