@@ -1,12 +1,54 @@
 :root {
-  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI',
-    sans-serif;
+  /* Existing Variables */
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
+
+  /* Colors - Base Theme */
+  --color-slate-400: #94a3b8;
+  --color-slate-900: #0f172a;
+  --color-slate-950: #020617;
+
+  /* Colors - Surfaces & Opacities */
+  --bg-surface-primary: #020617;
+  --bg-surface-secondary: rgba(15, 23, 42, 0.45);
+  --bg-overlay: rgba(2, 6, 23, 0.55);
+
+  /* Colors - Risk / Semantic */
+  --color-risk-low: #86efac;
+  --color-risk-medium: #fde68a;
+  --color-risk-high: #fca5a5;
+
+  /* Shadows */
+  --shadow-toast: 0 12px 30px rgba(0, 0, 0, 0.45);
+
+  /* Typography Scale */
+  --font-xs: 0.7rem;
+  --font-sm: 0.85rem;
+  --font-base: 1rem;
+  --font-lg: 1.15rem;
+  --font-xl: 1.5rem;
+  --font-2xl: 2rem;
+  --font-3xl: 2.6rem;
+
+  /* Spacing Scale (0.25rem multiplier) */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+
+  /* Border Radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-pill: 9999px;
+
+  /* Existing Root Styles */
   font-family: var(--font-sans);
   line-height: 1.5;
   font-weight: 400;
   color-scheme: dark;
   color: #e5e7eb;
-  background-color: #020617;
+  background-color: var(--bg-surface-primary);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
