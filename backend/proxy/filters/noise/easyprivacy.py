@@ -2,18 +2,20 @@
 
 from __future__ import annotations
 
+import logging
 import threading
 
 from backend.proxy.config.noise_config import EASYPRIVACY_URL
 
 EASYPRIVACY_DOMAINS: set[str] = set()
+_logger = logging.getLogger(__name__)
 
 
 def load_easyprivacy_domains():
     global EASYPRIVACY_DOMAINS
 
     try:
-        print("[AgentGuard] Loading EasyPrivacy list...")
+        _logger.debug("[AgentGuard] Loading EasyPrivacy list...")
         import requests as _requests
 
         session = _requests.Session()
@@ -33,10 +35,10 @@ def load_easyprivacy_domains():
 
         EASYPRIVACY_DOMAINS.clear()
         EASYPRIVACY_DOMAINS.update(domains)
-        print(f"[AgentGuard] Loaded {len(domains)} noise domains")
+        _logger.debug("[AgentGuard] Loaded %d noise domains", len(domains))
 
-    except Exception as e:
-        print(f"[AgentGuard] Failed to load EasyPrivacy: {e}")
+    except Exception:
+        _logger.exception("[AgentGuard] Failed to load EasyPrivacy")
         EASYPRIVACY_DOMAINS.clear()
 
 

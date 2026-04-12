@@ -1,6 +1,7 @@
 """Stage A in the mitmproxy addon: evaluate HTML response body for eligible flows.
-
-Rules needing DOM (forms, text) run here; request-time enforcement handles secret-carrying POST/PUT."""
+the request-time backend enforcement path. 
+This module only scores from the response body for eligible HTML flows.
+"""
 
 from __future__ import annotations
 
