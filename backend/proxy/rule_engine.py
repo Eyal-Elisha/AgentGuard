@@ -19,7 +19,7 @@ _extractor = FeatureExtractor()
 _evaluator = StageAEvaluator(custom_blacklist=_CUSTOM_BLACKLIST)
 
 
-def _enabled_rules_map() -> dict[str, bool]:
+def _rule_enablement_map() -> dict[str, bool]:
     try:
         rows = store.rules_list_asc()
     except Exception:
@@ -41,4 +41,4 @@ def evaluate_http_payload(
         headers=headers,
         body=body,
     )
-    return _evaluator.evaluate(features, enabled_rules=_enabled_rules_map())
+    return _evaluator.evaluate(features, enabled_rules=_rule_enablement_map())
