@@ -2,20 +2,12 @@ import { fetchPassiveMode, patchPassiveMode } from '../api/proxy/passiveMode.js'
 
 const STORAGE_KEY = 'agentguard-passive-mode';
 
-// ============================================================================
-// Module-level state store with subscriptions (required by useSyncExternalStore)
-// ============================================================================
-
 let state = localStorage.getItem(STORAGE_KEY) === '1';
 const subscribers = new Set();
 
 function notifySubscribers() {
   subscribers.forEach((fn) => fn());
 }
-
-// ============================================================================
-// Public API
-// ============================================================================
 
 export function subscribe(callback) {
   subscribers.add(callback);
@@ -41,10 +33,6 @@ export async function toggle() {
     setState(!next); // rollback on error
   }
 }
-
-// ============================================================================
-// Private helpers
-// ============================================================================
 
 function setState(value) {
   if (value === state) return;
