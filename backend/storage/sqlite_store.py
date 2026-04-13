@@ -21,7 +21,7 @@ from .events_store import (
     event_get,
     event_create,
 )
-from .rules_store import rules_list_asc, rule_get, rule_create
+from .rules_store import rules_list_asc, rule_get, rule_create, rule_set_enabled
 from .rules_analysis_store import (
     rule_analysis_list_for_event,
     rule_analysis_list_for_event_with_rule_meta,
@@ -56,6 +56,7 @@ __all__ = [
     "rules_list_asc",
     "rule_get",
     "rule_create",
+    "rule_set_enabled",
     # Rules analysis
     "rule_analysis_list_for_event",
     "rule_analysis_list_for_event_with_rule_meta",

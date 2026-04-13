@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getApiBaseUrl, apiFetchHeaders } from '../../api/client.js';
-import { readErrorMessage } from '../SessionsDashboard/sessionUtils.js';
+import { createEnableRuleHandler } from './functions/EnableRule.js';
 import RulesTable from './RulesTable.jsx';
 import RulesToolbar from './RulesToolbar.jsx';
 import '../SessionsDashboard/SessionsDashboard.css';
@@ -27,6 +27,7 @@ export default function RulesDashboard() {
   const [rules, setRules] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [pendingRuleCode, setPendingRuleCode] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -136,6 +137,12 @@ export default function RulesDashboard() {
   ]);
 
   const showTable = !isLoading && !error;
+  const handleToggleEnabled = createEnableRuleHandler({
+    setPendingRuleCode,
+    setRules,
+    setError,
+    normalizeRule,
+  });
 
   return (
     <div className="sessions-page">
@@ -170,7 +177,12 @@ export default function RulesDashboard() {
           )}
 
           {showTable && (
-            <RulesTable filteredRules={filteredRules} rules={rules} />
+            <RulesTable
+              filteredRules={filteredRules}
+              rules={rules}
+              onToggleEnabled={handleToggleEnabled}
+              pendingRuleCode={pendingRuleCode}
+            />
           )}
         </div>
       </main>

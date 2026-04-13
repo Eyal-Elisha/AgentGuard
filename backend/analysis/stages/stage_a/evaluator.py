@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import List, Mapping, Optional
 
 from backend.feature_extraction.feature_extractor import ExtractedFeatures
 from backend.analysis.rules import (
+    CONTEXTUAL_RULES,
     DETERMINISTIC_RULES,
     RULE_WEIGHTS,
     HIGH_RISK_THRESHOLD,
@@ -25,12 +26,23 @@ from backend.analysis.stages.stage_a.deterministic_rules import RULE_FN, rule_cu
 def _run_contextual_rules(
     features: ExtractedFeatures,
     session: SessionContext,
+    enabled_rules: Optional[Mapping[str, bool]] = None,
 ) -> List[RuleResult]:
     """
     Placeholder for cheap session-aware rule evaluation.
     Returns an empty list until the session model is in place.
     """
-    return []
+    results: List[RuleResult] = []
+    for rule_def in CONTEXTUAL_RULES:
+        if not _is_rule_enabled(rule_def.rule_id, enabled_rules):
+            continue
+    return results
+
+
+def _is_rule_enabled(rule_id: str, enabled_rules: Optional[Mapping[str, bool]]) -> bool:
+    if enabled_rules is None:
+        return True
+    return enabled_rules.get(rule_id, True)
 
 
 def _aggregate(results: List[RuleResult]) -> float:
@@ -71,6 +83,7 @@ class StageAEvaluator:
         self,
         features: ExtractedFeatures,
         session: Optional[SessionContext] = None,
+        enabled_rules: Optional[Mapping[str, bool]] = None,
     ) -> EvaluationResult:
         if session is None:
             session = SessionContext()
@@ -80,6 +93,9 @@ class StageAEvaluator:
 
         # ── Step 1: Deterministic rules ──────────────────────────────────────
         for i, rule_def in enumerate(DETERMINISTIC_RULES):
+            if not _is_rule_enabled(rule_def.rule_id, enabled_rules):
+                continue
+
             if rule_def.rule_id == "custom_blacklist":
                 score, explanation = rule_custom_blacklist(features, self.custom_blacklist)
             else:
@@ -123,7 +139,7 @@ class StageAEvaluator:
         # ── Step 3: Contextual rules (ambiguous range only) ───────────────────
         contextual_results: List[RuleResult] = []
         if AMBIGUOUS_LOW <= initial_score < HIGH_RISK_THRESHOLD:
-            contextual_results = _run_contextual_rules(features, session)
+            contextual_results = _run_contextual_rules(features, session, enabled_rules)
 
         all_results = rule_results + contextual_results
         final_score = _aggregate(all_results) if contextual_results else initial_score

@@ -53,3 +53,12 @@ def rule_create(
             ),
         )
 
+
+def rule_set_enabled(rule_code: str, is_enabled: bool) -> bool:
+    with _connect() as conn:
+        cur = conn.execute(
+            "UPDATE rules SET is_enabled = ? WHERE rule_code = ?",
+            (1 if is_enabled else 0, rule_code),
+        )
+        return cur.rowcount > 0
+

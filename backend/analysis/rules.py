@@ -158,3 +158,6 @@ DETERMINISTIC_RULES: List[RuleDefinition] = [
         RULE_WEIGHTS["custom_blacklist"], hard_block=True,
     ),
 ]
+
+
+CONTEXTUAL_RULES: List[RuleDefinition] = []
