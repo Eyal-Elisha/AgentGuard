@@ -1,144 +1,44 @@
+"""Detects telemetry, background, and upgrade traffic to avoid noisy enforcement."""
+
+from __future__ import annotations
+
 from mitmproxy import http
 from urllib.parse import urlparse
-import re
-import threading
 
-EASYPRIVACY_URL = "https://easylist.to/easylist/easyprivacy.txt"
+from backend.proxy.config.noise_config import PATH_NOISE_KEYWORDS
 
-EASYPRIVACY_DOMAINS = set()
-
-NOISE_HOST_TOKENS = {
-    "analytics",
-    "beacon",
-    "beacons",
-    "signaler",
-    "telemetry",
-    "metrics",
-    "sentry",
-    "amplitude",
-    "mixpanel",
-    "hotjar",
-    "segment",
-    "collect",
-    "gtag",
-    "cdn",
-    "update",
-    "appcast",
-    "extensions",
-    "browseros",
-    "safebrowsing",
-    "gcp",
-    "gvt",
-    "clients",
-}
-
-PATH_NOISE_KEYWORDS = (
-    "domainreliability",
-    "domainreliability/upload",
-    "multi-watch",
-    "multi_watch",
-    "update-manifest",
-    "extensions.json",
-    "appcast",
-    "check-update",
-    "update",
-    "/nel/",
-    "/domainreliability/",
-    "/beacon",
-    "/beacons",
-)
+from .noise.blocklist import _host_has_noise_token as _host_has_noise_token_impl
+from .noise.blocklist import _tokenize_host as _tokenize_host_impl
+from .noise.blocklist import is_in_blocklist as is_in_blocklist_impl
+from .noise.easyprivacy import EASYPRIVACY_DOMAINS
+from .noise.easyprivacy import _host_matches_easyprivacy as _host_matches_easyprivacy_impl
+from .noise.easyprivacy import _thread
+from .noise.easyprivacy import load_easyprivacy_domains as load_easyprivacy_domains_impl
 
 
 def load_easyprivacy_domains():
-
-    global EASYPRIVACY_DOMAINS
-
-    try:
-        print("[AgentGuard] Loading EasyPrivacy list...")
-        import requests as _requests
-
-        session = _requests.Session()
-        session.trust_env = False
-        session.proxies = {}
-
-        response = session.get(EASYPRIVACY_URL, timeout=10)
-
-        domains = set()
-
-        for line in response.text.splitlines():
-            line = line.strip()
-
-            if line.startswith("||") and "^" in line:
-                domain = line.split("^")[0].replace("||", "")
-                domains.add(domain)
-
-        EASYPRIVACY_DOMAINS = domains
-        print(f"[AgentGuard] Loaded {len(domains)} noise domains")
-
-    except Exception as e:
-        print(f"[AgentGuard] Failed to load EasyPrivacy: {e}")
-        EASYPRIVACY_DOMAINS = set()
-
-
-_thread = threading.Thread(target=load_easyprivacy_domains, daemon=True)
-_thread.start()
+    """Public facade kept for backward-compatible imports."""
+    return load_easyprivacy_domains_impl()
 
 
 def _host_matches_easyprivacy(host: str) -> bool:
-
-    host = host.lower()
-    for domain in EASYPRIVACY_DOMAINS:
-        d = domain.lower()
-        if not d:
-            continue
-
-        if host == d or host.endswith('.' + d):
-            return True
-
-        if d in host:
-            return True
-    return False
+    """Public facade kept for backward-compatible imports."""
+    return _host_matches_easyprivacy_impl(host)
 
 
 def _tokenize_host(host: str):
-
-    if not host:
-        return []
-    return re.split(r'[.\-_]+', host.lower())
+    """Public facade kept for backward-compatible imports."""
+    return _tokenize_host_impl(host)
 
 
 def _host_has_noise_token(host: str) -> bool:
-
-    if not host:
-        return False
-
-    tokens = _tokenize_host(host)
-
-    for t in tokens:
-        if t in NOISE_HOST_TOKENS:
-            return True
-
-    if re.search(r'clients\d+', host):
-        return True
-    if re.search(r'gvt\d+', host):
-        return True
-
-    return False
+    """Public facade kept for backward-compatible imports."""
+    return _host_has_noise_token_impl(host)
 
 
 def is_in_blocklist(host: str) -> bool:
-
-    if not host:
-        return False
-    host = host.lower()
-
-    if _host_has_noise_token(host):
-        return True
-
-    if _host_matches_easyprivacy(host):
-        return True
-
-    return False
+    """Public facade kept for backward-compatible imports."""
+    return is_in_blocklist_impl(host)
 
 
 def is_upgrade_request(flow: http.HTTPFlow) -> bool:
@@ -175,3 +75,15 @@ def is_noise(flow: http.HTTPFlow) -> bool:
         return True
 
     return False
+
+
+__all__ = [
+    "EASYPRIVACY_DOMAINS",
+    "load_easyprivacy_domains",
+    "_host_matches_easyprivacy",
+    "_tokenize_host",
+    "_host_has_noise_token",
+    "is_in_blocklist",
+    "is_upgrade_request",
+    "is_noise",
+]

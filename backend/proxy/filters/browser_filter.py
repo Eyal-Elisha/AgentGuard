@@ -1,3 +1,5 @@
+"""Identifies whether a request user-agent looks like a real browser."""
+
 
 import re
 
