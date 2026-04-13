@@ -148,3 +148,18 @@ def get_audit_log_path() -> Path:
             return path
         return (_BACKEND_DIR.parent / path).resolve()
     return _BACKEND_DIR.parent / "logs" / "agentguard_audit.jsonl"
+
+
+# ---------------------------------------------------------------------------
+# Runtime passive-mode flag (in-memory; resets on backend restart)
+# ---------------------------------------------------------------------------
+_passive_mode: bool = False
+
+
+def get_passive_mode() -> bool:
+    return _passive_mode
+
+
+def set_passive_mode(value: bool) -> None:
+    global _passive_mode
+    _passive_mode = value

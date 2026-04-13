@@ -110,13 +110,14 @@
 }
 
 .home-status {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: var(--space-md);
+  gap: var(--space-xl);
   padding: var(--space-sm) var(--space-xl);
   border-radius: var(--radius-pill);
   border: 1px solid var(--color-border-subtle);
   background: rgba(15, 23, 42, 0.65);
+  transition: border-color 300ms ease, background 300ms ease;
 }
 
 .home-status--active {
@@ -126,6 +127,12 @@
 
 .home-status--inactive {
   border-color: var(--color-border-subtle);
+}
+
+.home-status-main {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
 }
 
 .home-status-label {
@@ -139,10 +146,48 @@
   font-size: 0.95rem;
   font-weight: 600;
   color: var(--color-text-primary);
+  transition: color 300ms ease;
 }
 
 .home-status--active .home-status-value {
   color: var(--color-proxy-on-end);
+}
+
+.home-status-divider {
+  width: 1px;
+  height: 1.5rem;
+  background: rgba(55, 65, 81, 0.3);
+}
+
+.home-status-passive {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.home-status-passive-label {
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  width: 5.5rem;
+  text-align: right;
+  white-space: nowrap;
+  transition: color 300ms ease;
+}
+
+.home-status-passive-label--active {
+  color: var(--color-proxy-on-start, #a78bfa);
+}
+
+.home-status-passive-toggle {
+  width: 32px !important;
+  height: 16px !important;
+}
+
+.home-status-passive-toggle .proxy-knob {
+  width: 12px !important;
+  height: 12px !important;
 }
 
 .home-endpoints {

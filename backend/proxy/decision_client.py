@@ -34,6 +34,7 @@ def fetch_backend_decision(payload: Dict[str, Any]) -> BackendDecision:
         decision = Decision(str(data["decision"]).lower())
         evaluation = data.get("evaluation")
         evaluation_dict = evaluation if isinstance(evaluation, dict) else None
+        passive_mode = bool(data.get("passive_mode", False))
         reason = (
             build_backend_block_reason(evaluation_dict)
             if decision == Decision.BLOCK
@@ -44,6 +45,7 @@ def fetch_backend_decision(payload: Dict[str, Any]) -> BackendDecision:
             reason=reason,
             evaluation=evaluation_dict,
             source="backend",
+            passive_mode=passive_mode,
         )
     except (KeyError, ValueError, TypeError) as exc:
         _logger.exception("[AgentGuard] Invalid backend decision payload")
