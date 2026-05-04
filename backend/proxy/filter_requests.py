@@ -9,9 +9,8 @@ from backend.proxy.rule_engine import get_custom_blacklist
 
 def should_forward(flow: http.HTTPFlow) -> bool:
     """Forward browser document/action traffic unless it is known noise."""
-    ua = flow.request.headers.get("user-agent", "")
 
-    if not is_browser_user_agent(ua):
+    if not is_browser_user_agent(flow.request.headers.get("user-agent", "")):
         return False
 
     if not is_enforced_request_method(flow):

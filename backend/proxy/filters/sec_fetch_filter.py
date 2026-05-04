@@ -1,3 +1,5 @@
+"""Uses Sec-Fetch headers to identify likely subresource requests."""
+
 from __future__ import annotations
 
 from mitmproxy import http

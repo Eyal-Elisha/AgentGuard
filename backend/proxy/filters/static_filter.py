@@ -1,3 +1,5 @@
+"""Flags URLs that look like static assets instead of navigable pages."""
+
 from __future__ import annotations
 
 from urllib.parse import urlparse

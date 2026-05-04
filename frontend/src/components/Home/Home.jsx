@@ -3,6 +3,7 @@ import { useAgent } from '../../context/AgentContext.jsx';
 import { useProxy } from '../../context/ProxyContext.jsx';
 import SessionAgentSelector from '../SessionsDashboard/SessionAgentSelector.jsx';
 import PowerIcon from '../Proxy/PowerIcon.jsx';
+import ProxyToggleButton from '../Proxy/ProxyToggleButton.jsx';
 import './Home.css';
 
 function getProxyHost() {
@@ -20,7 +21,7 @@ function getProxyPort() {
 }
 
 export default function Home() {
-  const { isProxyActive, toggleProxy } = useProxy();
+  const { isProxyActive, toggleProxy, isPassiveMode, togglePassiveMode } = useProxy();
   const { selectedAgent, setSelectedAgent } = useAgent();
   const [agentDropdownOpen, setAgentDropdownOpen] = useState(false);
   const host = getProxyHost();
@@ -62,10 +63,28 @@ export default function Home() {
         </div>
 
         <div className={`home-status home-status--${isProxyActive ? 'active' : 'inactive'}`}>
-          <span className="home-status-label">Proxy status</span>
-          <span className="home-status-value">
-            {isProxyActive ? 'Active' : 'Inactive'}
-          </span>
+          <div className="home-status-main">
+            <span className="home-status-label">Proxy status</span>
+            <span className="home-status-value">
+              {isProxyActive ? 'Active' : 'Inactive'}
+            </span>
+          </div>
+          {isProxyActive && (
+            <div className="home-status-divider" />
+          )}
+          {isProxyActive && (
+            <div className="home-status-passive">
+              <span className={`home-status-passive-label ${isPassiveMode ? 'home-status-passive-label--active' : ''}`}>
+                {isPassiveMode ? 'Passive' : 'Enforcing'}
+              </span>
+              <ProxyToggleButton
+                isActive={isPassiveMode}
+                onToggle={togglePassiveMode}
+                ariaLabel={isPassiveMode ? 'Disable passive mode' : 'Enable passive mode'}
+                className="home-status-passive-toggle"
+              />
+            </div>
+          )}
         </div>
 
         <dl className="home-endpoints">

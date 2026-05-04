@@ -14,6 +14,7 @@ from backend.proxy.audit import (
 )
 from backend.proxy.rule_engine import evaluate_http_payload
 from backend.proxy.utils import evaluation_result_to_dict
+from backend.settings import get_passive_mode, set_passive_mode
 from backend.storage import sqlite_store as store
 from backend.validation.common import ALLOWED_ENVIRONMENTS, parse_iso_datetime, parse_positive_int
 
@@ -201,6 +202,7 @@ def proxy_decision():
             "decision": result.decision.value,
             "evaluation": evaluation_result_to_dict(result),
             "audit": audit_record,
+            "passive_mode": get_passive_mode(),
         }
     ), 200
 
@@ -254,3 +256,26 @@ def proxy_control():
     if session is not None:
         response["session"] = session
     return jsonify(response), 200
+
+
+@api_bp.route("/proxy/passive-mode", methods=["GET"])
+def get_passive_mode_route():
+    if not _is_trusted_client(request.remote_addr):
+        return jsonify({"error": "This endpoint is only available from a trusted local network client"}), 403
+    return jsonify({"passive_mode": get_passive_mode()}), 200
+
+
+@api_bp.route("/proxy/passive-mode", methods=["PATCH", "OPTIONS"])
+def set_passive_mode_route():
+    if request.method == "OPTIONS":
+        return "", 204
+    if not _is_trusted_client(request.remote_addr):
+        return jsonify({"error": "This endpoint is only available from a trusted local network client"}), 403
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"error": "JSON request body is required"}), 400
+    value = payload.get("passive_mode")
+    if not isinstance(value, bool):
+        return jsonify({"error": "'passive_mode' must be a boolean"}), 400
+    set_passive_mode(value)
+    return jsonify({"passive_mode": get_passive_mode()}), 200

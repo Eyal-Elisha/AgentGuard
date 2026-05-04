@@ -24,6 +24,7 @@ class BackendDecision:
     reason: str
     evaluation: Dict[str, Any] | None
     source: str
+    passive_mode: bool = False
 
     def as_log_dict(self) -> Dict[str, Any]:
         return {
