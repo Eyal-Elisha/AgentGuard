@@ -108,7 +108,7 @@ export default function Home() {
           </p>
           <h2 className="home-copy-heading">System and app settings</h2>
           <p className="home-copy-note">
-            Traffic is only routed through AgentGuard if Windows, your browser, or a protected app
+            Traffic is only routed through AgentGuard if your OS, browser, or a protected app
             is configured to use this proxy address and port. This toggle starts or stops the
             AgentGuard proxy service and closes the active AgentGuard session when turned off, but
             it does not change OS or browser proxy settings for you.

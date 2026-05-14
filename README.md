@@ -12,16 +12,27 @@ Modular Python package under `backend/`:
 
 Entry: `python -m backend.app` (Flask app factory in `backend/__init__.py`).
 
+## Requirements
+
+- **Python 3.12+** — required by `mitmproxy==12.x`. Python 3.9 (Apple system default on macOS) and 3.11 are too old.
+  - macOS: `brew install python@3.12`
+  - Windows / Linux: download from [python.org](https://www.python.org/downloads/) or your package manager.
+- **Node.js 18+** — for the Vite/React frontend.
+
 ## Environment (venv + dependencies)
 
 From the **repository root** (where `requirements.txt` lives):
 
-1. Create a virtual environment: `python -m venv .venv`
+1. Create a virtual environment using Python 3.12:
+   - **macOS / Linux:** `python3.12 -m venv .venv`
+   - **Windows:** `py -3.12 -m venv .venv`
 2. Activate it:
    - **Windows (PowerShell):** `.venv\Scripts\Activate.ps1`
    - **Windows (cmd):** `.venv\Scripts\activate.bat`
    - **macOS / Linux:** `source .venv/bin/activate`
 3. Install dependencies: `pip install -r requirements.txt`
+
+> **macOS note:** `mitmproxy-windows` and `pydivert` are automatically skipped on macOS/Linux via `sys_platform` markers in `requirements.txt`. `mitmproxy-macos` is pulled in automatically as a transitive dependency of `mitmproxy_rs`.
 
 ## Configuration
 
@@ -55,6 +66,21 @@ python proxy_launcher.py
 ```
 
 The proxy listen port comes from `PROXY_PORT` in `backend/.env` and defaults to `8080`.
+
+### Configuring the system proxy
+
+After the proxy is running, point your browser or OS at it (`127.0.0.1:8080` by default):
+
+- **macOS:** System Settings → Network → select your interface → Details → Proxies → enable *Web Proxy (HTTP)* and *Secure Web Proxy (HTTPS)*, set server `127.0.0.1` port `8080`.
+- **Windows:** Settings → Network & Internet → Proxy → Manual proxy setup, address `127.0.0.1` port `8080`.
+- **Browser (any OS):** set a manual HTTP/HTTPS proxy to `127.0.0.1:8080`.
+
+### Installing the mitmproxy CA certificate
+
+Visit `http://mitm.it/` while the proxy is active and follow the OS-specific instructions.
+
+- **macOS:** After downloading the `.pem`, open it in Keychain Access, find the *mitmproxy* certificate, open it, expand *Trust*, and set *When using this certificate* to **Always Trust**.
+- **Windows:** Run the downloaded `.p12` installer and place the certificate in the *Trusted Root Certification Authorities* store.
 
 ## Run tests
 

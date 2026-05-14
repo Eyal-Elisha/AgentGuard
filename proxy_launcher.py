@@ -22,7 +22,8 @@ def _repo_root() -> Path:
 
 def _resolve_mitmweb_executable() -> str:
     sibling_name = "mitmweb.exe" if sys.platform.startswith("win") else "mitmweb"
-    sibling = Path(sys.executable).resolve().with_name(sibling_name)
+    # Use .parent rather than .resolve() so macOS venv symlinks stay inside the venv bin/.
+    sibling = Path(sys.executable).parent / sibling_name
     if sibling.is_file():
         return str(sibling)
     discovered = shutil.which("mitmweb")
