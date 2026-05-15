@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   fetchSessionEventStats,
   getApiBase,
@@ -7,6 +7,11 @@ import {
 } from '../components/SessionsDashboard/sessionUtils.js';
 
 export function useSessions(searchTerm) {
+  const [refreshCount, setRefreshCount] = useState(0);
+  const refresh = useCallback(() => setRefreshCount((n) => n + 1), []);
+  const removeSession = useCallback((sessionId) => {
+    setSessions((prev) => prev.filter((s) => s.session_id !== String(sessionId)));
+  }, []);
   const [sessions, setSessions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -69,7 +74,7 @@ export function useSessions(searchTerm) {
 
     loadSessions();
     return () => { cancelled = true; };
-  }, []);
+  }, [refreshCount]);
 
   const filteredSessions = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
@@ -82,5 +87,5 @@ export function useSessions(searchTerm) {
     );
   }, [searchTerm, sessions]);
 
-  return { filteredSessions, sessions, isLoading, error };
+  return { filteredSessions, sessions, isLoading, error, refresh, removeSession };
 }

@@ -2,11 +2,13 @@ import { useState } from 'react';
 import SessionSearchBar from './SessionSearchBar.jsx';
 import SessionsTable from './SessionsTable.jsx';
 import { useSessions } from '../../hooks/useSessions.js';
+import { useDeleteSession } from '../../hooks/useDeleteSession.js';
 import './SessionsDashboard.css';
 
 function SessionsDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
-  const { filteredSessions, sessions, isLoading, error } = useSessions(searchTerm);
+  const { filteredSessions, sessions, isLoading, error, removeSession } = useSessions(searchTerm);
+  const { deleteSession, isPending: deletePending, error: deleteError } = useDeleteSession(removeSession);
   const showTable = !isLoading && !error;
 
   return (
@@ -38,6 +40,8 @@ function SessionsDashboard() {
             <SessionsTable
               filteredSessions={filteredSessions}
               sessions={sessions}
+              onDeleteSession={deleteSession}
+              deleteState={{ isPending: deletePending, error: deleteError }}
             />
           )}
         </div>
