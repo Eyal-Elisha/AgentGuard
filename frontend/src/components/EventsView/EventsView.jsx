@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useEvents } from '../../hooks/useEvents.js';
 import { useEventFilters } from '../../hooks/useEventFilters.js';
@@ -20,6 +21,17 @@ function EventsView() {
     sortOrder, toggleSort,
     filteredEvents, actionOptions, totalCount,
   } = useEventFilters(events);
+
+  // Auto-select first event when filter changes
+  useEffect(() => {
+    if (filteredEvents.length > 0) {
+      if (!selectedEventId || !filteredEvents.find((e) => e.event_id === selectedEventId)) {
+        setSelectedEventId(filteredEvents[0].event_id);
+      }
+    } else {
+      setSelectedEventId(null);
+    }
+  }, [filteredEvents, selectedEventId, setSelectedEventId]);
 
   return (
     <div className="sessions-page events-view-root">

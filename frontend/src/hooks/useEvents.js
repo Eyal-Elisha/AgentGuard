@@ -31,7 +31,6 @@ export function useEvents(sessionId) {
         const data = await res.json();
         if (!cancelled) {
           setEvents(Array.isArray(data) ? data : []);
-          if (data.length > 0) setSelectedEventId(data[0].event_id);
         }
       } catch {
         if (!cancelled) setError('Unable to reach the server.');
