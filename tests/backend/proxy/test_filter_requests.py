@@ -77,3 +77,10 @@ def test_meaningful_form_post_is_forwarded():
     ):
         assert should_forward(flow) is True
 
+
+def test_top_level_navigation_bypasses_noise_filter():
+    with patch("backend.proxy.filter_requests.custom_blacklist_matches", return_value=False), patch(
+        "backend.proxy.filter_requests.is_noise", return_value=True
+    ):
+        assert should_forward(_flow(host="cdn.example.com")) is True
+
