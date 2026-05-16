@@ -10,6 +10,18 @@ from backend.proxy.response_analysis import analyze_response_safe
 from backend.proxy.utils import build_request_data, pretty_print, response_data_with_evaluation
 
 
+def _log_request(flow: http.HTTPFlow, decision) -> None:
+    if not should_log_request(flow):
+        return
+
+    try:
+        data = build_request_data(flow)
+        data["enforcement"] = decision.as_log_dict()
+        pretty_print(f"{flow.request.method} {flow.request.host}", data)
+    except Exception:
+        return
+
+
 def handle_request(flow: http.HTTPFlow) -> None:
     if not should_forward(flow):
         return
@@ -18,13 +30,10 @@ def handle_request(flow: http.HTTPFlow) -> None:
     flow.metadata["agentguard_forwarded_to_backend"] = True
     flow.metadata["agentguard_enforcement"] = decision.as_log_dict()
 
-    if should_log_request(flow):
-        data = build_request_data(flow)
-        data["enforcement"] = decision.as_log_dict()
-        pretty_print(f"{flow.request.method} {flow.request.host}", data)
-
     if decision.decision == Decision.BLOCK and not decision.passive_mode:
         flow.response = build_enforcement_response(decision)
+
+    _log_request(flow, decision)
 
 
 def handle_response(flow: http.HTTPFlow) -> None:

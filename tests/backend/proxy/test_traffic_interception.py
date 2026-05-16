@@ -55,3 +55,23 @@ def test_request_continues_when_backend_warns():
 
     assert flow.response is None
     assert flow.metadata["agentguard_enforcement"]["decision"] == "warn"
+
+
+def test_request_still_blocks_when_logging_fails():
+    flow = _make_flow()
+    decision = BackendDecision(
+        decision=Decision.BLOCK,
+        reason="blocked upstream",
+        evaluation={"decision": "block"},
+        source="backend",
+    )
+
+    with patch("backend.proxy.addon.should_forward", return_value=True), patch(
+        "backend.proxy.addon.should_log_request", return_value=True
+    ), patch("backend.proxy.addon.fetch_backend_decision", return_value=decision), patch(
+        "backend.proxy.addon.pretty_print", side_effect=UnicodeEncodeError("charmap", "🔏", 0, 1, "bad")
+    ):
+        handle_request(flow)
+
+    assert flow.response is not None
+    assert flow.response.status_code == 403
