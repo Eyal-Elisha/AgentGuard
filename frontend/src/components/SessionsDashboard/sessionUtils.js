@@ -2,19 +2,19 @@
 export const EMPTY_CELL_DISPLAY = '–';
 
 /**
- * Loads per-session aggregates from the backend (list `/sessions` does not include average risk).
+ * Loads per-session risk summary from the backend.
  * Returns null if the request fails or the payload is invalid.
  * @param {Record<string, string>} [headers]
  */
-export async function fetchSessionEventStats(baseUrl, sessionId, headers) {
+export async function fetchSessionRiskStats(baseUrl, sessionId, headers) {
   const url = `${baseUrl}/sessions/${Number(sessionId)}/events/stats`;
   try {
     const response = await fetch(url, headers ? { headers } : undefined);
     if (!response.ok) return null;
     const data = await response.json();
-    const avg = data?.average_risk_score;
-    if (typeof avg === 'number' && !Number.isNaN(avg)) return avg;
-    return 0;
+    const score = data?.session_risk_score;
+    if (typeof score === 'number' && !Number.isNaN(score)) return data;
+    return { session_risk_score: 0 };
   } catch {
     return null;
   }
@@ -22,9 +22,9 @@ export async function fetchSessionEventStats(baseUrl, sessionId, headers) {
 
 /** Maps API session objects to the shape used by the table (list endpoint may omit some fields). */
 export function normalizeSession(sessionData) {
-  const avg = sessionData.average_risk_score;
+  const score = sessionData.session_risk_score ?? sessionData.average_risk_score;
   const risk =
-    typeof avg === 'number' && !Number.isNaN(avg) ? avg : 0;
+    typeof score === 'number' && !Number.isNaN(score) ? score : 0;
   const rawUserId = sessionData.user_id;
   const user_id =
     typeof rawUserId === 'number' && Number.isFinite(rawUserId)
@@ -34,7 +34,9 @@ export function normalizeSession(sessionData) {
     session_id: String(sessionData.session_id),
     agent_name: sessionData.agent_name ?? '',
     user_id,
-    average_risk_score: risk,
+    session_risk_score: risk,
+    risk_level: sessionData.risk_level ?? 'low',
+    should_stop: Boolean(sessionData.should_stop),
     start_time: sessionData.start_time,
     end_time: sessionData.end_time,
   };

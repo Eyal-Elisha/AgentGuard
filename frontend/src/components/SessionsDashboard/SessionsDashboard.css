@@ -189,6 +189,10 @@
   color: var(--color-risk-high);
 }
 
+.sessions-table td.cell-risk--critical {
+  color: var(--color-risk-high);
+}
+
 .sessions-table td.cell-risk--medium {
   color: var(--color-risk-medium);
 }

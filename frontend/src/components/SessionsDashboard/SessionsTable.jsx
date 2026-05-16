@@ -5,10 +5,9 @@ import {
   isIsoEmpty,
 } from './sessionUtils.js';
 
-// TODO: Risk score thresholds (low, medium, high) are currently hardcoded for the mockup and should be configurable or driven by the backend in the future.
 function getRiskLevel(score) {
-  if (score > 0.7) return 'high';
-  if (score > 0.4) return 'medium';
+  if (score >= 0.8) return 'high';
+  if (score >= 0.4) return 'medium';
   return 'low';
 }
 
@@ -26,14 +25,14 @@ export default function SessionsTable({
             <th>AGENT NAME</th>
             <th>SESSION ID</th>
             <th>USER ID</th>
-            <th className="th-risk-center">AVERAGE RISK SCORE</th>
+            <th className="th-risk-center">SESSION RISK SCORE</th>
             <th className="th-centered-block">START TIME</th>
             <th className="th-centered-block">END TIME</th>
           </tr>
         </thead>
         <tbody>
           {filteredSessions.map((session) => {
-            const riskLevel = getRiskLevel(session.average_risk_score);
+            const riskLevel = session.risk_level ?? getRiskLevel(session.session_risk_score);
             const userIdEmpty = session.user_id == null;
             const startEmpty = isIsoEmpty(session.start_time);
             const endEmpty = isIsoEmpty(session.end_time);
@@ -54,7 +53,7 @@ export default function SessionsTable({
                 </td>
                 <td className={`cell-risk cell-risk--${riskLevel} td-risk-center`}>
                   <span className="cell-risk-inner">
-                    {session.average_risk_score.toFixed(2)}
+                    {session.session_risk_score.toFixed(2)}
                   </span>
                 </td>
                 {/* TODO: Check if backend can provide pre-formatted timestamps */}

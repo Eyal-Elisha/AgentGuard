@@ -5,7 +5,7 @@ import '../SessionsDashboard/SessionsDashboard.css';
 import './EventsView.css';
 import EventAnalysis from './EventAnalysis.jsx';
 import EventTimeline from './EventTimeline.jsx';
-import { EMPTY_CELL_DISPLAY, fetchSessionEventStats, readErrorMessage } from '../SessionsDashboard/sessionUtils.js';
+import { EMPTY_CELL_DISPLAY, fetchSessionRiskStats, readErrorMessage } from '../SessionsDashboard/sessionUtils.js';
 
 function EventsView() {
   const navigate = useNavigate();
@@ -19,7 +19,7 @@ function EventsView() {
   const [events, setEvents] = useState([]);
   const [ruleAnalysis, setRuleAnalysis] = useState([]);
   const [selectedEventId, setSelectedEventId] = useState(null);
-  const [sessionAverageRiskScore, setSessionAverageRiskScore] = useState(null);
+  const [sessionRiskScore, setSessionRiskScore] = useState(null);
   const [sessionUserId, setSessionUserId] = useState(null);
   const [sessionUsername, setSessionUsername] = useState(null);
 
@@ -160,24 +160,24 @@ function EventsView() {
     };
   }, [resolvedSessionId]);
 
-  // Fetch Session Average Risk Score
+  // Fetch Session Risk Score
   useEffect(() => {
     let cancelled = false;
 
-    async function loadAverageRiskScore() {
+    async function loadSessionRiskScore() {
       const base = import.meta.env.VITE_API_BASE_URL;
       if (!base || !resolvedSessionId) {
-        if (!cancelled) setSessionAverageRiskScore(null);
+        if (!cancelled) setSessionRiskScore(null);
         return;
       }
       const baseUrl = String(base).replace(/\/$/, '');
-      const avg = await fetchSessionEventStats(baseUrl, resolvedSessionId);
+      const riskStats = await fetchSessionRiskStats(baseUrl, resolvedSessionId);
       if (!cancelled) {
-        setSessionAverageRiskScore(avg);
+        setSessionRiskScore(riskStats?.session_risk_score ?? null);
       }
     }
 
-    loadAverageRiskScore();
+    loadSessionRiskScore();
 
     return () => {
       cancelled = true;
@@ -227,8 +227,8 @@ function EventsView() {
   }, [selectedEventId, events]);
 
   const sessionAvgRiskLevel = useMemo(
-    () => getRiskLevel(sessionAverageRiskScore),
-    [sessionAverageRiskScore],
+    () => getRiskLevel(sessionRiskScore),
+    [sessionRiskScore],
   );
 
   return (
@@ -249,12 +249,12 @@ function EventsView() {
                 Agent: <span>{selectedAgent}</span>
               </span>
               <span className="events-view-title-metric">
-                <span className="events-view-title-metric-label">Average Risk Score:</span>
+                <span className="events-view-title-metric-label">Session Risk Score:</span>
                 <span
                   className={`cell-risk cell-risk--${sessionAvgRiskLevel} events-view-title-metric-value`}
                 >
-                  {typeof sessionAverageRiskScore === 'number'
-                    ? sessionAverageRiskScore.toFixed(2)
+                  {typeof sessionRiskScore === 'number'
+                    ? sessionRiskScore.toFixed(2)
                     : '–'}
                 </span>
               </span>

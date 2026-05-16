@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import SessionSearchBar from './SessionSearchBar.jsx';
 import SessionsTable from './SessionsTable.jsx';
 import {
-  fetchSessionEventStats,
+  fetchSessionRiskStats,
   normalizeSession,
   readErrorMessage,
 } from './sessionUtils.js';
@@ -54,14 +54,13 @@ function SessionsDashboard() {
         if (!cancelled) {
           const merged = await Promise.all(
             data.map(async (raw) => {
-              const avg = await fetchSessionEventStats(
+              const riskStats = await fetchSessionRiskStats(
                 baseUrl,
                 raw.session_id,
               );
               return normalizeSession({
                 ...raw,
-                average_risk_score:
-                  avg !== null ? avg : raw.average_risk_score,
+                ...(riskStats ?? {}),
               });
             }),
           );

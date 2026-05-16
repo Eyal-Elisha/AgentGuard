@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from flask import jsonify, request
 
 from ..auth import get_optional_auth_payload, require_jwt
+from ..session_risk import calculate_session_risk
 from ..serializers import event_to_dict, session_to_dict
 from ..storage import sqlite_store as store
 from ..validation import (
@@ -108,6 +109,9 @@ def close_session(session_id: int):
 @app_bp.route("/sessions/<int:session_id>/events/stats", methods=["GET"])
 @require_jwt
 def session_event_stats(session_id: int):
+    summary = calculate_session_risk(session_id)
+    if summary is None:
+        return jsonify({"error": "Session not found"}), 404
     stats = store.session_stats(session_id)
     if stats is None:
         return jsonify({"error": "Session not found"}), 404
@@ -119,7 +123,7 @@ def session_event_stats(session_id: int):
                 "allow": stats["allow"],
                 "warn": stats["warn"],
                 "block": stats["block"],
-                "average_risk_score": stats["average_risk_score"],
+                **summary.to_dict(),
             }
         ),
         200,

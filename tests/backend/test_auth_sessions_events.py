@@ -119,6 +119,16 @@ class AuthSessionsEventsTestCase(BackendApiTestCase):
         self.assertEqual(body["warn"], 1)
         self.assertEqual(body["block"], 0)
         self.assertAlmostEqual(body["average_risk_score"], 0.525)
+        self.assertAlmostEqual(body["highest_event_risk"], 0.8)
+        self.assertAlmostEqual(body["recent_weighted_risk"], 0.6167)
+        self.assertAlmostEqual(body["session_risk_score"], 0.5642)
+        self.assertEqual(body["risky_event_count"], 1)
+        self.assertEqual(body["warn_count"], 1)
+        self.assertEqual(body["block_count"], 0)
+        self.assertEqual(body["sensitive_interaction_count"], 0)
+        self.assertEqual(body["risk_trend"], "stable")
+        self.assertEqual(body["risk_level"], "medium")
+        self.assertFalse(body["should_stop"])
 
     def test_second_close_returns_409(self):
         session_id = self.create_session().get_json()["session_id"]
