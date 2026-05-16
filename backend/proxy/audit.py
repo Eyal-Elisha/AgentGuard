@@ -118,6 +118,7 @@ def ensure_proxy_session_started(
     timestamp: datetime | None = None,
     environment: str = _DEFAULT_PROXY_ENVIRONMENT,
     agent_name: str = _DEFAULT_PROXY_AGENT_NAME,
+    user_id: int | None = None,
 ) -> dict[str, Any]:
     _ensure_storage_ready()
 
@@ -140,7 +141,7 @@ def ensure_proxy_session_started(
         )
 
     session_id = store.session_create(
-        user_id=None,
+        user_id=user_id,
         start_time=started_at,
         environment=environment,
         agent_name=resolved_agent_name,

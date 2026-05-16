@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 
-from flask import jsonify, request
+from flask import g, jsonify, request
 
 from ..auth import get_optional_auth_payload, require_jwt
 from ..serializers import event_to_dict, session_to_dict
@@ -38,7 +38,8 @@ def _get_session_or_404(session_id: int):
 @app_bp.route("/sessions", methods=["GET"])
 @require_jwt
 def list_sessions():
-    rows = store.sessions_list_desc()
+    user_id = None if getattr(g, "jwt_is_admin", False) else int(getattr(g, "jwt_user_id", 0))
+    rows = store.sessions_list_desc(user_id=user_id)
     return jsonify([session_to_dict(s) for s in rows]), 200
 
 

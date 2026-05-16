@@ -8,8 +8,13 @@ export function getApiBaseUrl() {
   return String(base).replace(/\/$/, '');
 }
 
+import { getToken } from './authToken.js';
+
 export function apiFetchHeaders() {
-  return { Accept: 'application/json' };
+  const token = getToken();
+  return token 
+    ? { Accept: 'application/json', Authorization: `Bearer ${token}` }
+    : { Accept: 'application/json' };
 }
 
 export async function setRuleEnabled(baseUrl, ruleCode, isEnabled) {

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   fetchSessionEventStats,
+  fetchWithBase,
   getApiBase,
   normalizeSession,
   readErrorMessage,
@@ -30,7 +31,7 @@ export function useSessions(searchTerm) {
       }
 
       try {
-        const response = await fetch(`${baseUrl}/sessions`);
+        const response = await fetchWithBase(`/sessions`);
         if (!response.ok) {
           const message = await readErrorMessage(response);
           if (!cancelled) {

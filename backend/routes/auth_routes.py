@@ -45,3 +45,13 @@ def get_user(user_id: int):
     if not user:
         return jsonify({"error": "User not found"}), 404
     return jsonify(user), 200
+
+
+@app_bp.route("/users", methods=["GET"])
+@require_jwt
+def list_users():
+    from flask import g
+    if not getattr(g, "jwt_is_admin", False):
+        return jsonify({"error": "Forbidden"}), 403
+    users = store.users_list_all()
+    return jsonify(users), 200

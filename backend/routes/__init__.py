@@ -17,6 +17,6 @@ def register_blueprints(application):
     application.register_blueprint(api_bp)
 
 
-from . import auth_routes, event_routes, rule_routes, session_routes  # noqa: E402,F401
+from . import auth_routes, event_routes, rule_routes, session_routes, admin_routes  # noqa: E402,F401
 
 from . import proxy as _proxy_routes  # noqa: E402,F401
