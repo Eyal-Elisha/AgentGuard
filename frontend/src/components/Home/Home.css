@@ -137,6 +137,7 @@
 
 .home-status-label {
   font-size: 0.7rem;
+  line-height: 1;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--color-text-muted);
@@ -144,6 +145,7 @@
 
 .home-status-value {
   font-size: 0.95rem;
+  line-height: 1;
   font-weight: 600;
   color: var(--color-text-primary);
   transition: color 300ms ease;
