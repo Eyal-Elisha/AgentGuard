@@ -15,6 +15,12 @@ def get_custom_blacklist() -> frozenset[str]:
     return _CUSTOM_BLACKLIST
 
 
+def reload_custom_blacklist(entries: frozenset[str]) -> None:
+    global _CUSTOM_BLACKLIST
+    _CUSTOM_BLACKLIST = entries
+    _evaluator.custom_blacklist = _CUSTOM_BLACKLIST
+
+
 _extractor = FeatureExtractor()
 _evaluator = StageAEvaluator(custom_blacklist=_CUSTOM_BLACKLIST)
 
