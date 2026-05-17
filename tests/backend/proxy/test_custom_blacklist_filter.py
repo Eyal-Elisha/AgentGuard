@@ -1,4 +1,4 @@
-"""Custom blacklist entries always reach enforcement."""
+"""Custom blacklist entries still enforce without flooding backend analysis."""
 
 from __future__ import annotations
 
@@ -16,15 +16,32 @@ def test_custom_blacklist_match_forces_forward_even_when_noise():
         assert should_forward(_flow()) is True
 
 
-def test_static_custom_blacklist_match_is_forwarded_for_enforcement():
+def test_static_custom_blacklist_match_is_not_forwarded_for_audit():
     with patch("backend.proxy.filter_requests.custom_blacklist_matches", return_value=True):
         flow = _flow(path="/favicon.ico", headers={"sec-fetch-dest": "image"})
-        assert should_forward(flow) is True
+        assert should_forward(flow) is False
 
 
-def test_custom_blacklist_bypasses_relevance_filter():
-    flow = _flow(host="monkeytype.com", headers={"accept": "*/*", "sec-fetch-mode": "cors"})
-    with patch("backend.proxy.filter_requests.is_relevant_for_analysis", return_value=False):
+def test_background_custom_blacklist_match_is_not_forwarded_for_audit():
+    flow = _flow(host="blocked.example.test", headers={"accept": "*/*", "sec-fetch-mode": "cors"})
+    with patch("backend.proxy.filter_requests.custom_blacklist_matches", return_value=True), patch(
+        "backend.proxy.filter_requests.is_relevant_for_analysis", return_value=False
+    ):
+        assert should_forward(flow) is False
+
+
+def test_blacklisted_meaningful_action_is_forwarded():
+    flow = _flow(
+        host="blocked.example.test",
+        path="/login",
+        method="POST",
+        headers={
+            "content-type": "application/x-www-form-urlencoded",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-dest": "empty",
+        },
+    )
+    with patch("backend.proxy.filter_requests.custom_blacklist_matches", return_value=True):
         assert should_forward(flow) is True
 
 
