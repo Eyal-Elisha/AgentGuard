@@ -57,7 +57,7 @@
   background: rgba(22, 101, 52, 0.2);
 }
 
-.home-status-main { display: flex; align-items: center; gap: var(--space-md); }
+.home-status-main { display: flex; align-items: baseline; gap: var(--space-md); }
 
 .home-status-label {
   font-size: 0.7rem;

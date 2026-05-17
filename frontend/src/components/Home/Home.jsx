@@ -42,9 +42,17 @@ export default function Home() {
         </dl>
         <section className="home-copy">
           <h2 className="home-copy-heading">What this does</h2>
-          <p>Activating AgentGuard sends a start request to the backend... traffic recorded in sessions and events.</p>
+          <p>
+            Activating AgentGuard requests the backend to launch the mitmproxy pipeline and
+            open a session for the selected environment. Active proxy traffic is then inspected,
+            evaluated, and recorded in sessions and events.
+          </p>
           <h2 className="home-copy-heading">System and app settings</h2>
-          <p className="home-copy-note">Traffic is only routed through AgentGuard if configured... turning off closes the session.</p>
+          <p className="home-copy-note">
+            Traffic only routes through AgentGuard if Windows, your browser, or app is
+            configured to use this proxy and port. This toggle controls the AgentGuard service
+            and sessions, but does not change your OS or browser settings for you.
+          </p>
         </section>
       </div>
     </main>
