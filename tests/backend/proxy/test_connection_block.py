@@ -17,19 +17,19 @@ class KillableFlow(SimpleNamespace):
 
 
 def test_blacklisted_subdomain_connection_matches():
-    flow = KillableFlow("api.monkeytype.com")
-    with patch("backend.proxy.connection_block.get_custom_blacklist", return_value=frozenset({"monkeytype.com"})):
+    flow = KillableFlow("api.blocked.example.test")
+    with patch("backend.proxy.connection_block.get_custom_blacklist", return_value=frozenset({"blocked.example.test"})):
         assert is_blacklisted_connection(flow) is True
 
 
 def test_unlisted_connection_does_not_match():
     flow = KillableFlow("cm.g.doubleclick.net")
-    with patch("backend.proxy.connection_block.get_custom_blacklist", return_value=frozenset({"monkeytype.com"})):
+    with patch("backend.proxy.connection_block.get_custom_blacklist", return_value=frozenset({"blocked.example.test"})):
         assert is_blacklisted_connection(flow) is False
 
 
 def test_blacklisted_connection_is_killed():
-    flow = KillableFlow("api.monkeytype.com")
-    with patch("backend.proxy.connection_block.get_custom_blacklist", return_value=frozenset({"monkeytype.com"})):
+    flow = KillableFlow("api.blocked.example.test")
+    with patch("backend.proxy.connection_block.get_custom_blacklist", return_value=frozenset({"blocked.example.test"})):
         handle_tcp_start(flow)
     assert flow.killed is True
