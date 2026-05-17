@@ -1,3 +1,5 @@
+import EventBlockReason from './EventBlockReason.jsx';
+
 export default function EventAnalysis({
   selectedEvent,
   ruleAnalysisRows,
@@ -20,6 +22,11 @@ export default function EventAnalysis({
           {selectedEvent ? selectedEvent.risk_score.toFixed(2) : '0.00'}
         </p>
       </div>
+
+      <EventBlockReason
+        selectedEvent={selectedEvent}
+        ruleAnalysisRows={ruleAnalysisRows}
+      />
 
       <h3 className="events-rules-title">Rules Analysis Details</h3>
       <div className="events-rules-table-wrap">

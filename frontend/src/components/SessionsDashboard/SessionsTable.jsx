@@ -6,8 +6,9 @@ import {
 } from './sessionUtils.js';
 
 function getRiskLevel(score) {
-  if (score >= 0.8) return 'high';
-  if (score >= 0.4) return 'medium';
+  if (score >= 0.93) return 'critical';
+  if (score >= 0.9) return 'high';
+  if (score >= 0.75) return 'medium';
   return 'low';
 }
 

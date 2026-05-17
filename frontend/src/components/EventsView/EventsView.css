@@ -83,6 +83,7 @@
 
 /* Risk colors (Sessions table styles are scoped to td; mirror them here for title usage) */
 .events-view-title .cell-risk--high { color: var(--color-risk-high); }
+.events-view-title .cell-risk--critical { color: var(--color-risk-high); }
 .events-view-title .cell-risk--medium { color: var(--color-risk-medium); }
 .events-view-title .cell-risk--low { color: var(--color-risk-low); }
 

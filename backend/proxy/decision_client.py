@@ -8,10 +8,11 @@ import requests
 from backend.analysis.rules import Decision
 from backend.settings import get_backend_decision_url, get_backend_timeout_seconds
 
+from .block_reason import combined_block_reason
+from .session_enforcement_response import session_enforcement_reason
 from .enforcement import (
     BackendDecision,
     backend_failure_reason,
-    build_backend_block_reason,
     decision_reason,
     failure_decision,
 )
@@ -35,11 +36,11 @@ def fetch_backend_decision(payload: Dict[str, Any]) -> BackendDecision:
         evaluation = data.get("evaluation")
         evaluation_dict = evaluation if isinstance(evaluation, dict) else None
         passive_mode = bool(data.get("passive_mode", False))
-        reason = (
-            build_backend_block_reason(evaluation_dict)
-            if decision == Decision.BLOCK
-            else decision_reason(decision)
-        )
+        session_reason = session_enforcement_reason(data)
+        if decision == Decision.BLOCK:
+            reason = combined_block_reason(data, evaluation_dict)
+        else:
+            reason = session_reason or decision_reason(decision)
         return BackendDecision(
             decision=decision,
             reason=reason,

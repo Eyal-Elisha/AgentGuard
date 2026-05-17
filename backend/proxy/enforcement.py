@@ -7,6 +7,7 @@ from mitmproxy import http
 
 from backend.analysis.rules import Decision
 from backend.settings import BackendFailureMode, get_backend_failure_mode
+from .response_reason import browser_block_reason
 
 _BLOCK_RESPONSE_HEADERS = {
     "Content-Type": "text/plain; charset=utf-8",
@@ -150,10 +151,15 @@ def _build_block_response(
 
 def build_enforcement_response(decision: BackendDecision) -> http.Response:
     if decision.decision == Decision.BLOCK and decision.source not in _BACKEND_FAILURE_SOURCES:
+        reason = browser_block_reason(
+            current_reason=decision.reason,
+            event_reason=build_backend_block_reason(decision.evaluation),
+            has_event_evidence=decision.evaluation is not None,
+        )
         return _build_block_response(
             status_code=_BLOCK_STATUS_CODE,
             decision=decision.decision,
-            reason=decision.reason,
+            reason=reason,
         )
     return _build_block_response(
         status_code=_FAIL_CLOSED_STATUS_CODE,

@@ -6,7 +6,6 @@ from backend.storage import sqlite_store as store
 
 from .constants import (
     MAX_RISKY_EVENTS,
-    MAX_SENSITIVE_INTERACTIONS,
     MAX_WARN_BLOCK_POINTS,
     RISK_WEIGHTS,
     RISKY_EVENT_THRESHOLD,
@@ -39,24 +38,18 @@ def calculate_session_risk(session_id: int) -> SessionRiskSummary | None:
     warn_block_score = clamp01(
         (warn_count + block_count * 2) / MAX_WARN_BLOCK_POINTS
     )
-    sensitive_score = clamp01(
-        inputs.sensitive_interaction_count / MAX_SENSITIVE_INTERACTIONS
-    )
 
     score = (
         RISK_WEIGHTS["highest_event"] * highest_risk
         + RISK_WEIGHTS["recent_weighted"] * recent_risk
         + RISK_WEIGHTS["risky_event_count"] * risky_score
         + RISK_WEIGHTS["warn_block"] * warn_block_score
-        + RISK_WEIGHTS["sensitive_interaction"] * sensitive_score
     )
     rounded_score = round(clamp01(score), 4)
     reason = stop_reason(
         score=rounded_score,
         block_count=block_count,
         hard_block_count=inputs.hard_block_count,
-        sensitive_count=inputs.sensitive_interaction_count,
-        recent_weighted_risk=recent_risk,
     )
 
     return SessionRiskSummary(

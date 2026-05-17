@@ -15,10 +15,12 @@ from backend.proxy.audit import ensure_proxy_session_started
 from backend.storage import sqlite_store as store
 
 
-def _make_result(decision: Decision) -> EvaluationResult:
+def _make_result(decision: Decision, risk_score: float | None = None) -> EvaluationResult:
     return EvaluationResult(
         decision=decision,
-        risk_score=0.82 if decision == Decision.BLOCK else 0.42,
+        risk_score=risk_score if risk_score is not None else (
+            0.82 if decision == Decision.BLOCK else 0.42
+        ),
         rule_results=[
             RuleResult(
                 rule_id="sensitive_fields",
@@ -149,6 +151,63 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         self.assertNotEqual(first_audit["event_id"], second_audit["event_id"])
         self.assertEqual(len(store.sessions_list_desc()), 1)
 
+    def test_session_risk_suggests_stop_without_closing_session(self):
+        started = ensure_proxy_session_started(environment="test")
+        high_risk = _make_result(Decision.BLOCK, risk_score=0.95)
+
+        with patch("backend.routes.proxy.evaluate_http_payload", return_value=high_risk):
+            first = self.client.post("/api/proxy/decision", json=self._payload(timestamp="2026-03-29T22:30:00Z"))
+            second = self.client.post("/api/proxy/decision", json=self._payload(timestamp="2026-03-29T22:31:00Z"))
+            third = self.client.post("/api/proxy/decision", json=self._payload(timestamp="2026-03-29T22:32:00Z"))
+            fourth = self.client.post("/api/proxy/decision", json=self._payload(timestamp="2026-03-29T22:33:00Z"))
+            fifth = self.client.post("/api/proxy/decision", json=self._payload(timestamp="2026-03-29T22:34:00Z"))
+
+        self.assertEqual(first.get_json()["decision"], "block")
+        self.assertEqual(second.get_json()["decision"], "block")
+        self.assertEqual(third.get_json()["decision"], "block")
+        self.assertEqual(fourth.get_json()["decision"], "block")
+        self.assertEqual(third.get_json()["session_enforcement"]["level"], "warn")
+        self.assertEqual(fourth.get_json()["session_enforcement"]["level"], "confirm")
+
+        enforcement = fifth.get_json()["session_enforcement"]
+        self.assertEqual(enforcement["level"], "stop")
+        self.assertFalse(enforcement["session_closed"])
+        self.assertIn(f"Session #{started['session_id']}", enforcement["message"])
+        self.assertEqual(enforcement["risk_summary"]["risk_level"], "critical")
+
+        session = store.session_get(started["session_id"])
+        self.assertIsNotNone(session)
+        self.assertIsNone(session["end_time"])
+
+        events = store.events_list_for_session(started["session_id"], {})
+        self.assertEqual([event["guard_action"] for event in events], ["Block"] * 5)
+
+        with patch("backend.routes.proxy.evaluate_http_payload", return_value=_make_result(Decision.ALLOW, risk_score=0.0)):
+            follow_up = self.client.post(
+                "/api/proxy/decision",
+                json=self._payload(timestamp="2026-03-29T22:35:00Z"),
+            )
+        self.assertEqual(follow_up.status_code, 200)
+        self.assertNotEqual(follow_up.get_json()["session_enforcement"]["level"], "closed")
+
+    def test_single_hard_block_does_not_close_proxy_session(self):
+        started = ensure_proxy_session_started(environment="test")
+
+        with patch("backend.routes.proxy.evaluate_http_payload", return_value=_make_result(Decision.BLOCK)):
+            blocked = self.client.post("/api/proxy/decision", json=self._payload(timestamp="2026-03-29T22:30:00Z"))
+
+        self.assertEqual(blocked.status_code, 200)
+        self.assertEqual(blocked.get_json()["decision"], "block")
+        session = store.session_get(started["session_id"])
+        self.assertIsNotNone(session)
+        self.assertIsNone(session["end_time"])
+
+        with patch("backend.routes.proxy.evaluate_http_payload", return_value=_make_result(Decision.ALLOW, risk_score=0.0)):
+            follow_up = self.client.post("/api/proxy/decision", json=self._payload(timestamp="2026-03-29T22:31:00Z"))
+
+        self.assertEqual(follow_up.status_code, 200)
+        self.assertNotEqual(follow_up.get_json()["decision"], "block")
+
     def test_proxy_start_creates_browseros_session_used_by_decisions(self):
         started = ensure_proxy_session_started(environment="test")
         self.assertTrue(started["created"])
@@ -227,8 +286,10 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         with patch("backend.routes.proxy.evaluate_http_payload", return_value=_make_result(Decision.ALLOW)):
             response = self.client.post("/api/proxy/decision", json=self._payload())
 
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.get_json(), {"error": "No active proxy session is available"})
+        self.assertEqual(response.status_code, 200)
+        body = response.get_json()
+        self.assertEqual(body["decision"], "block")
+        self.assertEqual(body["session_enforcement"]["level"], "closed")
 
     def test_proxy_decision_rejects_mismatched_session_environment(self):
         started = ensure_proxy_session_started(environment="test")

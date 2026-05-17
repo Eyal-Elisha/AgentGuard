@@ -37,6 +37,7 @@ export function normalizeSession(sessionData) {
     session_risk_score: risk,
     risk_level: sessionData.risk_level ?? 'low',
     should_stop: Boolean(sessionData.should_stop),
+    stop_reason: sessionData.stop_reason ?? null,
     start_time: sessionData.start_time,
     end_time: sessionData.end_time,
   };

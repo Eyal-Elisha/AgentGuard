@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
+import SessionRiskNotice from './SessionRiskNotice.jsx';
 import SessionSearchBar from './SessionSearchBar.jsx';
 import SessionsTable from './SessionsTable.jsx';
+import { nextReviewSession } from './sessionRiskNotice.js';
 import {
   fetchSessionRiskStats,
   normalizeSession,
@@ -11,15 +13,20 @@ import './SessionsDashboard.css';
 function SessionsDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [sessions, setSessions] = useState([]);
+  const [riskNoticeSession, setRiskNoticeSession] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const base = import.meta.env.VITE_API_BASE_URL;
+  const baseUrl =
+    base == null || String(base).trim() === ''
+      ? null
+      : String(base).replace(/\/$/, '');
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadSessions() {
-      const base = import.meta.env.VITE_API_BASE_URL;
-      if (base == null || String(base).trim() === '') {
+      if (!baseUrl) {
         if (!cancelled) {
           setError('API base URL is not configured. Set VITE_API_BASE_URL in your .env file.');
           setIsLoading(false);
@@ -27,7 +34,6 @@ function SessionsDashboard() {
         return;
       }
 
-      const baseUrl = String(base).replace(/\/$/, '');
       const url = `${baseUrl}/sessions`;
 
       try {
@@ -65,6 +71,7 @@ function SessionsDashboard() {
             }),
           );
           setSessions(merged);
+          setRiskNoticeSession(nextReviewSession(merged));
           setError(null);
         }
       } catch {
@@ -85,7 +92,7 @@ function SessionsDashboard() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [baseUrl]);
 
   const filteredSessions = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
@@ -127,10 +134,16 @@ function SessionsDashboard() {
           )}
 
           {showTable && (
-            <SessionsTable
-              filteredSessions={filteredSessions}
-              sessions={sessions}
-            />
+            <>
+              <SessionsTable
+                filteredSessions={filteredSessions}
+                sessions={sessions}
+              />
+              <SessionRiskNotice
+                session={riskNoticeSession}
+                onClose={() => setRiskNoticeSession(null)}
+              />
+            </>
           )}
         </div>
       </main>

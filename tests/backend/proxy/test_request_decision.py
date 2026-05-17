@@ -114,6 +114,42 @@ def test_fetch_backend_decision_block_reason_includes_hard_block_explanation():
     assert "Connection is unencrypted ('http://')" in decision.reason
 
 
+def test_fetch_backend_decision_event_block_reason_wins_over_session_warning():
+    with _settings_env(), patch("backend.proxy.decision_client.requests.Session") as session_cls:
+        response = Mock()
+        response.json.return_value = {
+            "decision": "block",
+            "session_enforcement": {
+                "level": "warn",
+                "reason": "Session risk is elevated; risk score is 0.69.",
+            },
+            "evaluation": {
+                "decision": "block",
+                "hard_block_triggered": True,
+                "rule_results": [
+                    {
+                        "rule_id": "custom_blacklist",
+                        "triggered": True,
+                        "hard_block": True,
+                        "explanation": "URL matches the custom local blacklist",
+                    },
+                ],
+            },
+        }
+        response.raise_for_status.return_value = None
+
+        session = Mock()
+        session.post.return_value = response
+        session_cls.return_value = session
+
+    decision = fetch_backend_decision(_make_flow())
+
+    assert "custom local blacklist" in decision.reason
+    assert decision.reason.startswith("AgentGuard blocked")
+    assert "Session context:" in decision.reason
+    assert "Session risk is elevated" in decision.reason
+
+
 def test_fetch_backend_decision_block_reason_summarizes_score_based_block():
     with _settings_env(), patch("backend.proxy.decision_client.requests.Session") as session_cls:
         response = Mock()
@@ -267,3 +303,31 @@ def test_build_enforcement_response_uses_fail_closed_status_for_backend_failure(
 
     assert response.status_code == 503
     assert response.headers["X-AgentGuard-Decision"] == "block"
+
+
+def test_build_enforcement_response_keeps_event_reason_before_session_context():
+    decision = BackendDecision(
+        decision=Decision.BLOCK,
+        reason="Session risk is elevated; risk score is 0.80.",
+        evaluation={
+            "decision": "block",
+            "hard_block_triggered": True,
+            "rule_results": [
+                {
+                    "rule_id": "unencrypted_connection",
+                    "triggered": True,
+                    "hard_block": True,
+                    "explanation": "Connection is unencrypted ('http://')",
+                },
+            ],
+        },
+        source="backend",
+    )
+
+    response = build_enforcement_response(decision)
+    body = response.content.decode("utf-8")
+
+    assert body.startswith("AgentGuard blocked")
+    assert "Reason: Connection is unencrypted ('http://')" in body
+    assert "Session context:" in body
+    assert "Session risk is elevated" in body

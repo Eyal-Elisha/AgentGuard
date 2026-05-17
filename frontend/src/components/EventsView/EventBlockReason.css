@@ -1,0 +1,17 @@
+.event-block-reason {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  max-width: 36rem;
+  margin-bottom: var(--space-lg);
+  border: 1px solid rgba(248, 113, 113, 0.55);
+  border-radius: var(--radius-md);
+  background: rgba(127, 29, 29, 0.14);
+  color: var(--color-text-body);
+  padding: 0.8rem 0.9rem;
+  line-height: 1.45;
+}
+
+.event-block-reason strong {
+  color: var(--color-text-primary);
+}

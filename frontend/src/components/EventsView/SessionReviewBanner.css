@@ -1,0 +1,19 @@
+.session-review-banner {
+  border: 1px solid rgba(248, 113, 113, 0.6);
+  border-radius: var(--radius-md);
+  background: rgba(127, 29, 29, 0.16);
+  padding: 0.9rem 1rem;
+}
+
+.session-review-banner h2 {
+  margin: 0 0 0.35rem;
+  color: var(--color-text-primary);
+  font-size: 1rem;
+}
+
+.session-review-banner p {
+  margin: 0.18rem 0 0;
+  color: var(--color-text-body);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}

@@ -6,6 +6,7 @@ from typing import Any
 
 from flask import jsonify, request
 
+from backend.session_enforcement import enforce_session_risk, no_active_session_enforcement
 from backend.proxy.audit import (
     close_proxy_session,
     ensure_proxy_session_started,
@@ -196,12 +197,33 @@ def proxy_decision():
             session_id=session_id,
         )
     except ValueError as exc:
+        if str(exc) == "No active proxy session is available":
+            enforcement = no_active_session_enforcement()
+            return jsonify(
+                {
+                    "decision": enforcement.decision.value,
+                    "evaluation": None,
+                    "audit": None,
+                    "session_enforcement": enforcement.to_dict(),
+                    "passive_mode": get_passive_mode(),
+                }
+            ), 200
         return jsonify({"error": str(exc)}), 400
+    session_enforcement = enforce_session_risk(
+        session_id=int(audit_record["session_id"]),
+        timestamp=timestamp,
+        current_decision=result.decision,
+    )
+    if session_enforcement.decision != result.decision:
+        effective_action = session_enforcement.decision.value.title()
+        store.event_update_guard_action(int(audit_record["event_id"]), effective_action)
+        audit_record["decision"] = session_enforcement.decision.value
     return jsonify(
         {
-            "decision": result.decision.value,
+            "decision": session_enforcement.decision.value,
             "evaluation": evaluation_result_to_dict(result),
             "audit": audit_record,
+            "session_enforcement": session_enforcement.to_dict(),
             "passive_mode": get_passive_mode(),
         }
     ), 200

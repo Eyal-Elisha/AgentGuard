@@ -5,6 +5,7 @@ import '../SessionsDashboard/SessionsDashboard.css';
 import './EventsView.css';
 import EventAnalysis from './EventAnalysis.jsx';
 import EventTimeline from './EventTimeline.jsx';
+import SessionReviewBanner from './SessionReviewBanner.jsx';
 import { EMPTY_CELL_DISPLAY, fetchSessionRiskStats, readErrorMessage } from '../SessionsDashboard/sessionUtils.js';
 
 function EventsView() {
@@ -20,16 +21,24 @@ function EventsView() {
   const [ruleAnalysis, setRuleAnalysis] = useState([]);
   const [selectedEventId, setSelectedEventId] = useState(null);
   const [sessionRiskScore, setSessionRiskScore] = useState(null);
+  const [sessionRisk, setSessionRisk] = useState(null);
   const [sessionUserId, setSessionUserId] = useState(null);
   const [sessionUsername, setSessionUsername] = useState(null);
+  const [sessionEndTime, setSessionEndTime] = useState(null);
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const base = import.meta.env.VITE_API_BASE_URL;
+  const baseUrl =
+    base == null || String(base).trim() === ''
+      ? null
+      : String(base).replace(/\/$/, '');
 
   function getRiskLevel(score) {
     if (typeof score !== 'number' || Number.isNaN(score)) return 'low';
-    if (score > 0.7) return 'high';
-    if (score > 0.4) return 'medium';
+    if (score >= 0.93) return 'critical';
+    if (score >= 0.9) return 'high';
+    if (score >= 0.75) return 'medium';
     return 'low';
   }
 
@@ -40,9 +49,7 @@ function EventsView() {
     async function loadEvents() {
       setIsLoading(true);
       setError(null);
-      const base = import.meta.env.VITE_API_BASE_URL;
-      
-      if (!base) {
+      if (!baseUrl) {
         if (!cancelled) {
           setError('API base URL is not configured. Set VITE_API_BASE_URL in your .env file.');
           setIsLoading(false);
@@ -50,7 +57,6 @@ function EventsView() {
         return;
       }
 
-      const baseUrl = String(base).replace(/\/$/, '');
       const url = `${baseUrl}/sessions/${resolvedSessionId}/events`;
 
       try {
@@ -104,29 +110,30 @@ function EventsView() {
     return () => {
       cancelled = true;
     };
-  }, [resolvedSessionId]);
+  }, [baseUrl, resolvedSessionId]);
 
   // Fetch Session metadata (user_id)
   useEffect(() => {
     let cancelled = false;
 
     async function loadSessionMeta() {
-      const base = import.meta.env.VITE_API_BASE_URL;
-      if (!base || !resolvedSessionId) {
+      if (!baseUrl || !resolvedSessionId) {
         if (!cancelled) setSessionUserId(null);
         if (!cancelled) setSessionUsername(null);
+        if (!cancelled) setSessionEndTime(null);
         return;
       }
-      const baseUrl = String(base).replace(/\/$/, '');
       const url = `${baseUrl}/sessions/${Number(resolvedSessionId)}`;
       try {
         const response = await fetch(url);
         if (!response.ok) {
           if (!cancelled) setSessionUserId(null);
           if (!cancelled) setSessionUsername(null);
+          if (!cancelled) setSessionEndTime(null);
           return;
         }
         const data = await response.json();
+        if (!cancelled) setSessionEndTime(data?.end_time ?? null);
         const rawUserId = data?.user_id;
         const user_id =
           typeof rawUserId === 'number' && Number.isFinite(rawUserId)
@@ -151,6 +158,7 @@ function EventsView() {
       } catch {
         if (!cancelled) setSessionUserId(null);
         if (!cancelled) setSessionUsername(null);
+        if (!cancelled) setSessionEndTime(null);
       }
     }
 
@@ -158,22 +166,24 @@ function EventsView() {
     return () => {
       cancelled = true;
     };
-  }, [resolvedSessionId]);
+  }, [baseUrl, resolvedSessionId]);
 
   // Fetch Session Risk Score
   useEffect(() => {
     let cancelled = false;
 
     async function loadSessionRiskScore() {
-      const base = import.meta.env.VITE_API_BASE_URL;
-      if (!base || !resolvedSessionId) {
+      if (!baseUrl || !resolvedSessionId) {
         if (!cancelled) setSessionRiskScore(null);
+        if (!cancelled) setSessionRisk(null);
         return;
       }
-      const baseUrl = String(base).replace(/\/$/, '');
       const riskStats = await fetchSessionRiskStats(baseUrl, resolvedSessionId);
       if (!cancelled) {
         setSessionRiskScore(riskStats?.session_risk_score ?? null);
+        setSessionRisk(
+          riskStats ? { ...riskStats, session_id: String(resolvedSessionId) } : null,
+        );
       }
     }
 
@@ -182,7 +192,7 @@ function EventsView() {
     return () => {
       cancelled = true;
     };
-  }, [resolvedSessionId]);
+  }, [baseUrl, resolvedSessionId]);
 
   // Fetch Rule Analysis for selectedEventId
   useEffect(() => {
@@ -194,9 +204,7 @@ function EventsView() {
         return;
       }
       
-      const base = import.meta.env.VITE_API_BASE_URL;
-      if (!base) return;
-      const baseUrl = String(base).replace(/\/$/, '');
+      if (!baseUrl) return;
       const url = `${baseUrl}/events/${selectedEventId}/rules-analysis`;
 
       try {
@@ -219,7 +227,7 @@ function EventsView() {
     return () => {
       cancelled = true;
     };
-  }, [selectedEventId]);
+  }, [baseUrl, selectedEventId]);
 
   const selectedEvent = useMemo(() => {
     if (!selectedEventId || !events) return null;
@@ -267,6 +275,8 @@ function EventsView() {
               <strong>{sessionUsername == null ? EMPTY_CELL_DISPLAY : sessionUsername}</strong>
             </p>
           </div>
+
+          <SessionReviewBanner sessionRisk={sessionRisk} />
 
           {isLoading && (
             <div className="sessions-loading" role="status" aria-live="polite">
