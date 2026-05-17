@@ -1,20 +1,37 @@
 """Render the Warn interstitial page shown when a request is flagged as Warn.
 
-The page lists the rules that triggered, shows the risk score, and offers two
-buttons:
-  * "Go back"        — runs `history.back()` (or closes the tab if no history)
-  * "Continue anyway" — links to the original URL with `?_agentguard_bypass=<token>`
-                        appended; the proxy recognises the token and lets that
-                        single request through.
+The page lists the rules that triggered, shows the risk score, and offers
+two buttons:
+  * "Go back to safety" — navigates to the AgentGuard dashboard.
+  * "Continue anyway"   — a plain link to `originalUrl?_agentguard_bypass=<token>`.
+                          The proxy validates the token, registers a short
+                          "continue anyway" profile for that navigation (see
+                          `warn_bypass.py`), and 302-redirects to the clean URL so
+                          the token never lingers in the address bar.
+
+The bypass mechanism is entirely server-side (see `warn_bypass.py`) — no
+cookies, no JS state. This is robust against HTTPS-via-MITM cookie quirks.
 """
 
 from __future__ import annotations
 
 import html
-from typing import Any, Dict, Iterable, List, Optional, Tuple
-from urllib.parse import urlencode, urlsplit, urlunsplit, parse_qsl
+import json
+from typing import Any, Dict, List, Optional
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from backend.proxy.warn_bypass import BYPASS_QUERY_PARAM
+
+
+def _rule_kind_label(rule_type: str) -> str:
+    t = (rule_type or "").lower().strip()
+    if t == "deterministic":
+        return "Deterministic"
+    if t == "contextual":
+        return "Contextual"
+    if t == "semantic":
+        return "Semantic"
+    return t.title() or "Rule"
 
 
 def _coerce_rule_results(evaluation: Optional[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -32,7 +49,7 @@ def _coerce_rule_results(evaluation: Optional[Dict[str, Any]]) -> List[Dict[str,
 
 def _format_rule_row(rule: Dict[str, Any]) -> str:
     rule_id = html.escape(str(rule.get("rule_id", "")))
-    rule_type = html.escape(str(rule.get("rule_type", "")))
+    kind = html.escape(_rule_kind_label(str(rule.get("rule_type", ""))))
     explanation = html.escape(str(rule.get("explanation", "")))
     score = rule.get("score")
     score_text = f"{float(score):.2f}" if isinstance(score, (int, float)) else "—"
@@ -40,8 +57,8 @@ def _format_rule_row(rule: Dict[str, Any]) -> str:
         "<li>"
         f"<div class=\"rule-row\">"
         f"<span class=\"rule-id\">{rule_id}</span>"
-        f"<span class=\"rule-type\">{rule_type}</span>"
-        f"<span class=\"rule-score\">score {score_text}</span>"
+        f"<span class=\"rule-type\">{kind}</span>"
+        f"<span class=\"rule-score\">how strong: {score_text}</span>"
         "</div>"
         f"<div class=\"rule-explanation\">{explanation}</div>"
         "</li>"
@@ -49,9 +66,10 @@ def _format_rule_row(rule: Dict[str, Any]) -> str:
 
 
 def append_bypass_param(url: str, token: str) -> str:
-    """Return `url` with `_agentguard_bypass=<token>` added to the query string."""
+    """Return `url` with `_agentguard_bypass=<token>` appended to the query
+    string. Any existing bypass param is replaced."""
     parts = urlsplit(url)
-    pairs: List[Tuple[str, str]] = [
+    pairs = [
         (k, v) for k, v in parse_qsl(parts.query, keep_blank_values=True)
         if k != BYPASS_QUERY_PARAM
     ]
@@ -66,10 +84,16 @@ def build_warn_html(
     bypass_token: str,
     risk_score: Optional[float],
     evaluation: Optional[Dict[str, Any]],
+    safe_back_url: str,
 ) -> bytes:
     safe_url = html.escape(original_url)
     continue_url = html.escape(append_bypass_param(original_url, bypass_token))
     score_text = f"{float(risk_score):.2f}" if isinstance(risk_score, (int, float)) else "—"
+
+    # JSON-encode + escape </ for the JS "Go back" navigation.
+    js_safe_back_url = (
+        json.dumps(safe_back_url).replace("</", "<\\/").replace("<!", "<\\!")
+    )
 
     triggered = _coerce_rule_results(evaluation)
     if triggered:
@@ -86,6 +110,7 @@ def build_warn_html(
         continue_url=continue_url,
         score_text=score_text,
         rules_block=rules_block,
+        js_safe_back_url=js_safe_back_url,
     ).encode("utf-8")
 
 
@@ -141,14 +166,14 @@ _TEMPLATE: str = """<!doctype html>
   .rule-explanation {{ font-size: 14px; color: #e6e8ed; margin-top: 6px; }}
   .no-rules {{ color: var(--muted); margin: 0; }}
   .actions {{ display: flex; gap: 12px; margin-top: 12px; }}
-  button {{ font: inherit; cursor: pointer; padding: 12px 18px; border-radius: 10px;
-    border: 1px solid transparent; font-weight: 600; transition: filter 120ms ease; }}
-  button:hover {{ filter: brightness(1.08); }}
+  button, a.btn {{ font: inherit; cursor: pointer; padding: 12px 18px; border-radius: 10px;
+    border: 1px solid transparent; font-weight: 600; transition: filter 120ms ease;
+    display: inline-flex; align-items: center; justify-content: center; }}
+  button:hover, a.btn:hover {{ filter: brightness(1.08); }}
   .btn-primary {{ background: var(--safe); color: #0e1a16;
     border-color: var(--safe-strong); flex: 1; }}
   .btn-secondary {{ background: transparent; color: var(--text);
     border-color: #4a5060; }}
-  .btn-danger {{ background: var(--danger); color: #fff; border-color: #b9352c; }}
   a {{ color: inherit; text-decoration: none; }}
   .footer {{ color: var(--muted); font-size: 12px; margin-top: 16px; }}
   .footer code {{ background: var(--panel-2); padding: 2px 6px; border-radius: 4px; }}
@@ -163,7 +188,7 @@ _TEMPLATE: str = """<!doctype html>
     <section class="panel">
       <div class="score">
         <span class="score-value">{score_text}</span>
-        <span class="score-label">risk score (0 – 1)</span>
+        <span class="score-label">overall risk (0 is safest, 1 is highest)</span>
       </div>
     </section>
 
@@ -183,20 +208,18 @@ _TEMPLATE: str = """<!doctype html>
 
     <div class="actions">
       <button class="btn-primary" type="button" onclick="goBack()">Go back to safety</button>
-      <a class="btn-secondary"
-         style="display: inline-flex; align-items: center;"
-         href="{continue_url}">Continue anyway</a>
+      <a class="btn btn-secondary" href="{continue_url}" rel="nofollow noreferrer">Continue anyway</a>
     </div>
 
     <p class="footer">
-      Each Warn requires a fresh confirmation. Clicking <strong>Continue anyway</strong>
-      only allows this exact request.
+      Clicking <strong>Continue anyway</strong> lets this one page load without
+      getting stuck in a warning loop. AgentGuard still analyzes and logs your
+      browsing; the next risky page or action on this site can warn again.
     </p>
   </main>
   <script>
     function goBack() {{
-      if (window.history.length > 1) {{ window.history.back(); }}
-      else {{ window.close(); }}
+      window.location.replace({js_safe_back_url});
     }}
   </script>
 </body>

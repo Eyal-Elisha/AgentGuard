@@ -8,7 +8,7 @@ from mitmproxy import http
 from backend.analysis.rules import Decision
 from backend.proxy.warn_bypass import mint_bypass_token
 from backend.proxy.warn_interstitial import build_warn_html
-from backend.settings import BackendFailureMode, get_backend_failure_mode
+from backend.settings import BackendFailureMode, get_backend_failure_mode, get_dashboard_url
 
 _BLOCK_RESPONSE_HEADERS = {
     "Content-Type": "text/plain; charset=utf-8",
@@ -140,14 +140,16 @@ def build_enforcement_response(decision: BackendDecision) -> http.Response:
     )
 
 
-def build_warn_response(*, original_url: str, decision: BackendDecision) -> http.Response:
+def build_warn_response(
+    *, original_url: str, host: str, decision: BackendDecision
+) -> http.Response:
     """Return an interstitial HTML response for a Warn decision.
 
-    A fresh single-use bypass token is minted; the interstitial's "Continue
-    anyway" link contains it so the proxy lets the next visit to the exact
-    same URL through without re-warning.
+    The response sets the bypass cookie via a `Set-Cookie` header so the
+    browser stores it automatically. Clicking "Continue anyway" only needs
+    to navigate — no JS cookie write required.
     """
-    token = mint_bypass_token(original_url)
+    token = mint_bypass_token(host)
     evaluation = decision.evaluation if isinstance(decision.evaluation, dict) else None
     risk_score: float | None = None
     if isinstance(evaluation, dict):
@@ -159,18 +161,21 @@ def build_warn_response(*, original_url: str, decision: BackendDecision) -> http
         bypass_token=token,
         risk_score=risk_score,
         evaluation=evaluation,
+        safe_back_url=get_dashboard_url(),
     )
     headers = dict(_WARN_RESPONSE_HEADERS)
     return http.Response.make(_WARN_STATUS_CODE, body, headers)
 
 
-def build_warn_body(*, original_url: str, decision: BackendDecision) -> tuple[bytes, dict[str, str]]:
+def build_warn_body(
+    *, original_url: str, host: str, decision: BackendDecision
+) -> tuple[bytes, dict[str, str]]:
     """Return the (body, headers) tuple used to overwrite an existing response.
 
     Used by the response-time path in `handle_response`, where `flow.response`
     already exists and only its content/headers need to be rewritten.
     """
-    token = mint_bypass_token(original_url)
+    token = mint_bypass_token(host)
     evaluation = decision.evaluation if isinstance(decision.evaluation, dict) else None
     risk_score: float | None = None
     if isinstance(evaluation, dict):
@@ -182,6 +187,7 @@ def build_warn_body(*, original_url: str, decision: BackendDecision) -> tuple[by
         bypass_token=token,
         risk_score=risk_score,
         evaluation=evaluation,
+        safe_back_url=get_dashboard_url(),
     )
     headers = dict(_WARN_RESPONSE_HEADERS)
     return body, headers

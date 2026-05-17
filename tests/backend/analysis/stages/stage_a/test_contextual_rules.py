@@ -219,7 +219,7 @@ class TestRuleRedirectToSensitiveAction:
         )
         score, explanation = rule_redirect_to_sensitive_action(session, self.config)
         assert score == pytest.approx(1 / 5)
-        assert "1 hop" in explanation
+        assert "1 fast hop" in explanation
 
     def test_single_cross_domain_redirect(self):
         prior = [
@@ -286,7 +286,8 @@ class TestRuleRedirectToSensitiveAction:
         )
         score, explanation = rule_redirect_to_sensitive_action(session, self.config)
         assert score == 1.0
-        assert "Redirect chain" in explanation
+        assert "arrived here through" in explanation
+        assert "fast hops" in explanation
 
 
 # ---------------------------------------------------------------------------

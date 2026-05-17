@@ -8,8 +8,7 @@ from backend.proxy.warn_interstitial import append_bypass_param, build_warn_html
 
 def test_append_bypass_param_no_existing_query():
     out = append_bypass_param("https://example.com/login", "tok")
-    parts = urlsplit(out)
-    assert parse_qs(parts.query) == {BYPASS_QUERY_PARAM: ["tok"]}
+    assert parse_qs(urlsplit(out).query) == {BYPASS_QUERY_PARAM: ["tok"]}
 
 
 def test_append_bypass_param_preserves_existing_query():
@@ -21,13 +20,15 @@ def test_append_bypass_param_preserves_existing_query():
 
 
 def test_append_bypass_param_replaces_stale_token():
-    out = append_bypass_param(f"https://example.com/?{BYPASS_QUERY_PARAM}=old&x=1", "new")
+    out = append_bypass_param(
+        f"https://example.com/?{BYPASS_QUERY_PARAM}=old&x=1", "new"
+    )
     parsed = parse_qs(urlsplit(out).query)
     assert parsed[BYPASS_QUERY_PARAM] == ["new"]
     assert parsed["x"] == ["1"]
 
 
-def test_build_warn_html_includes_url_score_and_rules():
+def test_build_warn_html_includes_url_score_rules_and_continue_link():
     body = build_warn_html(
         original_url="https://evil.example.com/account",
         bypass_token="tok-123",
@@ -51,6 +52,7 @@ def test_build_warn_html_includes_url_score_and_rules():
                 },
             ],
         },
+        safe_back_url="http://127.0.0.1:5000/",
     )
     text = body.decode("utf-8")
     assert "evil.example.com/account" in text
@@ -60,6 +62,10 @@ def test_build_warn_html_includes_url_score_and_rules():
     assert "tok-123" in text
     assert "Continue anyway" in text
     assert "Go back" in text
+    # The "Continue anyway" link carries the bypass token as a URL param.
+    assert f"{BYPASS_QUERY_PARAM}=tok-123" in text
+    # The "Go back" JS target is the configured dashboard URL.
+    assert "127.0.0.1:5000" in text
 
 
 def test_build_warn_html_escapes_user_supplied_strings():
@@ -78,6 +84,7 @@ def test_build_warn_html_escapes_user_supplied_strings():
                 },
             ],
         },
+        safe_back_url="http://127.0.0.1:5000/",
     )
     text = body.decode("utf-8")
     assert "<script>alert(1)</script>" not in text
@@ -91,6 +98,7 @@ def test_build_warn_html_handles_missing_evaluation():
         bypass_token="tok",
         risk_score=None,
         evaluation=None,
+        safe_back_url="http://127.0.0.1:5000/",
     )
     text = body.decode("utf-8")
     assert "AgentGuard" in text

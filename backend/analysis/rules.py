@@ -131,14 +131,20 @@ RULE_WEIGHTS: Dict[str, float] = {
 }
 
 # ---------------------------------------------------------------------------
-# Contextual rule configuration (Nmax saturation, time windows)
+# Contextual rule tuning (count caps and time windows for scoring)
 # ---------------------------------------------------------------------------
 
 CONTEXTUAL_RULE_CONFIG: Dict[str, Dict[str, Any]] = {
-    "sensitive_action_frequency_spike":        {"Nmax": 5, "T_ms": 60_000},
-    "repeated_sensitive_action_after_warning": {"Nmax": 5},
-    "redirect_to_sensitive_action":            {"Nmax": 5, "redirect_window_ms": 2_000},
-    "previously_warned_domain_in_session":     {"Nmax": 5},
+    "sensitive_action_frequency_spike": {
+        "max_events": 5,
+        "window_ms": 60_000,
+    },
+    "repeated_sensitive_action_after_warning": {"max_events": 5},
+    "redirect_to_sensitive_action": {
+        "max_events": 5,
+        "redirect_window_ms": 2_000,
+    },
+    "previously_warned_domain_in_session": {"max_events": 5},
 }
 
 # ---------------------------------------------------------------------------
@@ -206,25 +212,25 @@ DETERMINISTIC_RULES: List[RuleDefinition] = [
 CONTEXTUAL_RULES: List[RuleDefinition] = [
     RuleDefinition(
         "sensitive_action_frequency_spike",
-        "Sensitive Action Frequency Spike",
+        "Several risky pages in a short time",
         RuleType.CONTEXTUAL, ComputeClass.CHEAP,
         RULE_WEIGHTS["sensitive_action_frequency_spike"], hard_block=False,
     ),
     RuleDefinition(
         "repeated_sensitive_action_after_warning",
-        "Repeated Sensitive Action After Warning",
+        "More risky pages after you were already warned",
         RuleType.CONTEXTUAL, ComputeClass.CHEAP,
         RULE_WEIGHTS["repeated_sensitive_action_after_warning"], hard_block=False,
     ),
     RuleDefinition(
         "redirect_to_sensitive_action",
-        "Redirect to Sensitive Action",
+        "Arrived here through a fast chain of redirects",
         RuleType.CONTEXTUAL, ComputeClass.CHEAP,
         RULE_WEIGHTS["redirect_to_sensitive_action"], hard_block=False,
     ),
     RuleDefinition(
         "previously_warned_domain_in_session",
-        "Previously Warned Domain in Session",
+        "Back to a site we already flagged this session",
         RuleType.CONTEXTUAL, ComputeClass.CHEAP,
         RULE_WEIGHTS["previously_warned_domain_in_session"], hard_block=False,
     ),
