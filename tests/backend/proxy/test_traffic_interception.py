@@ -8,6 +8,17 @@ from backend.proxy.request_decision import BackendDecision
 from backend.proxy.addon import handle_request
 
 
+class _FakeQuery:
+    def __init__(self, items=None):
+        self._d = dict(items or {})
+
+    def get(self, key, default=None):
+        return self._d.get(key, default)
+
+    def pop(self, key, default=None):
+        return self._d.pop(key, default)
+
+
 def _make_flow():
     request_obj = SimpleNamespace(
         method="POST",
@@ -15,6 +26,7 @@ def _make_flow():
         pretty_url="https://example.com/login",
         headers={"user-agent": "Mozilla/5.0"},
         content=b"username=a&password=b",
+        query=_FakeQuery(),
         get_text=lambda: "username=a&password=b",
     )
     return SimpleNamespace(request=request_obj, response=None, metadata={})

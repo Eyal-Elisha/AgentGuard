@@ -6,13 +6,21 @@ from typing import Any, Dict
 from mitmproxy import http
 
 from backend.analysis.rules import Decision
+from backend.proxy.warn_bypass import mint_bypass_token
+from backend.proxy.warn_interstitial import build_warn_html
 from backend.settings import BackendFailureMode, get_backend_failure_mode
 
 _BLOCK_RESPONSE_HEADERS = {
     "Content-Type": "text/plain; charset=utf-8",
     "Cache-Control": "no-store",
 }
+_WARN_RESPONSE_HEADERS = {
+    "Content-Type": "text/html; charset=utf-8",
+    "Cache-Control": "no-store",
+    "X-AgentGuard-Decision": Decision.WARN.value,
+}
 _BLOCK_STATUS_CODE = 403
+_WARN_STATUS_CODE = 200
 _FAIL_CLOSED_STATUS_CODE = 503
 _BLOCK_SUMMARY = "AgentGuard blocked the request before it reached the external destination."
 _FAIL_CLOSED_SUMMARY = "AgentGuard blocked the request because the decision service is unavailable."
@@ -130,3 +138,50 @@ def build_enforcement_response(decision: BackendDecision) -> http.Response:
         decision=Decision.BLOCK,
         reason=decision.reason,
     )
+
+
+def build_warn_response(*, original_url: str, decision: BackendDecision) -> http.Response:
+    """Return an interstitial HTML response for a Warn decision.
+
+    A fresh single-use bypass token is minted; the interstitial's "Continue
+    anyway" link contains it so the proxy lets the next visit to the exact
+    same URL through without re-warning.
+    """
+    token = mint_bypass_token(original_url)
+    evaluation = decision.evaluation if isinstance(decision.evaluation, dict) else None
+    risk_score: float | None = None
+    if isinstance(evaluation, dict):
+        candidate = evaluation.get("risk_score")
+        if isinstance(candidate, (int, float)):
+            risk_score = float(candidate)
+    body = build_warn_html(
+        original_url=original_url,
+        bypass_token=token,
+        risk_score=risk_score,
+        evaluation=evaluation,
+    )
+    headers = dict(_WARN_RESPONSE_HEADERS)
+    return http.Response.make(_WARN_STATUS_CODE, body, headers)
+
+
+def build_warn_body(*, original_url: str, decision: BackendDecision) -> tuple[bytes, dict[str, str]]:
+    """Return the (body, headers) tuple used to overwrite an existing response.
+
+    Used by the response-time path in `handle_response`, where `flow.response`
+    already exists and only its content/headers need to be rewritten.
+    """
+    token = mint_bypass_token(original_url)
+    evaluation = decision.evaluation if isinstance(decision.evaluation, dict) else None
+    risk_score: float | None = None
+    if isinstance(evaluation, dict):
+        candidate = evaluation.get("risk_score")
+        if isinstance(candidate, (int, float)):
+            risk_score = float(candidate)
+    body = build_warn_html(
+        original_url=original_url,
+        bypass_token=token,
+        risk_score=risk_score,
+        evaluation=evaluation,
+    )
+    headers = dict(_WARN_RESPONSE_HEADERS)
+    return body, headers
