@@ -1,0 +1,33 @@
+.events-action-badge {
+  display: inline-block;
+  min-width: 4.7rem;
+  text-align: center;
+  border-radius: var(--radius-pill);
+  padding: var(--space-xs) var(--space-sm);
+  font-size: var(--font-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+/* Action Specific colors */
+.event-action--block.events-timeline-dot { background: var(--color-risk-high); }
+.event-action--warn.events-timeline-dot { background: var(--color-risk-medium); }
+.event-action--allow.events-timeline-dot { background: var(--color-risk-low); }
+
+.events-action-badge.event-action--block {
+  background: color-mix(in srgb, var(--color-risk-high) 23%, transparent);
+  color: var(--color-risk-high);
+  border: 1px solid color-mix(in srgb, var(--color-risk-high) 45%, transparent);
+}
+
+.events-action-badge.event-action--warn {
+  background: color-mix(in srgb, var(--color-risk-medium) 22%, transparent);
+  color: var(--color-risk-medium);
+  border: 1px solid color-mix(in srgb, var(--color-risk-medium) 45%, transparent);
+}
+
+.events-action-badge.event-action--allow {
+  background: color-mix(in srgb, var(--color-risk-low) 22%, transparent);
+  color: var(--color-risk-low);
+  border: 1px solid color-mix(in srgb, var(--color-risk-low) 45%, transparent);
+}
