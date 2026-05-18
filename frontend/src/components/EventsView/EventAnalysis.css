@@ -66,3 +66,33 @@
   overflow-wrap: break-word;
   white-space: normal;
 }
+
+.rule-score-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 6rem;
+}
+
+.rule-score-bar-track {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-border-subtle) 60%, transparent);
+  overflow: hidden;
+}
+
+.rule-score-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 250ms ease;
+}
+
+.rule-score-bar-label {
+  font-size: var(--font-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-body);
+  white-space: nowrap;
+  min-width: 2.5rem;
+}
+
