@@ -1,5 +1,5 @@
-/* Shared design tokens for AgentGuard shell, Home, and Sessions */
-.agentguard-theme {
+:root {
+  /* Shared design tokens for AgentGuard */
   --space-xs: 0.4rem;
   --space-sm: 0.5rem;
   --space-md: 0.75rem;
@@ -48,6 +48,8 @@
   --color-proxy-off: #374151;
   --color-proxy-on-start: #4ade80;
   --color-proxy-on-end: #22c55e;
+  
+  /* Semantic Risk Colors */
   --color-risk-high: #ef4444;
   --color-risk-medium: #eab308;
   --color-risk-low: #22c55e;
@@ -57,6 +59,8 @@
   --color-error-text: #fecaca;
 
   --shield-icon-size: 1.5rem;
+}
 
+.agentguard-theme {
   font-family: var(--font-sans);
 }

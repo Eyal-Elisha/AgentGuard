@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 
 # ---------------------------------------------------------------------------
@@ -65,8 +66,34 @@ class EvaluationResult:
 
 
 @dataclass
+class PriorEvent:
+    """Lightweight snapshot of a single prior event in the current session.
+
+    Built by the session loader from the `events` table; consumed by contextual
+    rules. Kept intentionally minimal so the analysis layer does not depend on
+    the full storage row shape.
+    """
+    timestamp: datetime
+    host: str
+    guard_action: str  # 'Allow' | 'Warn' | 'Block'
+    risk_score: float
+
+
+@dataclass
 class SessionContext:
-    """Snapshot of prior high-impact actions in the current session."""
+    """Snapshot of prior session activity used by contextual rules.
+
+    `current_event_timestamp` and `current_event_host` describe the request
+    being evaluated right now (it is not yet persisted). `prior_events` is the
+    chronologically-ordered list of events already stored in the same session
+    with timestamp <= current_event_timestamp.
+
+    The legacy fields are retained so existing callers continue to work; new
+    contextual rules read only the new fields.
+    """
+    current_event_timestamp: Optional[datetime] = None
+    current_event_host: str = ""
+    prior_events: List[PriorEvent] = field(default_factory=list)
     previous_urls: List[str] = field(default_factory=list)
     sensitive_interaction_count: int = 0
     unique_domains_visited: int = 0
@@ -77,7 +104,7 @@ class SessionContext:
 # ---------------------------------------------------------------------------
 
 HIGH_RISK_THRESHOLD: float = 0.70   # Score above this → BLOCK
-WARN_THRESHOLD: float = 0.40        # Score above this (and below HIGH) → WARN
+WARN_THRESHOLD: float = 0.25      # Score above this (and below HIGH) → WARN
 AMBIGUOUS_LOW: float = 0.25         # Deterministic score below this → skip contextual rules
 STAGE_B_LOW: float = WARN_THRESHOLD
 STAGE_B_HIGH: float = HIGH_RISK_THRESHOLD
@@ -96,6 +123,28 @@ RULE_WEIGHTS: Dict[str, float] = {
     "typosquatting":          0.25,
     "ip_based_url":           0.05,
     "custom_blacklist":       0.25,
+    # Contextual rules (calibration knobs — tune after observing real traffic)
+    "sensitive_action_frequency_spike":        0.20,
+    "repeated_sensitive_action_after_warning": 0.25,
+    "redirect_to_sensitive_action":            0.20,
+    "previously_warned_domain_in_session":     0.20,
+}
+
+# ---------------------------------------------------------------------------
+# Contextual rule tuning (count caps and time windows for scoring)
+# ---------------------------------------------------------------------------
+
+CONTEXTUAL_RULE_CONFIG: Dict[str, Dict[str, Any]] = {
+    "sensitive_action_frequency_spike": {
+        "max_events": 5,
+        "window_ms": 60_000,
+    },
+    "repeated_sensitive_action_after_warning": {"max_events": 5},
+    "redirect_to_sensitive_action": {
+        "max_events": 5,
+        "redirect_window_ms": 2_000,
+    },
+    "previously_warned_domain_in_session": {"max_events": 5},
 }
 
 # ---------------------------------------------------------------------------
@@ -160,4 +209,29 @@ DETERMINISTIC_RULES: List[RuleDefinition] = [
 ]
 
 
-CONTEXTUAL_RULES: List[RuleDefinition] = []
+CONTEXTUAL_RULES: List[RuleDefinition] = [
+    RuleDefinition(
+        "sensitive_action_frequency_spike",
+        "Several risky pages in a short time",
+        RuleType.CONTEXTUAL, ComputeClass.CHEAP,
+        RULE_WEIGHTS["sensitive_action_frequency_spike"], hard_block=False,
+    ),
+    RuleDefinition(
+        "repeated_sensitive_action_after_warning",
+        "More risky pages after you were already warned",
+        RuleType.CONTEXTUAL, ComputeClass.CHEAP,
+        RULE_WEIGHTS["repeated_sensitive_action_after_warning"], hard_block=False,
+    ),
+    RuleDefinition(
+        "redirect_to_sensitive_action",
+        "Arrived here through a fast chain of redirects",
+        RuleType.CONTEXTUAL, ComputeClass.CHEAP,
+        RULE_WEIGHTS["redirect_to_sensitive_action"], hard_block=False,
+    ),
+    RuleDefinition(
+        "previously_warned_domain_in_session",
+        "Back to a site we already flagged this session",
+        RuleType.CONTEXTUAL, ComputeClass.CHEAP,
+        RULE_WEIGHTS["previously_warned_domain_in_session"], hard_block=False,
+    ),
+]
