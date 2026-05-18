@@ -6,6 +6,7 @@ from typing import Any, Dict
 from mitmproxy import http
 
 from backend.analysis.rules import Decision
+from backend.proxy.block_interstitial import build_block_html
 from backend.proxy.warn_bypass import mint_bypass_token
 from backend.proxy.warn_interstitial import build_warn_html
 from backend.settings import BackendFailureMode, get_backend_failure_mode, get_dashboard_url
@@ -13,6 +14,11 @@ from backend.settings import BackendFailureMode, get_backend_failure_mode, get_d
 _BLOCK_RESPONSE_HEADERS = {
     "Content-Type": "text/plain; charset=utf-8",
     "Cache-Control": "no-store",
+}
+_BLOCK_HTML_RESPONSE_HEADERS = {
+    "Content-Type": "text/html; charset=utf-8",
+    "Cache-Control": "no-store",
+    "X-AgentGuard-Decision": Decision.BLOCK.value,
 }
 _WARN_RESPONSE_HEADERS = {
     "Content-Type": "text/html; charset=utf-8",
@@ -168,6 +174,41 @@ def build_enforcement_response(decision: BackendDecision) -> http.Response:
         decision=Decision.BLOCK,
         reason=decision.reason,
     )
+
+
+def _reason_text_for_block(decision: BackendDecision) -> str:
+    """Strip the boilerplate `_BLOCK_SUMMARY` prefix so the interstitial
+    only shows the *specific* reason. Falls back to the raw reason if
+    we can't parse it."""
+    raw = (decision.reason or "").strip()
+    marker = "Reason:"
+    if marker in raw:
+        return raw.split(marker, 1)[1].strip()
+    if raw.startswith(_BLOCK_SUMMARY):
+        rest = raw[len(_BLOCK_SUMMARY):].strip()
+        return rest or raw
+    return raw
+
+
+def build_block_response(
+    *, original_url: str, decision: BackendDecision
+) -> http.Response:
+    """Return an HTML interstitial response for a hard Block decision.
+
+    Use this only for GET navigations where a browser will actually render
+    the body. For sub-resources / XHR / fail-closed paths, callers should
+    keep using `build_enforcement_response` so the response stays a plain
+    403/503 text body.
+    """
+    evaluation = decision.evaluation if isinstance(decision.evaluation, dict) else None
+    body = build_block_html(
+        original_url=original_url,
+        reason=_reason_text_for_block(decision),
+        evaluation=evaluation,
+        safe_back_url=get_dashboard_url(),
+    )
+    headers = dict(_BLOCK_HTML_RESPONSE_HEADERS)
+    return http.Response.make(_BLOCK_STATUS_CODE, body, headers)
 
 
 def build_warn_response(
