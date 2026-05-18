@@ -42,6 +42,34 @@ def _make_result(decision: Decision) -> EvaluationResult:
     )
 
 
+def _make_contextual_result() -> EvaluationResult:
+    """Evaluation result that includes a triggered contextual rule."""
+    return EvaluationResult(
+        decision=Decision.WARN,
+        risk_score=0.55,
+        rule_results=[
+            RuleResult(
+                rule_id="sensitive_fields",
+                rule_type=RuleType.DETERMINISTIC,
+                score=1.0,
+                hard_block=False,
+                explanation="Sensitive fields present on page",
+                triggered=True,
+            ),
+            RuleResult(
+                rule_id="previously_warned_domain_in_session",
+                rule_type=RuleType.CONTEXTUAL,
+                score=0.4,
+                hard_block=False,
+                explanation="2 visit(s) to previously warned domain(s) ['evil.com'] (Nmax=5)",
+                triggered=True,
+            ),
+        ],
+        hard_block_triggered=False,
+        stage_b_required=True,
+    )
+
+
 class ProxyAuditRouteTestCase(unittest.TestCase):
     def setUp(self) -> None:
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -278,6 +306,41 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         self.assertIsNotNone(session)
         self.assertIsNone(session["end_time"])
         self.assertEqual(session["environment"], "test")
+
+    def test_proxy_decision_persists_contextual_rule_analysis(self):
+        """Contextual RuleResults flow through to `rules_analysis` and register
+        in `rules` with `rule_type='contextual'` plus the right weight."""
+        started = ensure_proxy_session_started(environment="test")
+
+        with patch(
+            "backend.routes.proxy.evaluate_http_payload",
+            return_value=_make_contextual_result(),
+        ):
+            response = self.client.post("/api/proxy/decision", json=self._payload())
+
+        self.assertEqual(response.status_code, 200)
+        audit = response.get_json()["audit"]
+        self.assertEqual(audit["session_id"], started["session_id"])
+        self.assertEqual(audit["risk_score"], 0.55)
+        self.assertEqual(audit["triggered_rule_count"], 2)
+
+        analyses = store.rule_analysis_list_for_event(audit["event_id"])
+        rule_codes = {item["rule_code"] for item in analyses}
+        self.assertIn("previously_warned_domain_in_session", rule_codes)
+        contextual_row = next(
+            item
+            for item in analyses
+            if item["rule_code"] == "previously_warned_domain_in_session"
+        )
+        self.assertEqual(contextual_row["rule_score"], 0.4)
+        self.assertIn("evil.com", contextual_row["details"])
+
+        registered = store.rule_get("previously_warned_domain_in_session")
+        self.assertIsNotNone(registered)
+        self.assertEqual(registered["rule_type"], "contextual")
+        self.assertEqual(registered["compute_class"], "cheap")
+        self.assertEqual(registered["is_hard_block"], 0)
+        self.assertEqual(registered["weight"], 0.20)
 
     def test_proxy_control_stop_closes_open_session(self):
         started = ensure_proxy_session_started(environment="test")

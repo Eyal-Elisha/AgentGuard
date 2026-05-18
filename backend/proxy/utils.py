@@ -41,6 +41,30 @@ def build_request_data(flow):
     return data
 
 
+def build_response_payload(flow):
+    """Payload for the backend decision endpoint built from the *response*.
+
+    This lets `/api/proxy/decision` run the full HTML feature extraction (and
+    therefore exercise the DOM-dependent deterministic rules and the contextual
+    rules) for pages the proxy has already received.
+    """
+    headers = dict(flow.response.headers) if flow.response else {}
+    data = {
+        "timestamp": _utc_timestamp(),
+        "type": "RESPONSE",
+        "method": flow.request.method,
+        "url": flow.request.pretty_url,
+        "host": flow.request.host,
+        "environment": "prod",
+        "headers": headers,
+        "body": safe_get_text(flow.response) if flow.response else "",
+    }
+    agent_name = flow.request.headers.get("x-agentguard-agent") or flow.request.headers.get("x-agent-name")
+    if isinstance(agent_name, str) and agent_name.strip():
+        data["agent_name"] = agent_name
+    return data
+
+
 def build_enforcement_data(flow: http.HTTPFlow) -> Optional[Dict[str, Any]]:
     enforcement = flow.metadata.get("agentguard_enforcement")
     if isinstance(enforcement, dict):

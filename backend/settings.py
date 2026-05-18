@@ -20,9 +20,12 @@ _ENV_PROXY_PORT = "PROXY_PORT"
 _ENV_TIMEOUT_SECONDS = "AGENTGUARD_BACKEND_TIMEOUT_SECONDS"
 _ENV_FAILURE_MODE = "AGENTGUARD_BACKEND_FAILURE_MODE"
 _ENV_AUDIT_LOG_PATH = "AGENTGUARD_AUDIT_LOG_PATH"
+_ENV_FRONTEND_URL = "AGENTGUARD_FRONTEND_URL"
+_ENV_FRONTEND_PORT = "FRONTEND_PORT"
 _DEFAULT_API_HOST = "127.0.0.1"
 _DEFAULT_API_PORT = 3000
 _DEFAULT_PROXY_PORT = 8080
+_DEFAULT_FRONTEND_PORT = 5173
 _DEFAULT_TIMEOUT_SECONDS = 10.0
 
 
@@ -137,6 +140,58 @@ def get_backend_failure_mode() -> BackendFailureMode:
             BackendFailureMode.FAIL_CLOSED.value,
         )
         return BackendFailureMode.FAIL_CLOSED
+
+
+def get_frontend_port() -> int:
+    load_settings_env()
+    raw = (os.getenv(_ENV_FRONTEND_PORT) or "").strip()
+    return _validated_port(raw, env_name=_ENV_FRONTEND_PORT, default_port=_DEFAULT_FRONTEND_PORT)
+
+
+def get_dashboard_url() -> str:
+    """Return the AgentGuard dashboard URL used as the 'go back' destination.
+
+    Resolution order:
+      1. `AGENTGUARD_FRONTEND_URL` if set (full URL override).
+      2. `http://<api_host>:<FRONTEND_PORT>` — same FRONTEND_PORT var Vite uses,
+         default 5173. Set `FRONTEND_PORT` in backend/.env to match your dev server.
+
+    Loopback (`127.0.0.1`, ``localhost``, ``::1``, ``0.0.0.0``) is normalized to
+    ``localhost`` so “Go back to safety” matches the URL you usually open in
+    the browser (e.g. ``http://localhost:5000/``).
+    """
+    load_settings_env()
+    raw = (os.getenv(_ENV_FRONTEND_URL) or "").strip()
+    if raw:
+        return _normalize_dashboard_url_host(raw)
+    port = get_frontend_port()
+    host = _dashboard_link_host(get_api_host())
+    return urlunsplit(("http", f"{host}:{port}", "/", "", ""))
+
+
+def _dashboard_link_host(api_host: str) -> str:
+    h = (api_host or "").lower().strip()
+    if h in ("localhost", "127.0.0.1", "::1", "0.0.0.0"):
+        return "localhost"
+    return api_host or "localhost"
+
+
+def _normalize_dashboard_url_host(url: str) -> str:
+    parts = urlsplit(url.strip())
+    hostname = parts.hostname
+    if not hostname:
+        return url
+    new_host = _dashboard_link_host(hostname)
+    try:
+        port = parts.port
+    except ValueError:
+        port = None
+    if port is None:
+        netloc = new_host
+    else:
+        netloc = f"{new_host}:{port}"
+    path = parts.path if parts.path else "/"
+    return urlunsplit((parts.scheme or "http", netloc, path, parts.query, parts.fragment))
 
 
 def get_audit_log_path() -> Path:
