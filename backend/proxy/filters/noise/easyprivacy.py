@@ -51,9 +51,6 @@ def _host_matches_easyprivacy(host: str) -> bool:
 
         if host == d or host.endswith("." + d):
             return True
-
-        if d in host:
-            return True
     return False
 
 

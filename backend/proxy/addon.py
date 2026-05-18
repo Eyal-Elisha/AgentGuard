@@ -3,12 +3,19 @@ from __future__ import annotations
 from mitmproxy import http
 
 from backend.analysis.rules import Decision
-from backend.proxy.enforcement import build_warn_body, build_warn_response
+from backend.custom_blacklist import custom_blacklist_matches
+from backend.proxy.enforcement import (
+    build_enforcement_response,
+    build_warn_body,
+    build_warn_response,
+    local_rule_block_decision,
+)
 from backend.proxy.filter_logging import should_log_request, should_log_response
 from backend.proxy.filter_requests import should_forward
 from backend.proxy.filters.response_eligibility_filter import should_ignore_response
-from backend.proxy.request_decision import build_enforcement_response, fetch_backend_decision
+from backend.proxy.request_decision import fetch_backend_decision
 from backend.proxy.response_decision import fetch_backend_response_decision
+from backend.proxy.rule_engine import get_custom_blacklist
 from backend.proxy.utils import build_request_data, build_response_payload, pretty_print
 from backend.proxy.warn_bypass import (
     BYPASS_QUERY_PARAM,
@@ -124,8 +131,34 @@ def _maybe_redeem_bypass_token(flow: http.HTTPFlow) -> bool:
     return True
 
 
+def _log_request(flow: http.HTTPFlow, decision) -> None:
+    if not should_log_request(flow):
+        return
+
+    try:
+        data = build_request_data(flow)
+        data["enforcement"] = decision.as_log_dict()
+        pretty_print(f"{flow.request.method} {flow.request.host}", data)
+    except Exception:
+        return
+
 def handle_request(flow: http.HTTPFlow) -> None:
     global _cached_passive_mode
+
+    # Custom blacklist hits that aren't high-signal enough to forward to the
+    # backend (`should_forward` returns False for them) are blocked locally so
+    # the user still gets a deterministic enforcement response.
+    if custom_blacklist_matches(flow.request.host, flow.request.pretty_url, get_custom_blacklist()):
+        if not should_forward(flow):
+            decision = local_rule_block_decision(
+                rule_id="custom_blacklist",
+                explanation=f"URL '{flow.request.pretty_url}' matches the custom local blacklist",
+                source="proxy_custom_blacklist",
+            )
+            flow.metadata["agentguard_enforcement"] = decision.as_log_dict()
+            flow.response = build_enforcement_response(decision)
+            _log_request(flow, decision)
+            return
 
     if not should_forward(flow):
         return
@@ -148,10 +181,7 @@ def handle_request(flow: http.HTTPFlow) -> None:
     flow.metadata["agentguard_forwarded_to_backend"] = True
     flow.metadata["agentguard_enforcement"] = decision.as_log_dict()
 
-    if should_log_request(flow):
-        data = build_request_data(flow)
-        data["enforcement"] = decision.as_log_dict()
-        pretty_print(f"{flow.request.method} {flow.request.host}", data)
+    _log_request(flow, decision)
 
     if decision.decision == Decision.BLOCK and not decision.passive_mode:
         flow.response = build_enforcement_response(decision)

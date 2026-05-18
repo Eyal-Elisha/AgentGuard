@@ -67,3 +67,48 @@ def test_request_continues_when_backend_warns():
 
     assert flow.response is None
     assert flow.metadata["agentguard_enforcement"]["decision"] == "warn"
+
+
+def test_request_still_blocks_when_logging_fails():
+    flow = _make_flow()
+    decision = BackendDecision(
+        decision=Decision.BLOCK,
+        reason="blocked upstream",
+        evaluation={"decision": "block"},
+        source="backend",
+    )
+
+    with patch("backend.proxy.addon.should_forward", return_value=True), patch(
+        "backend.proxy.addon.should_log_request", return_value=True
+    ), patch("backend.proxy.addon.fetch_backend_decision", return_value=decision), patch(
+        "backend.proxy.addon.pretty_print", side_effect=UnicodeEncodeError("charmap", "🔏", 0, 1, "bad")
+    ):
+        handle_request(flow)
+
+    assert flow.response is not None
+    assert flow.response.status_code == 403
+
+
+def test_blacklisted_subresource_is_blocked_locally_without_backend_call():
+    flow = _make_flow()
+    flow.request.method = "GET"
+    flow.request.host = "blocked.example.test"
+    flow.request.pretty_url = "https://blocked.example.test/favicon.ico"
+    flow.request.headers = {
+        "user-agent": "Mozilla/5.0 Chrome/120.0.0.0 Electron/30.0.0.0",
+        "accept": "image/avif,image/webp,*/*",
+        "sec-fetch-dest": "image",
+        "sec-fetch-mode": "no-cors",
+    }
+    flow.request.content = b""
+    flow.request.get_text = lambda: ""
+
+    with patch("backend.proxy.addon.custom_blacklist_matches", return_value=True), patch(
+        "backend.proxy.addon.fetch_backend_decision"
+    ) as fetch_backend_decision:
+        handle_request(flow)
+
+    fetch_backend_decision.assert_not_called()
+    assert flow.response is not None
+    assert flow.response.status_code == 403
+    assert flow.metadata["agentguard_enforcement"]["source"] == "proxy_custom_blacklist"

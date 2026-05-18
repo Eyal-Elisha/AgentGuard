@@ -24,6 +24,7 @@ _WARN_STATUS_CODE = 200
 _FAIL_CLOSED_STATUS_CODE = 503
 _BLOCK_SUMMARY = "AgentGuard blocked the request before it reached the external destination."
 _FAIL_CLOSED_SUMMARY = "AgentGuard blocked the request because the decision service is unavailable."
+_BACKEND_FAILURE_SOURCES = frozenset({"backend_timeout", "backend_unreachable", "backend_error"})
 
 
 @dataclass(frozen=True)
@@ -88,6 +89,35 @@ def decision_reason(decision: Decision) -> str:
     return "AgentGuard approved the request."
 
 
+def local_rule_block_decision(
+    *,
+    rule_id: str,
+    explanation: str,
+    source: str,
+) -> BackendDecision:
+    return BackendDecision(
+        decision=Decision.BLOCK,
+        reason=f"{_BLOCK_SUMMARY}\n\nReason: {explanation}",
+        evaluation={
+            "decision": "block",
+            "risk_score": 1.0,
+            "hard_block_triggered": True,
+            "stage_b_required": False,
+            "rule_results": [
+                {
+                    "rule_id": rule_id,
+                    "rule_type": "deterministic",
+                    "score": 1.0,
+                    "hard_block": True,
+                    "explanation": explanation,
+                    "triggered": True,
+                }
+            ],
+        },
+        source=source,
+    )
+
+
 def backend_failure_reason(source: str) -> str:
     if source == "backend_timeout":
         return _FAIL_CLOSED_SUMMARY
@@ -127,7 +157,7 @@ def _build_block_response(
 
 
 def build_enforcement_response(decision: BackendDecision) -> http.Response:
-    if decision.decision == Decision.BLOCK and decision.source == "backend":
+    if decision.decision == Decision.BLOCK and decision.source not in _BACKEND_FAILURE_SOURCES:
         return _build_block_response(
             status_code=_BLOCK_STATUS_CODE,
             decision=decision.decision,
