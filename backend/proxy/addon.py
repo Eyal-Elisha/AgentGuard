@@ -5,6 +5,7 @@ from mitmproxy import http
 from backend.analysis.rules import Decision
 from backend.custom_blacklist import custom_blacklist_matches
 from backend.proxy.enforcement import (
+    build_block_response,
     build_enforcement_response,
     build_warn_body,
     build_warn_response,
@@ -60,6 +61,18 @@ def _strip_query_param(url: str, param: str) -> str:
 def _is_get_navigation(flow: http.HTTPFlow) -> bool:
     """Warn interstitial only makes sense for navigations the browser can render."""
     return flow.request.method.upper() == "GET"
+
+
+def _make_block_response(flow: http.HTTPFlow, decision):
+    """Pick the rendered Block response: HTML interstitial for GET
+    navigations (browser will display it), plain 403 text otherwise
+    (XHR / sub-resource / non-navigation requests can't render HTML)."""
+    if _is_get_navigation(flow):
+        return build_block_response(
+            original_url=flow.request.pretty_url,
+            decision=decision,
+        )
+    return build_enforcement_response(decision)
 
 
 # Last passive-mode value received from a healthy backend response.
@@ -156,7 +169,7 @@ def handle_request(flow: http.HTTPFlow) -> None:
                 source="proxy_custom_blacklist",
             )
             flow.metadata["agentguard_enforcement"] = decision.as_log_dict()
-            flow.response = build_enforcement_response(decision)
+            flow.response = _make_block_response(flow, decision)
             _log_request(flow, decision)
             return
 
@@ -184,7 +197,7 @@ def handle_request(flow: http.HTTPFlow) -> None:
     _log_request(flow, decision)
 
     if decision.decision == Decision.BLOCK and not decision.passive_mode:
-        flow.response = build_enforcement_response(decision)
+        flow.response = _make_block_response(flow, decision)
         return
 
     if (
