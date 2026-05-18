@@ -58,3 +58,30 @@
 .sessions-table td.cell-risk--low { color: var(--color-risk-low); }
 
 .sessions-empty-state { padding: var(--space-xl) 1.1rem; text-align: center; color: var(--color-text-muted); }
+
+.cell-actions {
+  width: 2.5rem;
+  text-align: center;
+  padding-inline: var(--space-sm) !important;
+}
+
+.session-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  padding: 0.25rem;
+  cursor: pointer;
+  opacity: 0;
+  transition: color 140ms ease, border-color 140ms ease, opacity 140ms ease, background 140ms ease;
+}
+
+.sessions-row:hover .session-delete-btn { opacity: 1; }
+.session-delete-btn:hover { color: var(--color-risk-high); border-color: color-mix(in srgb, var(--color-risk-high) 40%, transparent); background: color-mix(in srgb, var(--color-risk-high) 10%, transparent); }
+.session-delete-btn:focus-visible { outline: 2px solid var(--color-risk-high); outline-offset: 2px; opacity: 1; }
+
+.sessions-delete-error { margin-top: var(--space-md); }
+
