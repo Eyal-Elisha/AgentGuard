@@ -9,7 +9,7 @@ import './SessionsDashboard.css';
 function SessionsDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const { filteredSessions, sessions, isLoading, error, refresh, removeSession } = useSessions(searchTerm);
-  const { deleteSession, isPending: deletePending, error: deleteError } = useDeleteSession(removeSession);
+  const { deleteSession, isPending: deletePending, error: deleteError } = useDeleteSession();
   const showTable = !isLoading && !error;
 
   const { isProxyActive } = useProxy();
@@ -58,6 +58,7 @@ function SessionsDashboard() {
               sessions={sessions}
               onDeleteSession={deleteSession}
               deleteState={{ isPending: deletePending, error: deleteError }}
+              removeSession={removeSession}
             />
           )}
         </div>
