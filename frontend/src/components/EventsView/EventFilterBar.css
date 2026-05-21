@@ -61,6 +61,8 @@
   cursor: pointer;
   transition: color 130ms ease, border-color 130ms ease;
   white-space: nowrap;
+  min-width: 120px;
+  text-align: center;
 }
 
 .event-sort-btn:hover { color: var(--color-text-body); border-color: var(--color-text-muted); }
