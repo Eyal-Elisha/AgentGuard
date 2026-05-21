@@ -35,10 +35,10 @@ export default function SessionsTable({ filteredSessions, sessions, onDeleteSess
   async function handleConfirmDelete() {
     if (!sessionToDelete) return;
     const sessionId = sessionToDelete.session_id;
-    setSessionToDelete(null); // hide modal instantly
 
     const ok = await onDeleteSession(sessionId);
     if (ok) {
+      setSessionToDelete(null); // hide modal only on success
       setAnimatingDeleteId(sessionId);
       setTimeout(() => {
         if (removeSession) removeSession(sessionId);
@@ -68,7 +68,7 @@ export default function SessionsTable({ filteredSessions, sessions, onDeleteSess
               const isClosed = !isIsoEmpty(session.end_time);
               const isDeleting = animatingDeleteId === session.session_id;
               return (
-                <tr key={session.session_id} className={`sessions-row ${isDeleting ? 'sessions-row--deleting' : ''}`} onClick={() => navigate(`/sessions/${session.session_id}/events`)}>
+                <tr key={session.session_id} className={`sessions-row ${isDeleting ? 'sessions-row-deleting' : ''}`} onClick={() => navigate(`/sessions/${session.session_id}/events`)}>
                   <td className="cell-agent-name">{session.agent_name}</td>
                   <td className="cell-session-id">{session.session_id}</td>
                   <td><SessionStatusBadge endTime={session.end_time} /></td>
@@ -110,10 +110,8 @@ export default function SessionsTable({ filteredSessions, sessions, onDeleteSess
           onConfirm={handleConfirmDelete}
           onCancel={() => setSessionToDelete(null)}
           isPending={deleteState?.isPending}
+          error={deleteState?.error}
         />
-      )}
-      {deleteState?.error && (
-        <div className="sessions-error-alert sessions-delete-error" role="alert">{deleteState.error}</div>
       )}
     </>
   );

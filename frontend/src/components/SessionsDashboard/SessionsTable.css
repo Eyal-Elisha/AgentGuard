@@ -85,7 +85,7 @@
 
 .sessions-delete-error { margin-top: var(--space-md); }
 
-.sessions-row--deleting {
+.sessions-row-deleting {
   opacity: 0;
   transition: opacity 300ms ease;
   pointer-events: none;
