@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from backend.analysis.rules import (
+    CONTEXTUAL_RULES,
     DETERMINISTIC_RULES,
     RULE_WEIGHTS,
     ComputeClass,
@@ -17,7 +18,9 @@ from backend.audit_logging import configure_audit_logger
 from backend.storage import sqlite_store as store
 
 _logger = logging.getLogger("agentguard.audit")
-_RULE_DEFINITIONS = {rule.rule_id: rule for rule in DETERMINISTIC_RULES}
+_RULE_DEFINITIONS = {
+    rule.rule_id: rule for rule in (*DETERMINISTIC_RULES, *CONTEXTUAL_RULES)
+}
 _DEFAULT_PROXY_AGENT_NAME = "browserOS"
 _DEFAULT_PROXY_ENVIRONMENT = "prod"
 
@@ -83,13 +86,19 @@ def _ensure_rule_registered(rule_result) -> None:
     )
 
 
-def _resolve_session_id(
+def resolve_proxy_session_id(
     *,
     session_id: int | None,
     timestamp: datetime,
     environment: str,
     agent_name: str,
 ) -> int:
+    """Resolve the proxy `session_id` to use for an inbound decision.
+
+    Public helper so routes can resolve sessions *before* evaluation (allowing
+    the evaluator to load prior-event context for contextual rules) and reuse
+    the same resolved id when persisting the audit record.
+    """
     _ensure_storage_ready()
 
     if session_id is not None:
@@ -111,6 +120,11 @@ def _resolve_session_id(
         return int(existing_session["session_id"])
 
     raise ValueError("No active proxy session is available")
+
+
+# Backwards-compatible alias for any internal caller still referencing the
+# private name.
+_resolve_session_id = resolve_proxy_session_id
 
 
 def ensure_proxy_session_started(

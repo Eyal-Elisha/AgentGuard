@@ -11,6 +11,7 @@ from backend.proxy.audit import (
     ensure_proxy_session_started,
     normalize_proxy_agent_name,
     record_proxy_decision,
+    resolve_proxy_session_id,
 )
 from backend.auth import require_jwt
 from backend.proxy.rule_engine import evaluate_http_payload
@@ -179,11 +180,23 @@ def proxy_decision():
     elif not isinstance(body, bytes):
         body = str(body).encode("utf-8", errors="replace")
 
+    try:
+        resolved_session_id = resolve_proxy_session_id(
+            session_id=session_id,
+            timestamp=timestamp,
+            environment=environment,
+            agent_name=normalize_proxy_agent_name(agent_name),
+        )
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
     result = evaluate_http_payload(
         url=url,
         method=method.upper(),
         headers=headers,
         body=body,
+        session_id=resolved_session_id,
+        timestamp=timestamp,
     )
     try:
         audit_record = record_proxy_decision(
@@ -194,7 +207,7 @@ def proxy_decision():
             evaluation=result,
             environment=environment,
             agent_name=agent_name,
-            session_id=session_id,
+            session_id=resolved_session_id,
         )
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
