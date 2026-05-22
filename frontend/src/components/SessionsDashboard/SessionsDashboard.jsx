@@ -1,15 +1,31 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import SessionSearchBar from './SessionSearchBar.jsx';
 import SessionsTable from './SessionsTable.jsx';
 import { useSessions } from '../../hooks/useSessions.js';
 import { useDeleteSession } from '../../hooks/useDeleteSession.js';
+import { useProxy } from '../../context/ProxyContext.jsx';
 import './SessionsDashboard.css';
 
 function SessionsDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
-  const { filteredSessions, sessions, isLoading, error, removeSession } = useSessions(searchTerm);
-  const { deleteSession, isPending: deletePending, error: deleteError } = useDeleteSession(removeSession);
+  const { filteredSessions, sessions, isLoading, error, refresh, removeSession } = useSessions(searchTerm);
+  const { deleteSession, isPending: deletePending, error: deleteError } = useDeleteSession();
   const showTable = !isLoading && !error;
+
+  const { isProxyActive } = useProxy();
+  const prevProxyActive = useRef(isProxyActive);
+
+  useEffect(() => {
+    if (prevProxyActive.current !== isProxyActive) {
+      // Small delay on activation gives backend proxy time to create session
+      if (!prevProxyActive.current && isProxyActive) {
+        setTimeout(refresh, 500);
+      } else {
+        refresh();
+      }
+    }
+    prevProxyActive.current = isProxyActive;
+  }, [isProxyActive, refresh]);
 
   return (
     <div className="sessions-page">
@@ -42,6 +58,7 @@ function SessionsDashboard() {
               sessions={sessions}
               onDeleteSession={deleteSession}
               deleteState={{ isPending: deletePending, error: deleteError }}
+              removeSession={removeSession}
             />
           )}
         </div>

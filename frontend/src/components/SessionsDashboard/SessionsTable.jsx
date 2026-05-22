@@ -22,9 +22,10 @@ function TrashIcon() {
   );
 }
 
-export default function SessionsTable({ filteredSessions, sessions, onDeleteSession, deleteState }) {
+export default function SessionsTable({ filteredSessions, sessions, onDeleteSession, deleteState, removeSession }) {
   const navigate = useNavigate();
   const [sessionToDelete, setSessionToDelete] = useState(null);
+  const [animatingDeleteId, setAnimatingDeleteId] = useState(null);
 
   function handleDeleteClick(e, session) {
     e.stopPropagation();
@@ -33,8 +34,16 @@ export default function SessionsTable({ filteredSessions, sessions, onDeleteSess
 
   async function handleConfirmDelete() {
     if (!sessionToDelete) return;
-    const ok = await onDeleteSession(sessionToDelete.session_id);
-    if (ok) setSessionToDelete(null);
+    const sessionId = sessionToDelete.session_id;
+
+    const ok = await onDeleteSession(sessionId);
+    if (ok) {
+      setSessionToDelete(null); // hide modal only on success
+      setAnimatingDeleteId(sessionId);
+      setTimeout(() => {
+        if (removeSession) removeSession(sessionId);
+      }, 300);
+    }
   }
 
   return (
@@ -57,8 +66,9 @@ export default function SessionsTable({ filteredSessions, sessions, onDeleteSess
             {filteredSessions.map((session) => {
               const riskLevel = getRiskLevel(session.average_risk_score);
               const isClosed = !isIsoEmpty(session.end_time);
+              const isDeleting = animatingDeleteId === session.session_id;
               return (
-                <tr key={session.session_id} className="sessions-row" onClick={() => navigate(`/sessions/${session.session_id}/events`)}>
+                <tr key={session.session_id} className={`sessions-row ${isDeleting ? 'sessions-row-deleting' : ''}`} onClick={() => navigate(`/sessions/${session.session_id}/events`)}>
                   <td className="cell-agent-name">{session.agent_name}</td>
                   <td className="cell-session-id">{session.session_id}</td>
                   <td><SessionStatusBadge endTime={session.end_time} /></td>
@@ -100,10 +110,8 @@ export default function SessionsTable({ filteredSessions, sessions, onDeleteSess
           onConfirm={handleConfirmDelete}
           onCancel={() => setSessionToDelete(null)}
           isPending={deleteState?.isPending}
+          error={deleteState?.error}
         />
-      )}
-      {deleteState?.error && (
-        <div className="sessions-error-alert sessions-delete-error" role="alert">{deleteState.error}</div>
       )}
     </>
   );
