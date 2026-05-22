@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -121,11 +122,70 @@ def start_proxy_process() -> tuple[bool, str]:
     return True, "started"
 
 
+def _kill_process_on_port(port: int) -> bool:
+    """Best-effort: kill whatever process is listening on `port`.
+
+    Used as a fallback when the proxy was started outside Flask's control
+    (e.g. via `python proxy_launcher.py` directly) and `_mitm_process` is None.
+    """
+    try:
+        if sys.platform == "win32":
+            out = subprocess.check_output(
+                ["netstat", "-ano"],
+                text=True,
+                stderr=subprocess.DEVNULL,
+                timeout=5,
+            )
+            killed_any = False
+            seen_pids: set[int] = set()
+            for line in out.splitlines():
+                if f":{port}" in line and "LISTENING" in line:
+                    parts = line.split()
+                    try:
+                        pid = int(parts[-1])
+                    except ValueError:
+                        continue
+                    if pid <= 4 or pid in seen_pids:  # never kill System/Idle, dedupe
+                        continue
+                    seen_pids.add(pid)
+                    # /T kills the whole tree (mitmweb spawns workers).
+                    subprocess.run(
+                        ["taskkill", "/T", "/F", "/PID", str(pid)],
+                        capture_output=True,
+                        timeout=5,
+                    )
+                    _logger.info("[AgentGuard] Killed external mitmweb PID %s on port %s", pid, port)
+                    killed_any = True
+            return killed_any
+        else:
+            out = subprocess.check_output(
+                ["lsof", "-ti", f"tcp:{port}"],
+                text=True,
+                stderr=subprocess.DEVNULL,
+                timeout=5,
+            )
+            for pid_str in out.strip().splitlines():
+                pid = int(pid_str.strip())
+                if pid > 1:
+                    os.kill(pid, signal.SIGTERM)
+                    _logger.info("[AgentGuard] Killed external mitmweb PID %s on port %s", pid, port)
+            return True
+    except Exception as exc:
+        _logger.debug("[AgentGuard] _kill_process_on_port(%s) failed: %s", port, exc)
+    return False
+
+
 def stop_proxy_process() -> tuple[bool, str]:
-    """Terminate the mitmweb process started by `start_proxy_process`."""
+    """Terminate the mitmweb process started by `start_proxy_process`.
+
+    If no process is tracked (proxy was started externally), falls back to
+    killing whatever is listening on the configured proxy port.
+    """
     global _mitm_process, _mitm_log_handle
     if _mitm_process is None:
-        return True, "not_running"
+        # Proxy may have been started outside Flask — try port-based kill.
+        killed = _kill_process_on_port(get_proxy_port())
+        return True, "stopped" if killed else "not_running"
     if _mitm_process.poll() is not None:
         _mitm_process = None
         if _mitm_log_handle is not None:
@@ -138,12 +198,26 @@ def stop_proxy_process() -> tuple[bool, str]:
         return True, "not_running"
     proc = _mitm_process
     try:
-        proc.terminate()
-        try:
-            proc.wait(timeout=15)
-        except subprocess.TimeoutExpired:
-            proc.kill()
-            proc.wait(timeout=5)
+        if sys.platform == "win32":
+            # mitmweb spawns child workers; terminating only the parent leaves
+            # them holding the listen port. taskkill /T /F kills the tree.
+            subprocess.run(
+                ["taskkill", "/T", "/F", "/PID", str(proc.pid)],
+                capture_output=True,
+                timeout=10,
+            )
+            try:
+                proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait(timeout=5)
+        else:
+            proc.terminate()
+            try:
+                proc.wait(timeout=15)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait(timeout=5)
     except OSError as exc:
         _logger.exception("Failed to stop mitmweb")
         _mitm_process = None

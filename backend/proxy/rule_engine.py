@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+from typing import Optional
+
 from backend.custom_blacklist import custom_blacklist_file_path, load_custom_blacklist_file
 from backend.analysis.rules import EvaluationResult
 from backend.analysis.stages.stage_a import StageAEvaluator
+from backend.analysis.stages.stage_a.session_loader import build_context
 from backend.feature_extraction.feature_extractor import FeatureExtractor
 from backend.storage import sqlite_store as store
 
@@ -40,6 +44,8 @@ def evaluate_http_payload(
     method: str,
     headers: dict,
     body: bytes | str,
+    session_id: Optional[int] = None,
+    timestamp: Optional[datetime] = None,
 ) -> EvaluationResult:
     features = _extractor.extract(
         url=url,
@@ -47,4 +53,13 @@ def evaluate_http_payload(
         headers=headers,
         body=body,
     )
-    return _evaluator.evaluate(features, enabled_rules=_rule_enablement_map())
+    session = build_context(
+        session_id=session_id,
+        current_timestamp=timestamp,
+        current_url=url,
+    )
+    return _evaluator.evaluate(
+        features,
+        session=session,
+        enabled_rules=_rule_enablement_map(),
+    )

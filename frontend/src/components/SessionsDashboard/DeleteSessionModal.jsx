@@ -5,7 +5,7 @@ import './DeleteSessionModal.css';
  * Confirmation modal before deleting a session.
  * Traps focus, closes on Escape, and prevents scroll on the body.
  */
-export default function DeleteSessionModal({ sessionId, onConfirm, onCancel, isPending }) {
+export default function DeleteSessionModal({ sessionId, onConfirm, onCancel, isPending, error }) {
   const confirmRef = useRef(null);
 
   useEffect(() => {
@@ -22,6 +22,11 @@ export default function DeleteSessionModal({ sessionId, onConfirm, onCancel, isP
         <p className="modal-body">
           This will permanently delete the session and all its associated events. This action cannot be undone.
         </p>
+        {error && (
+          <div className="sessions-error-alert" role="alert" style={{ marginBottom: '1rem', color: 'var(--color-risk-high)', fontSize: '0.85rem' }}>
+            {error}
+          </div>
+        )}
         <div className="modal-actions">
           <button
             type="button"

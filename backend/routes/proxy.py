@@ -11,6 +11,7 @@ from backend.proxy.audit import (
     ensure_proxy_session_started,
     normalize_proxy_agent_name,
     record_proxy_decision,
+    resolve_proxy_session_id,
 )
 from backend.auth import require_jwt
 from backend.proxy.rule_engine import evaluate_http_payload
@@ -112,6 +113,20 @@ def _proxy_control_agent_name(payload: dict[str, Any]) -> str:
     return normalize_proxy_agent_name(raw_agent_name)
 
 
+def _proxy_control_user_id() -> int | None:
+    """Resolve JWT user for proxy sessions; omit if missing or not in DB (avoids FK errors)."""
+    raw_uid = getattr(g, "jwt_user_id", None)
+    if raw_uid is None:
+        return None
+    try:
+        uid = int(raw_uid)
+    except (TypeError, ValueError):
+        return None
+    if store.user_get(uid) is None:
+        return None
+    return uid
+
+
 @api_bp.route("/proxy/decision", methods=["POST"])
 def proxy_decision():
     if not _is_trusted_client(request.remote_addr):
@@ -179,11 +194,23 @@ def proxy_decision():
     elif not isinstance(body, bytes):
         body = str(body).encode("utf-8", errors="replace")
 
+    try:
+        resolved_session_id = resolve_proxy_session_id(
+            session_id=session_id,
+            timestamp=timestamp,
+            environment=environment,
+            agent_name=normalize_proxy_agent_name(agent_name),
+        )
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
     result = evaluate_http_payload(
         url=url,
         method=method.upper(),
         headers=headers,
         body=body,
+        session_id=resolved_session_id,
+        timestamp=timestamp,
     )
     try:
         audit_record = record_proxy_decision(
@@ -194,7 +221,7 @@ def proxy_decision():
             evaluation=result,
             environment=environment,
             agent_name=agent_name,
-            session_id=session_id,
+            session_id=resolved_session_id,
         )
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
@@ -241,7 +268,7 @@ def proxy_control():
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
 
-    user_id = int(getattr(g, "jwt_user_id", 0)) if getattr(g, "jwt_user_id", None) else None
+    user_id = _proxy_control_user_id()
 
     if active:
         ok, message = start_proxy_process()
