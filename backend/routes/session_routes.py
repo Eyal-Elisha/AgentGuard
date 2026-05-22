@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 
 from flask import g, jsonify, request
 
-from ..auth import get_optional_auth_payload, require_jwt
+from ..auth import get_optional_auth_payload, require_admin, require_jwt
 from ..serializers import event_to_dict, session_to_dict
 from ..storage import sqlite_store as store
 from ..validation import (
@@ -88,7 +88,7 @@ def update_session(session_id: int):
 
 
 @app_bp.route("/sessions/<int:session_id>", methods=["DELETE"])
-@require_jwt
+@require_admin
 def delete_session(session_id: int):
     if not store.session_delete(session_id):
         return jsonify({"error": "Session not found"}), 404
