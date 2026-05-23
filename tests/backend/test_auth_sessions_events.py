@@ -1,4 +1,11 @@
-from backend.auth import decode_token, hash_password
+import os
+import tempfile
+import unittest
+from datetime import datetime, timezone
+from pathlib import Path
+
+from backend import create_app
+from backend.auth import decode_token, hash_password, issue_token
 from backend.storage import sqlite_store as store
 from backend.storage.sqlite_store import UsernameTakenError
 
@@ -156,3 +163,62 @@ class AuthSessionsEventsTestCase(BackendApiTestCase):
         out_of_bounds_risk = self.create_event(session_id=session_id, risk_score=1.5)
         self.assertEqual(out_of_bounds_risk.status_code, 400)
         self.assertEqual(out_of_bounds_risk.get_json()["error"], "Invalid payload: risk_score")
+
+
+class SessionDeleteAuthorizationTestCase(unittest.TestCase):
+    """DELETE /sessions/:id requires admin when REQUIRE_AUTH is enabled."""
+
+    def setUp(self) -> None:
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.db_path = os.path.join(self.temp_dir.name, "test.db")
+        self._old_env = {
+            "DATABASE_URL": os.environ.get("DATABASE_URL"),
+            "JWT_SECRET": os.environ.get("JWT_SECRET"),
+            "REQUIRE_AUTH": os.environ.get("REQUIRE_AUTH"),
+        }
+        db_url_path = Path(self.db_path).resolve().as_posix()
+        os.environ["DATABASE_URL"] = f"sqlite:///{db_url_path}"
+        os.environ["JWT_SECRET"] = "test-secret"
+        os.environ["REQUIRE_AUTH"] = "true"
+
+        self.app = create_app()
+        self.client = self.app.test_client()
+
+        store.user_create("bob", hash_password("bob-pass"), is_admin=False)
+        store.user_create("admin", hash_password("admin-pass"), is_admin=True)
+
+        with self.app.app_context():
+            self.bob_token = issue_token(1, "bob", False)
+            self.admin_token = issue_token(2, "admin", True)
+            self.session_id = store.session_create(
+                1,
+                datetime(2026, 3, 25, 12, 0, tzinfo=timezone.utc),
+                "test",
+                "agent-1",
+            )
+
+    def tearDown(self) -> None:
+        for key, value in self._old_env.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+        self.temp_dir.cleanup()
+
+    def test_non_admin_cannot_delete_session(self):
+        response = self.client.delete(
+            f"/sessions/{self.session_id}",
+            headers={"Authorization": f"Bearer {self.bob_token}"},
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.get_json()["error"], "Forbidden")
+        self.assertIsNotNone(store.session_get(self.session_id))
+
+    def test_admin_can_delete_any_session(self):
+        response = self.client.delete(
+            f"/sessions/{self.session_id}",
+            headers={"Authorization": f"Bearer {self.admin_token}"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["message"], "Session deleted successfully")
+        self.assertIsNone(store.session_get(self.session_id))

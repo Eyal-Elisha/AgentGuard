@@ -8,6 +8,16 @@ from urllib.parse import urlparse
 
 _DEFAULT_BLACKLIST_FILENAME = "custom_blacklist.txt"
 
+_BLACKLIST_FILE_HEADER = """\
+# AgentGuard custom blacklist — one hostname or full URL per line.
+# This file is the custom blacklist policy source for the proxy and Stage A rule 9.
+# Lines starting with # are ignored; inline comments:  evil.com  # note
+#
+#
+# Examples (uncomment to block):
+# bad.example.com
+"""
+
 
 def _strip_www(host: str) -> str:
     return re.sub(r"^www\.", "", host.lower())
@@ -32,6 +42,28 @@ def load_custom_blacklist_file(path: Path) -> frozenset[str]:
         return frozenset()
     text = path.read_text(encoding="utf-8")
     return parse_custom_blacklist_file_content(text)
+
+
+def normalize_blacklist_entries(entries: list) -> list[str]:
+    if not isinstance(entries, list):
+        raise ValueError("'entries' must be a list of strings")
+    return sorted(
+        {
+            str(entry).strip().lower()
+            for entry in entries
+            if isinstance(entry, str) and str(entry).strip()
+        }
+    )
+
+
+def write_custom_blacklist_file(entries: list) -> frozenset[str]:
+    """Persist entries to the blacklist file and return the parsed set."""
+    normalized = normalize_blacklist_entries(entries)
+    body = "\n".join(normalized)
+    content = _BLACKLIST_FILE_HEADER + (body + "\n" if body else "")
+    path = custom_blacklist_file_path()
+    path.write_text(content, encoding="utf-8")
+    return parse_custom_blacklist_file_content(content)
 
 
 def _host_matches_blacklist_entry(host_stripped: str, entry_host: str) -> bool:

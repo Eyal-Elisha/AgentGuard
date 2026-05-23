@@ -85,3 +85,16 @@ def require_jwt(f: Callable) -> Callable:
         return f(*args, **kwargs)
 
     return wrapper
+
+
+def require_admin(f: Callable) -> Callable:
+    """Require JWT authentication and an admin user."""
+
+    @require_jwt
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if not request_is_admin():
+            return jsonify({"error": "Forbidden"}), 403
+        return f(*args, **kwargs)
+
+    return wrapper

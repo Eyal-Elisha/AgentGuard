@@ -1,3 +1,5 @@
+import RulesToolbarFilters from './RulesToolbarFilters.jsx';
+
 export default function RulesToolbar({
   searchTerm,
   onSearchChange,
@@ -12,6 +14,8 @@ export default function RulesToolbar({
   ruleTypes,
   computeClasses,
   disabled,
+  showManageBlacklist,
+  onManageBlacklist,
 }) {
   return (
     <div className="rules-toolbar">
@@ -25,68 +29,24 @@ export default function RulesToolbar({
           onChange={(e) => onSearchChange(e.target.value)}
           disabled={disabled}
           aria-label="Search rules by code or description"
+          style={{ maxWidth: '300px' }}
         />
       </div>
-      <div className="rules-toolbar-row rules-toolbar-row--filters">
-        <label className="rules-filter-field">
-          <span className="rules-filter-label">Rule type</span>
-          <select
-            className="rules-filter-select"
-            value={ruleType}
-            onChange={(e) => onRuleTypeChange(e.target.value)}
-            disabled={disabled}
-          >
-            <option value="">All types</option>
-            {ruleTypes.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="rules-filter-field">
-          <span className="rules-filter-label">Compute class</span>
-          <select
-            className="rules-filter-select"
-            value={computeClass}
-            onChange={(e) => onComputeClassChange(e.target.value)}
-            disabled={disabled}
-          >
-            <option value="">All classes</option>
-            {computeClasses.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="rules-filter-field">
-          <span className="rules-filter-label">Hard block</span>
-          <select
-            className="rules-filter-select"
-            value={hardBlock}
-            onChange={(e) => onHardBlockChange(e.target.value)}
-            disabled={disabled}
-          >
-            <option value="all">All</option>
-            <option value="yes">Hard block only</option>
-            <option value="no">Not hard block</option>
-          </select>
-        </label>
-        <label className="rules-filter-field">
-          <span className="rules-filter-label">Enabled</span>
-          <select
-            className="rules-filter-select"
-            value={enabled}
-            onChange={(e) => onEnabledChange(e.target.value)}
-            disabled={disabled}
-          >
-            <option value="all">All</option>
-            <option value="yes">Enabled only</option>
-            <option value="no">Disabled only</option>
-          </select>
-        </label>
-      </div>
+      <RulesToolbarFilters
+        ruleType={ruleType}
+        onRuleTypeChange={onRuleTypeChange}
+        computeClass={computeClass}
+        onComputeClassChange={onComputeClassChange}
+        hardBlock={hardBlock}
+        onHardBlockChange={onHardBlockChange}
+        enabled={enabled}
+        onEnabledChange={onEnabledChange}
+        ruleTypes={ruleTypes}
+        computeClasses={computeClasses}
+        disabled={disabled}
+        showManageBlacklist={showManageBlacklist}
+        onManageBlacklist={onManageBlacklist}
+      />
     </div>
   );
 }
