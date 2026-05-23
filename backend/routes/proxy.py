@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 import ipaddress
 from typing import Any
 
-from flask import jsonify, request
+from flask import jsonify, request, g
 
 from backend.proxy.audit import (
     close_proxy_session,
@@ -13,6 +13,7 @@ from backend.proxy.audit import (
     record_proxy_decision,
     resolve_proxy_session_id,
 )
+from backend.auth import require_jwt
 from backend.proxy.rule_engine import evaluate_http_payload
 from backend.proxy.utils import evaluation_result_to_dict
 from backend.settings import get_passive_mode, set_passive_mode
@@ -110,6 +111,20 @@ def _proxy_control_agent_name(payload: dict[str, Any]) -> str:
     if not isinstance(raw_agent_name, str) or not raw_agent_name.strip():
         raise ValueError("'agent_name' must be a non-empty string when provided")
     return normalize_proxy_agent_name(raw_agent_name)
+
+
+def _proxy_control_user_id() -> int | None:
+    """Resolve JWT user for proxy sessions; omit if missing or not in DB (avoids FK errors)."""
+    raw_uid = getattr(g, "jwt_user_id", None)
+    if raw_uid is None:
+        return None
+    try:
+        uid = int(raw_uid)
+    except (TypeError, ValueError):
+        return None
+    if store.user_get(uid) is None:
+        return None
+    return uid
 
 
 @api_bp.route("/proxy/decision", methods=["POST"])
@@ -221,6 +236,7 @@ def proxy_decision():
 
 
 @api_bp.route("/proxy/status", methods=["GET"])
+@require_jwt
 def proxy_status():
     if not _is_trusted_client(request.remote_addr):
         return jsonify({"error": "This endpoint is only available from a trusted local network client"}), 403
@@ -230,6 +246,7 @@ def proxy_status():
 
 
 @api_bp.route("/proxy/control", methods=["POST", "OPTIONS"])
+@require_jwt
 def proxy_control():
     """Start or stop mitmweb with `traffic_interception.py` (same as `python proxy_launcher.py`)."""
     if request.method == "OPTIONS":
@@ -251,11 +268,13 @@ def proxy_control():
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
 
+    user_id = _proxy_control_user_id()
+
     if active:
         ok, message = start_proxy_process()
         session = None
         if ok and message != "already_running":
-            session = ensure_proxy_session_started(environment=environment, agent_name=agent_name)
+            session = ensure_proxy_session_started(environment=environment, agent_name=agent_name, user_id=user_id)
     else:
         ok, message = stop_proxy_process()
         session = None
@@ -272,6 +291,7 @@ def proxy_control():
 
 
 @api_bp.route("/proxy/passive-mode", methods=["GET"])
+@require_jwt
 def get_passive_mode_route():
     if not _is_trusted_client(request.remote_addr):
         return jsonify({"error": "This endpoint is only available from a trusted local network client"}), 403
@@ -279,6 +299,7 @@ def get_passive_mode_route():
 
 
 @api_bp.route("/proxy/passive-mode", methods=["PATCH", "OPTIONS"])
+@require_jwt
 def set_passive_mode_route():
     if request.method == "OPTIONS":
         return "", 204

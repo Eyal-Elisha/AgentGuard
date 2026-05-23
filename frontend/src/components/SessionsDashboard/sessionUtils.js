@@ -16,18 +16,26 @@ export function getApiBase() {
   return String(base).replace(/\/$/, '');
 }
 
+import { getToken } from '../../api/authToken.js';
+
 /** Helper for fetching from API with base URL */
 export async function fetchWithBase(path, options = {}) {
   const base = getApiBase();
   if (!base) throw new Error('API base URL not configured');
-  return fetch(`${base}${path}`, options);
+  
+  const token = getToken();
+  const headers = { ...options.headers };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  return fetch(`${base}${path}`, { ...options, headers });
 }
 
 /** Loads per-session aggregates from the backend. */
 export async function fetchSessionEventStats(baseUrl, sessionId, headers) {
-  const url = `${baseUrl}/sessions/${Number(sessionId)}/events/stats`;
   try {
-    const response = await fetch(url, headers ? { headers } : undefined);
+    const response = await fetchWithBase(`/sessions/${Number(sessionId)}/events/stats`, headers ? { headers } : undefined);
     if (!response.ok) return null;
     const data = await response.json();
     const avg = data?.average_risk_score;

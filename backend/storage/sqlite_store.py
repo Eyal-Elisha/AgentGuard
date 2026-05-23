@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from .db import database_path
 from .schema import init_schema
-from .users_store import UsernameTakenError, user_get_by_username, user_create, user_get
+from .users_store import UsernameTakenError, user_get_by_username, user_create, user_get, users_list_all
 from .sessions_store import (
     session_try_close,
     session_create,
@@ -38,6 +38,7 @@ __all__ = [
     "user_get",
     "user_get_by_username",
     "user_create",
+    "users_list_all",
     # Sessions
     "sessions_list_desc",
     "session_get",

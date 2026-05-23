@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from flask import jsonify, request
 
-from ..auth import hash_password, issue_token, verify_password
+from ..auth import hash_password, issue_token, request_is_admin, require_jwt, verify_password
 from ..storage.sqlite_store import UsernameTakenError
 from ..storage import sqlite_store as store
-from ..auth import require_jwt
 from ..validation import validate_login_signup
 from . import app_bp
 
@@ -45,3 +44,12 @@ def get_user(user_id: int):
     if not user:
         return jsonify({"error": "User not found"}), 404
     return jsonify(user), 200
+
+
+@app_bp.route("/users", methods=["GET"])
+@require_jwt
+def list_users():
+    if not request_is_admin():
+        return jsonify({"error": "Forbidden"}), 403
+    users = store.users_list_all()
+    return jsonify(users), 200

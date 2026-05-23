@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext.jsx';
 import { EMPTY_CELL_DISPLAY, formatIsoLocal, isIsoEmpty } from './sessionUtils.js';
 import SessionStatusBadge from './SessionStatusBadge.jsx';
 import DeleteSessionModal from './DeleteSessionModal.jsx';
@@ -24,6 +25,8 @@ function TrashIcon() {
 
 export default function SessionsTable({ filteredSessions, sessions, onDeleteSession, deleteState, removeSession }) {
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
+  const canDeleteSessions = Boolean(currentUser?.isAdmin);
   const [sessionToDelete, setSessionToDelete] = useState(null);
   const [animatingDeleteId, setAnimatingDeleteId] = useState(null);
 
@@ -85,7 +88,7 @@ export default function SessionsTable({ filteredSessions, sessions, onDeleteSess
                     {formatIsoLocal(session.end_time)}
                   </td>
                   <td className="cell-actions" onClick={(e) => e.stopPropagation()}>
-                    {isClosed && (
+                    {canDeleteSessions && isClosed && (
                       <button type="button" className="session-delete-btn" aria-label={`Delete session ${session.session_id}`} title="Delete session" onClick={(e) => handleDeleteClick(e, session)}>
                         <TrashIcon />
                       </button>
@@ -104,7 +107,7 @@ export default function SessionsTable({ filteredSessions, sessions, onDeleteSess
         </table>
       </div>
 
-      {sessionToDelete && (
+      {canDeleteSessions && sessionToDelete && (
         <DeleteSessionModal
           sessionId={sessionToDelete.session_id}
           onConfirm={handleConfirmDelete}
