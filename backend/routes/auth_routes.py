@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from flask import jsonify, request
+from flask import g, jsonify, request
 
 from ..auth import hash_password, issue_token, verify_password
 from ..storage.sqlite_store import UsernameTakenError
@@ -50,7 +50,6 @@ def get_user(user_id: int):
 @app_bp.route("/users", methods=["GET"])
 @require_jwt
 def list_users():
-    from flask import g
     if not getattr(g, "jwt_is_admin", False):
         return jsonify({"error": "Forbidden"}), 403
     users = store.users_list_all()
