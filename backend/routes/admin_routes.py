@@ -20,21 +20,8 @@ def admin_stats():
         total_events = conn.execute("SELECT COUNT(*) AS c FROM events").fetchone()["c"]
         total_users = conn.execute("SELECT COUNT(*) AS c FROM users").fetchone()["c"]
 
-        avg_risk = conn.execute("SELECT AVG(risk_score) AS a FROM events").fetchone()["a"]
-        global_avg_risk_score = float(avg_risk) if avg_risk is not None else 0.0
-
-        allow = conn.execute("SELECT COUNT(*) AS c FROM events WHERE guard_action = 'Allow'").fetchone()["c"]
-        warn = conn.execute("SELECT COUNT(*) AS c FROM events WHERE guard_action = 'Warn'").fetchone()["c"]
-        block = conn.execute("SELECT COUNT(*) AS c FROM events WHERE guard_action = 'Block'").fetchone()["c"]
-
     return jsonify({
         "total_sessions": int(total_sessions),
         "total_events": int(total_events),
         "total_users": int(total_users),
-        "global_avg_risk_score": global_avg_risk_score,
-        "action_breakdown": {
-            "Allow": int(allow),
-            "Warn": int(warn),
-            "Block": int(block),
-        }
     }), 200
