@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 
 from flask import g, jsonify, request
 
-from ..auth import get_optional_auth_payload, require_jwt
+from ..auth import get_optional_auth_payload, request_is_admin, require_jwt
 from ..serializers import event_to_dict, session_to_dict
 from ..storage import sqlite_store as store
 from ..validation import (
@@ -38,7 +38,7 @@ def _get_session_or_404(session_id: int):
 @app_bp.route("/sessions", methods=["GET"])
 @require_jwt
 def list_sessions():
-    user_id = None if getattr(g, "jwt_is_admin", False) else int(getattr(g, "jwt_user_id", 0))
+    user_id = None if request_is_admin() else int(getattr(g, "jwt_user_id", 0))
     rows = store.sessions_list_desc(user_id=user_id)
     return jsonify([session_to_dict(s) for s in rows]), 200
 

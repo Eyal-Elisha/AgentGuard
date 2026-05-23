@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from flask import g, jsonify
+from flask import jsonify
 
-from ..auth import require_jwt
+from ..auth import request_is_admin, require_jwt
 from ..storage.db import _connect
 from . import app_bp
 
@@ -12,14 +12,14 @@ from . import app_bp
 @app_bp.route("/admin/stats", methods=["GET"])
 @require_jwt
 def admin_stats():
-    if not getattr(g, "jwt_is_admin", False):
+    if not request_is_admin():
         return jsonify({"error": "Forbidden"}), 403
 
     with _connect() as conn:
         total_sessions = conn.execute("SELECT COUNT(*) AS c FROM sessions").fetchone()["c"]
         total_events = conn.execute("SELECT COUNT(*) AS c FROM events").fetchone()["c"]
         total_users = conn.execute("SELECT COUNT(*) AS c FROM users").fetchone()["c"]
-        
+
         avg_risk = conn.execute("SELECT AVG(risk_score) AS a FROM events").fetchone()["a"]
         global_avg_risk_score = float(avg_risk) if avg_risk is not None else 0.0
 
