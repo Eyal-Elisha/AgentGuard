@@ -1,3 +1,5 @@
+import { jwtDecode } from 'jwt-decode';
+
 const TOKEN_KEY = 'agentguard_jwt';
 
 export function saveToken(token) {
@@ -22,22 +24,14 @@ export function clearToken() {
 export function decodeToken(token) {
   if (!token) return null;
   try {
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split('')
-        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join('')
-    );
-    const parsed = JSON.parse(jsonPayload);
+    const parsed = jwtDecode(token);
     return {
       userId: parsed.sub,
       username: parsed.username,
       isAdmin: parsed.is_admin,
       exp: parsed.exp,
     };
-  } catch (err) {
+  } catch {
     return null;
   }
 }
