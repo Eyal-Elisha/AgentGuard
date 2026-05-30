@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import html
 import json
 from typing import Any, Dict
-from urllib.parse import urlsplit
+from urllib.parse import quote_plus, urlsplit
 
 from mitmproxy import http
 
@@ -182,14 +183,99 @@ def is_backend_failure_source(source: str) -> bool:
     return source in _BACKEND_FAILURE_SOURCES
 
 
-def _alternative_query_from_url(url: str) -> str:
+def _normalize_likely_typos(host: str) -> str:
+    table = str.maketrans({
+        "0": "o",
+        "1": "l",
+        "3": "e",
+        "5": "s",
+        "7": "t",
+        "@": "a",
+        "$": "s",
+    })
+    translated = host.translate(table)
+    # Collapse over-repeated characters (e.g., "gooogle" -> "google").
+    collapsed: list[str] = []
+    for ch in translated:
+        if len(collapsed) >= 2 and collapsed[-1] == ch and collapsed[-2] == ch:
+            continue
+        collapsed.append(ch)
+    return "".join(collapsed)
+
+
+def _site_alternative_candidates(original_url: str) -> list[dict[str, str]]:
     try:
-        host = (urlsplit(url).hostname or "").strip()
+        parts = urlsplit(original_url)
+        host = (parts.hostname or "").strip().lower()
+    except ValueError:
+        host = ""
+
+    candidates: list[dict[str, str]] = []
+    seen: set[str] = set()
+
+    def _add(item: dict[str, str]) -> None:
+        key = json.dumps(item, sort_keys=True)
+        if key in seen:
+            return
+        seen.add(key)
+        candidates.append(item)
+
+    if host:
+        _add({"type": "search", "query": f"official website {host}"})
+        _add({"type": "search", "query": f"{host} alternatives"})
+
+        typo_fixed = _normalize_likely_typos(host)
+        if typo_fixed != host and "." in typo_fixed:
+            _add({"type": "navigate", "url": f"https://{typo_fixed}"})
+
+        if host.startswith("www.") and len(host) > 4:
+            _add({"type": "navigate", "url": f"https://{host[4:]}"})
+        else:
+            _add({"type": "navigate", "url": f"https://www.{host}"})
+    else:
+        _add({"type": "search", "query": "official website for requested service"})
+        _add({"type": "search", "query": "safe alternatives for requested service"})
+
+    return candidates[:4]
+
+
+def _reason_code(*, original_url: str, decision: BackendDecision) -> str:
+    evaluation = decision.evaluation if isinstance(decision.evaluation, dict) else None
+    if isinstance(evaluation, dict):
+        rules = evaluation.get("rule_results")
+        if isinstance(rules, list):
+            for item in rules:
+                if not isinstance(item, dict) or not item.get("triggered"):
+                    continue
+                rid = str(item.get("rule_id", "")).strip().lower()
+                if rid:
+                    if rid == "custom_blacklist":
+                        return "custom_blacklist"
+                    return f"rule:{rid}"
+
+    if original_url.lower().startswith("http://"):
+        return "unencrypted_http"
+
+    lowered_reason = (decision.reason or "").lower()
+    if "decision service is unavailable" in lowered_reason or decision.source in _BACKEND_FAILURE_SOURCES:
+        return "backend_unavailable"
+    if "invalid response" in lowered_reason:
+        return "backend_invalid_response"
+    return "policy_block"
+
+
+def _constraints(*, original_url: str, decision: BackendDecision) -> Dict[str, Any]:
+    constraints: Dict[str, Any] = {}
+    if original_url.lower().startswith("http://"):
+        constraints["require_https"] = True
+
+    try:
+        host = (urlsplit(original_url).hostname or "").strip().lower()
     except ValueError:
         host = ""
     if host:
-        return f"official site for {host}"
-    return "official site for requested service"
+        constraints["forbidden_hosts"] = [host]
+    return constraints
 
 
 def _risk_payload(evaluation: Dict[str, Any] | None) -> Dict[str, Any]:
@@ -209,22 +295,22 @@ def build_browseros_block_response(*, original_url: str, decision: BackendDecisi
     payload = {
         "decision": Decision.BLOCK.value,
         "enforcement_mode": "soft_block",
+        "blocked_url": original_url,
+        "reason_code": _reason_code(original_url=original_url, decision=decision),
         "reason": decision.reason,
         "risk": _risk_payload(decision.evaluation),
         "retryable": True,
-        "agent_instruction": (
+        "goal_preservation_instruction": (
             "Do not access this URL directly. Continue the task using safer alternatives."
         ),
-        "safe_alternatives": [
-            {
-                "type": "search",
-                "query": _alternative_query_from_url(original_url),
-            },
+        "constraints": _constraints(original_url=original_url, decision=decision),
+        "safe_alternatives": _site_alternative_candidates(original_url)
+        + [
             {
                 "type": "navigate",
                 "url": get_dashboard_url(),
                 "label": "AgentGuard dashboard",
-            },
+            }
         ],
         "cooldown_seconds": 30,
     }
@@ -235,6 +321,72 @@ def build_browseros_block_response(*, original_url: str, decision: BackendDecisi
         "X-AgentGuard-Continuation": "available",
     }
     return http.Response.make(_BLOCK_STATUS_CODE, json.dumps(payload), headers)
+
+
+def _recovery_auto_target(alternatives: list[dict[str, str]]) -> str:
+    for item in alternatives:
+        if item.get("type") == "navigate" and isinstance(item.get("url"), str):
+            return item["url"]
+    for item in alternatives:
+        if item.get("type") == "search" and isinstance(item.get("query"), str):
+            return f"https://www.google.com/search?q={quote_plus(item['query'])}"
+    return get_dashboard_url()
+
+
+def build_browseros_recovery_response(*, original_url: str, decision: BackendDecision) -> http.Response:
+    alternatives = _site_alternative_candidates(original_url)
+    auto_target = _recovery_auto_target(alternatives)
+    rows: list[str] = []
+    for item in alternatives:
+        if item.get("type") == "navigate":
+            url = str(item.get("url", ""))
+            rows.append(
+                f'<li><a href="{html.escape(url)}">Try: {html.escape(url)}</a></li>'
+            )
+        elif item.get("type") == "search":
+            query = str(item.get("query", ""))
+            url = f"https://www.google.com/search?q={quote_plus(query)}"
+            rows.append(
+                f'<li><a href="{html.escape(url)}">Search: {html.escape(query)}</a></li>'
+            )
+
+    body = f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AgentGuard Recovery</title>
+  <style>
+    body {{ font-family: Arial, sans-serif; margin: 24px; line-height: 1.5; }}
+    .panel {{ max-width: 760px; margin: 0 auto; border: 1px solid #ddd; border-radius: 12px; padding: 20px; }}
+    h1 {{ margin-top: 0; }}
+    .muted {{ color: #555; }}
+    ul {{ padding-left: 20px; }}
+    a {{ color: #0b57d0; }}
+  </style>
+</head>
+<body>
+  <main class="panel">
+    <h1>Blocked destination detected</h1>
+    <p class="muted">AgentGuard blocked direct access to <strong>{html.escape(original_url)}</strong>.</p>
+    <p><strong>Continue the same task using a safer alternative below.</strong></p>
+    <ul>
+      {''.join(rows)}
+    </ul>
+    <p class="muted">Auto-continuing in 3 seconds to: {html.escape(auto_target)}</p>
+  </main>
+  <script>setTimeout(function(){{ window.location.href = {json.dumps(auto_target)}; }}, 3000);</script>
+</body>
+</html>"""
+
+    headers = {
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "no-store",
+        "X-AgentGuard-Decision": Decision.BLOCK.value,
+        "X-AgentGuard-Continuation": "available",
+        "X-AgentGuard-Recovery-Mode": "guided",
+    }
+    return http.Response.make(200, body, headers)
 
 
 def _reason_text_for_block(decision: BackendDecision) -> str:

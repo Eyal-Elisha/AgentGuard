@@ -271,19 +271,33 @@ def test_build_enforcement_response_uses_fail_closed_status_for_backend_failure(
 
 def test_build_browseros_block_response_shape():
     from backend.proxy.enforcement import build_browseros_block_response
+    import json
 
     decision = BackendDecision(
         decision=Decision.BLOCK,
         reason="blocked upstream",
-        evaluation={"risk_score": 0.88, "hard_block_triggered": True},
+        evaluation={
+            "risk_score": 0.88,
+            "hard_block_triggered": True,
+            "rule_results": [
+                {"rule_id": "custom_blacklist", "triggered": True},
+            ],
+        },
         source="backend",
     )
 
     response = build_browseros_block_response(
-        original_url="https://example.com/login",
+        original_url="http://example.com/login",
         decision=decision,
     )
 
     assert response.status_code == 403
     assert response.headers["X-AgentGuard-Decision"] == "block"
     assert response.headers["X-AgentGuard-Continuation"] == "available"
+    payload = json.loads(response.content.decode("utf-8"))
+    assert payload["reason_code"] == "custom_blacklist"
+    assert payload["blocked_url"] == "http://example.com/login"
+    assert payload["constraints"]["require_https"] is True
+    assert "example.com" in payload["constraints"]["forbidden_hosts"]
+    assert any(item.get("type") == "search" for item in payload["safe_alternatives"])
+    assert any(item.get("type") == "navigate" for item in payload["safe_alternatives"])

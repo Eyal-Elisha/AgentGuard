@@ -6,6 +6,7 @@ from backend.analysis.rules import Decision
 from backend.custom_blacklist import custom_blacklist_matches
 from backend.proxy.enforcement import (
     build_browseros_block_response,
+    build_browseros_recovery_response,
     build_block_response,
     build_enforcement_response,
     build_warn_body,
@@ -85,6 +86,11 @@ def _make_block_response(flow: http.HTTPFlow, decision):
     navigations (browser will display it), plain 403 text otherwise
     (XHR / sub-resource / non-navigation requests can't render HTML)."""
     if _is_browseros_agent(flow) and not is_backend_failure_source(decision.source):
+        if _is_get_navigation(flow):
+            return build_browseros_recovery_response(
+                original_url=flow.request.pretty_url,
+                decision=decision,
+            )
         return build_browseros_block_response(
             original_url=flow.request.pretty_url,
             decision=decision,
