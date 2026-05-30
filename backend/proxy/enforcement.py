@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 from typing import Any, Dict
+from urllib.parse import urlsplit
 
 from mitmproxy import http
 
@@ -174,6 +176,65 @@ def build_enforcement_response(decision: BackendDecision) -> http.Response:
         decision=Decision.BLOCK,
         reason=decision.reason,
     )
+
+
+def is_backend_failure_source(source: str) -> bool:
+    return source in _BACKEND_FAILURE_SOURCES
+
+
+def _alternative_query_from_url(url: str) -> str:
+    try:
+        host = (urlsplit(url).hostname or "").strip()
+    except ValueError:
+        host = ""
+    if host:
+        return f"official site for {host}"
+    return "official site for requested service"
+
+
+def _risk_payload(evaluation: Dict[str, Any] | None) -> Dict[str, Any]:
+    if not isinstance(evaluation, dict):
+        return {"score": None, "hard_block_triggered": None}
+    score = evaluation.get("risk_score")
+    hard_block = evaluation.get("hard_block_triggered")
+    normalized_score = float(score) if isinstance(score, (int, float)) else None
+    normalized_hard_block = bool(hard_block) if isinstance(hard_block, bool) else None
+    return {
+        "score": normalized_score,
+        "hard_block_triggered": normalized_hard_block,
+    }
+
+
+def build_browseros_block_response(*, original_url: str, decision: BackendDecision) -> http.Response:
+    payload = {
+        "decision": Decision.BLOCK.value,
+        "enforcement_mode": "soft_block",
+        "reason": decision.reason,
+        "risk": _risk_payload(decision.evaluation),
+        "retryable": True,
+        "agent_instruction": (
+            "Do not access this URL directly. Continue the task using safer alternatives."
+        ),
+        "safe_alternatives": [
+            {
+                "type": "search",
+                "query": _alternative_query_from_url(original_url),
+            },
+            {
+                "type": "navigate",
+                "url": get_dashboard_url(),
+                "label": "AgentGuard dashboard",
+            },
+        ],
+        "cooldown_seconds": 30,
+    }
+    headers = {
+        "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": "no-store",
+        "X-AgentGuard-Decision": Decision.BLOCK.value,
+        "X-AgentGuard-Continuation": "available",
+    }
+    return http.Response.make(_BLOCK_STATUS_CODE, json.dumps(payload), headers)
 
 
 def _reason_text_for_block(decision: BackendDecision) -> str:

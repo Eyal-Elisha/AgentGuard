@@ -5,10 +5,12 @@ from mitmproxy import http
 from backend.analysis.rules import Decision
 from backend.custom_blacklist import custom_blacklist_matches
 from backend.proxy.enforcement import (
+    build_browseros_block_response,
     build_block_response,
     build_enforcement_response,
     build_warn_body,
     build_warn_response,
+    is_backend_failure_source,
     local_rule_block_decision,
 )
 from backend.proxy.filter_logging import should_log_request, should_log_response
@@ -63,10 +65,30 @@ def _is_get_navigation(flow: http.HTTPFlow) -> bool:
     return flow.request.method.upper() == "GET"
 
 
+def _agent_name_from_flow(flow: http.HTTPFlow) -> str | None:
+    value = flow.request.headers.get("x-agentguard-agent") or flow.request.headers.get("x-agent-name")
+    if not isinstance(value, str):
+        return None
+    cleaned = value.strip()
+    return cleaned if cleaned else None
+
+
+def _is_browseros_agent(flow: http.HTTPFlow) -> bool:
+    agent_name = _agent_name_from_flow(flow)
+    if not agent_name:
+        return False
+    return agent_name.casefold().replace(" ", "") == "browseros"
+
+
 def _make_block_response(flow: http.HTTPFlow, decision):
     """Pick the rendered Block response: HTML interstitial for GET
     navigations (browser will display it), plain 403 text otherwise
     (XHR / sub-resource / non-navigation requests can't render HTML)."""
+    if _is_browseros_agent(flow) and not is_backend_failure_source(decision.source):
+        return build_browseros_block_response(
+            original_url=flow.request.pretty_url,
+            decision=decision,
+        )
     if _is_get_navigation(flow):
         return build_block_response(
             original_url=flow.request.pretty_url,

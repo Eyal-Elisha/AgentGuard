@@ -267,3 +267,23 @@ def test_build_enforcement_response_uses_fail_closed_status_for_backend_failure(
 
     assert response.status_code == 503
     assert response.headers["X-AgentGuard-Decision"] == "block"
+
+
+def test_build_browseros_block_response_shape():
+    from backend.proxy.enforcement import build_browseros_block_response
+
+    decision = BackendDecision(
+        decision=Decision.BLOCK,
+        reason="blocked upstream",
+        evaluation={"risk_score": 0.88, "hard_block_triggered": True},
+        source="backend",
+    )
+
+    response = build_browseros_block_response(
+        original_url="https://example.com/login",
+        decision=decision,
+    )
+
+    assert response.status_code == 403
+    assert response.headers["X-AgentGuard-Decision"] == "block"
+    assert response.headers["X-AgentGuard-Continuation"] == "available"

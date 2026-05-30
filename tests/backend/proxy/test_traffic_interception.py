@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -112,3 +113,29 @@ def test_blacklisted_subresource_is_blocked_locally_without_backend_call():
     assert flow.response is not None
     assert flow.response.status_code == 403
     assert flow.metadata["agentguard_enforcement"]["source"] == "proxy_custom_blacklist"
+
+
+def test_browseros_block_gets_soft_block_json_with_alternatives():
+    flow = _make_flow()
+    flow.request.headers["x-agentguard-agent"] = "browserOS"
+    decision = BackendDecision(
+        decision=Decision.BLOCK,
+        reason="blocked upstream",
+        evaluation={"decision": "block", "risk_score": 0.91, "hard_block_triggered": True},
+        source="backend",
+    )
+
+    with patch("backend.proxy.addon.should_forward", return_value=True), patch(
+        "backend.proxy.addon.should_log_request", return_value=False
+    ), patch("backend.proxy.addon.fetch_backend_decision", return_value=decision):
+        handle_request(flow)
+
+    assert flow.response is not None
+    assert flow.response.status_code == 403
+    assert flow.response.headers["Content-Type"].startswith("application/json")
+    assert flow.response.headers["X-AgentGuard-Decision"] == "block"
+    assert flow.response.headers["X-AgentGuard-Continuation"] == "available"
+    payload = json.loads(flow.response.content.decode("utf-8"))
+    assert payload["enforcement_mode"] == "soft_block"
+    assert payload["retryable"] is True
+    assert payload["safe_alternatives"][0]["type"] == "search"
