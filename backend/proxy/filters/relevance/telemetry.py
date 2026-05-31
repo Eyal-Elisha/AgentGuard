@@ -10,6 +10,7 @@ _TRACKING_HOST_PARTS = (
     "posthog.com",
     "google-analytics.com",
     "googletagmanager.com",
+    "adtrafficquality.google",
     "doubleclick.net",
     "ad-delivery.net",
     "adform.net",
