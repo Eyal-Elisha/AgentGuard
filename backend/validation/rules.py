@@ -116,11 +116,16 @@ def validate_rules_analysis_payload(payload: dict | None) -> tuple[dict | None, 
     if details is None:
         return None, "Invalid details"
 
+    hard_block = payload.get("hard_block", False)
+    if not isinstance(hard_block, bool):
+        return None, "Invalid hard_block"
+
     return {
         "event_id": event_id,
         "rule_code": rule_code,
         "rule_score": rule_score,
         "details": details,
+        "hard_block": hard_block,
     }, None
 
 
