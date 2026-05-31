@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import sqlite3
 import tempfile
 import unittest
 from datetime import datetime, timezone
@@ -250,6 +251,20 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
             response.get_json(),
             {"error": "Provided session_id does not reference an existing session"},
         )
+
+    def test_proxy_decision_database_errors_return_503_and_log(self):
+        with (
+            patch(
+                "backend.routes.proxy.store.session_get",
+                side_effect=sqlite3.OperationalError("database is locked"),
+            ),
+            self.assertLogs("agentguard.api", level="ERROR") as logs,
+        ):
+            response = self.client.post("/api/proxy/decision", json=self._payload(session_id=1))
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.get_json(), {"error": "Database temporarily unavailable"})
+        self.assertTrue(any("database is locked" in message for message in logs.output))
 
     def test_proxy_decision_requires_active_session(self):
         with patch("backend.routes.proxy.evaluate_http_payload", return_value=_make_result(Decision.ALLOW)):
