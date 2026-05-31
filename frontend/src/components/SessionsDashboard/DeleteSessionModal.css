@@ -1,0 +1,75 @@
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(3px);
+  animation: backdrop-in 150ms ease;
+}
+
+.modal-card {
+  background: linear-gradient(135deg, var(--bg-surface-primary, #0f172a) 0%, var(--bg-surface-secondary, #1e293b) 100%);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+  padding: var(--space-2xl) var(--space-2xl) var(--space-xl);
+  max-width: 26rem;
+  width: calc(100% - var(--space-2xl) * 2);
+  animation: modal-in 180ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.modal-title {
+  margin: 0 0 var(--space-md);
+  font-size: var(--font-xl);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.modal-body {
+  margin: 0 0 var(--space-xl);
+  font-size: var(--font-sm);
+  line-height: 1.6;
+  color: var(--color-text-muted);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-md);
+}
+
+.modal-btn {
+  padding: var(--space-sm) var(--space-xl);
+  border-radius: var(--radius-md);
+  font-size: var(--font-sm);
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: opacity 140ms ease, transform 100ms ease;
+}
+
+.modal-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.modal-btn:not(:disabled):active { transform: scale(0.97); }
+
+.modal-btn--cancel {
+  background: transparent;
+  border-color: var(--color-border-subtle);
+  color: var(--color-text-muted);
+}
+
+.modal-btn--cancel:not(:disabled):hover { color: var(--color-text-body); border-color: var(--color-text-muted); }
+
+.modal-btn--confirm {
+  background: color-mix(in srgb, var(--color-risk-high) 80%, #7f1d1d);
+  border-color: color-mix(in srgb, var(--color-risk-high) 60%, transparent);
+  color: #fff;
+}
+
+.modal-btn--confirm:not(:disabled):hover { opacity: 0.88; }
+.modal-btn--confirm:focus-visible { outline: 2px solid var(--color-risk-high); outline-offset: 2px; }
+
+@keyframes backdrop-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes modal-in { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }

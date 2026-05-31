@@ -1,12 +1,32 @@
+@import './styles/theme.css';
+
 :root {
-  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI',
-    sans-serif;
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
+
+  /* Colors - Surfaces & Opacities (Using theme tokens where possible) */
+  --bg-surface-primary: var(--color-bg-deep);
+  --bg-surface-secondary: rgba(15, 23, 42, 0.45);
+  --bg-overlay: rgba(2, 6, 23, 0.55);
+
+  /* Shadows */
+  --shadow-toast: 0 12px 30px rgba(0, 0, 0, 0.45);
+
+  /* Typography Scale */
+  --font-xs: 0.7rem;
+  --font-sm: 0.85rem;
+  --font-base: 1rem;
+  --font-lg: 1.15rem;
+  --font-xl: 1.5rem;
+  --font-2xl: 2rem;
+  --font-3xl: 2.6rem;
+
+  /* Existing Root Styles */
   font-family: var(--font-sans);
   line-height: 1.5;
   font-weight: 400;
   color-scheme: dark;
-  color: #e5e7eb;
-  background-color: #020617;
+  color: var(--color-text-body);
+  background-color: var(--bg-surface-primary);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;

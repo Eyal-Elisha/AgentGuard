@@ -45,3 +45,11 @@ def user_get(user_id: int) -> dict[str, Any] | None:
         row = cur.fetchone()
         return dict(row) if row else None
 
+
+def users_list_all() -> list[dict[str, Any]]:
+    with _connect() as conn:
+        cur = conn.execute(
+            "SELECT user_id, username, is_admin FROM users ORDER BY user_id ASC"
+        )
+        return [dict(r) for r in cur.fetchall()]
+

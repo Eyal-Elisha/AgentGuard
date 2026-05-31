@@ -1,106 +1,31 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import SessionSearchBar from './SessionSearchBar.jsx';
 import SessionsTable from './SessionsTable.jsx';
-import {
-  fetchSessionEventStats,
-  normalizeSession,
-  readErrorMessage,
-} from './sessionUtils.js';
+import { useSessions } from '../../hooks/useSessions.js';
+import { useDeleteSession } from '../../hooks/useDeleteSession.js';
+import { useProxy } from '../../context/ProxyContext.jsx';
 import './SessionsDashboard.css';
 
 function SessionsDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [sessions, setSessions] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { filteredSessions, sessions, isLoading, error, refresh, removeSession } = useSessions(searchTerm);
+  const { deleteSession, isPending: deletePending, error: deleteError } = useDeleteSession();
+  const showTable = !isLoading && !error;
+
+  const { isProxyActive } = useProxy();
+  const prevProxyActive = useRef(isProxyActive);
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function loadSessions() {
-      const base = import.meta.env.VITE_API_BASE_URL;
-      if (base == null || String(base).trim() === '') {
-        if (!cancelled) {
-          setError('API base URL is not configured. Set VITE_API_BASE_URL in your .env file.');
-          setIsLoading(false);
-        }
-        return;
-      }
-
-      const baseUrl = String(base).replace(/\/$/, '');
-      const url = `${baseUrl}/sessions`;
-
-      try {
-        const response = await fetch(url);
-
-        if (!response.ok) {
-          const message = await readErrorMessage(response);
-          if (!cancelled) {
-            setSessions([]);
-            setError(message);
-          }
-          return;
-        }
-
-        const data = await response.json();
-        if (!Array.isArray(data)) {
-          if (!cancelled) {
-            setSessions([]);
-            setError('Received an unexpected response from the server.');
-          }
-          return;
-        }
-
-        if (!cancelled) {
-          const merged = await Promise.all(
-            data.map(async (raw) => {
-              const avg = await fetchSessionEventStats(
-                baseUrl,
-                raw.session_id,
-              );
-              return normalizeSession({
-                ...raw,
-                average_risk_score:
-                  avg !== null ? avg : raw.average_risk_score,
-              });
-            }),
-          );
-          setSessions(merged);
-          setError(null);
-        }
-      } catch {
-        if (!cancelled) {
-          setSessions([]);
-          setError(
-            'Unable to reach the server. Check your connection and that the API is running.',
-          );
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
+    if (prevProxyActive.current !== isProxyActive) {
+      // Small delay on activation gives backend proxy time to create session
+      if (!prevProxyActive.current && isProxyActive) {
+        setTimeout(refresh, 500);
+      } else {
+        refresh();
       }
     }
-
-    loadSessions();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const filteredSessions = useMemo(() => {
-    const query = searchTerm.trim().toLowerCase();
-    if (!query) return sessions;
-    return sessions.filter(
-      (session) =>
-        session.agent_name.toLowerCase().includes(query) ||
-        session.session_id.toLowerCase().includes(query) ||
-        (session.user_id != null &&
-          String(session.user_id).includes(query)),
-    );
-  }, [searchTerm, sessions]);
-
-  const showTable = !isLoading && !error;
+    prevProxyActive.current = isProxyActive;
+  }, [isProxyActive, refresh]);
 
   return (
     <div className="sessions-page">
@@ -131,6 +56,9 @@ function SessionsDashboard() {
             <SessionsTable
               filteredSessions={filteredSessions}
               sessions={sessions}
+              onDeleteSession={deleteSession}
+              deleteState={{ isPending: deletePending, error: deleteError }}
+              removeSession={removeSession}
             />
           )}
         </div>

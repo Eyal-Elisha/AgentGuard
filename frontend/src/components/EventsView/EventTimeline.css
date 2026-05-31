@@ -1,0 +1,96 @@
+@import './EventTimelineBadges.css';
+
+.events-timeline-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.events-timeline-item {
+  position: relative;
+  box-sizing: border-box;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface-secondary);
+  color: inherit;
+  text-align: left;
+  padding: var(--space-lg);
+  cursor: pointer;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.events-corner-id {
+  position: absolute;
+  top: var(--space-sm);
+  left: var(--space-sm);
+  font-size: var(--font-xs);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--color-slate-400);
+  background: var(--bg-overlay);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-pill);
+  padding: var(--space-xs) var(--space-sm);
+  pointer-events: none;
+}
+
+.events-timeline-item:hover {
+  border-color: var(--color-border-subtle);
+  transform: translateY(-1px);
+}
+
+/* Selected States with Risk Mix */
+.events-timeline-item--selected.event-action--block {
+  border-color: var(--color-risk-high);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-risk-high) 30%, transparent), 0 0 10px color-mix(in srgb, var(--color-risk-high) 30%, transparent);
+}
+
+.events-timeline-item--selected.event-action--warn {
+  border-color: var(--color-risk-medium);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-risk-medium) 30%, transparent), 0 0 10px color-mix(in srgb, var(--color-risk-medium) 30%, transparent);
+}
+
+.events-timeline-item--selected.event-action--allow {
+  border-color: var(--color-risk-low);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-risk-low) 20%, transparent), 0 0 10px color-mix(in srgb, var(--color-risk-low) 20%, transparent);
+}
+
+.events-timeline-dot {
+  position: absolute;
+  left: calc(-1 * var(--space-sm));
+  top: var(--space-md);
+  width: var(--space-sm);
+  height: var(--space-sm);
+  border-radius: var(--radius-pill);
+  z-index: 1;
+}
+
+.events-timeline-line {
+  position: absolute;
+  left: calc(-1 * var(--space-sm));
+  top: var(--space-lg);
+  width: 2px;
+  height: calc(100% + var(--space-md));
+  background: var(--color-border-subtle);
+}
+
+.events-timeline-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding-left: 3.5rem; /* Indentation for corner badge */
+}
+
+.events-timeline-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.events-timestamp {
+  color: var(--color-text-body);
+  font-size: var(--font-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}

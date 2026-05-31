@@ -8,6 +8,25 @@ from backend.proxy.filters.relevance.actions import is_meaningful_user_action
 from backend.proxy.filters.relevance import is_relevant_for_analysis
 from backend.proxy.filters.relevance.navigation import is_top_level_navigation
 from backend.proxy.rule_engine import get_custom_blacklist
+from backend.settings import get_api_port, get_frontend_port
+
+
+def _is_loopback_host(host: str) -> bool:
+    h = (host or "").lower().strip()
+    if len(h) >= 2 and h[0] == "[" and h[-1] == "]":
+        h = h[1:-1]
+    return h in ("127.0.0.1", "localhost", "::1")
+
+
+def _is_local_agentguard_service(flow: http.HTTPFlow) -> bool:
+    """Do not MITM-enforce traffic to our own dashboard or decision API (loopback)."""
+    if not _is_loopback_host(flow.request.host):
+        return False
+    try:
+        port = int(getattr(flow.request, "port", None))
+    except (TypeError, ValueError):
+        return False
+    return port in (get_api_port(), get_frontend_port())
 
 
 def should_audit_blacklisted_request(flow: http.HTTPFlow) -> bool:

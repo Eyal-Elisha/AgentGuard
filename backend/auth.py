@@ -64,6 +64,11 @@ def get_optional_auth_payload(req: Request) -> tuple[dict[str, Any] | None, str 
     return payload, None
 
 
+def request_is_admin() -> bool:
+    """True when the current JWT claim marks the user as admin."""
+    return bool(getattr(g, "jwt_is_admin", False))
+
+
 def require_jwt(f: Callable) -> Callable:
     """Require a valid JWT unless REQUIRE_AUTH is false."""
 
@@ -77,6 +82,19 @@ def require_jwt(f: Callable) -> Callable:
         g.jwt_user_id = payload["sub"]
         g.jwt_username = payload.get("username")
         g.jwt_is_admin = payload.get("is_admin", False)
+        return f(*args, **kwargs)
+
+    return wrapper
+
+
+def require_admin(f: Callable) -> Callable:
+    """Require JWT authentication and an admin user."""
+
+    @require_jwt
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if not request_is_admin():
+            return jsonify({"error": "Forbidden"}), 403
         return f(*args, **kwargs)
 
     return wrapper

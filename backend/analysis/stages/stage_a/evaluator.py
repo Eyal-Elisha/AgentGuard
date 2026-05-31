@@ -6,6 +6,7 @@ from typing import List, Mapping, Optional
 
 from backend.feature_extraction.feature_extractor import ExtractedFeatures
 from backend.analysis.rules import (
+    CONTEXTUAL_RULE_CONFIG,
     CONTEXTUAL_RULES,
     DETERMINISTIC_RULES,
     RULE_WEIGHTS,
@@ -20,6 +21,7 @@ from backend.analysis.rules import (
     RuleType,
     SessionContext,
 )
+from backend.analysis.stages.stage_a.contextual_rules import CONTEXTUAL_RULE_FN
 from backend.analysis.stages.stage_a.deterministic_rules import RULE_FN, rule_custom_blacklist
 
 
@@ -28,14 +30,31 @@ def _run_contextual_rules(
     session: SessionContext,
     enabled_rules: Optional[Mapping[str, bool]] = None,
 ) -> List[RuleResult]:
-    """
-    Placeholder for cheap session-aware rule evaluation.
-    Returns an empty list until the session model is in place.
+    """Run all enabled contextual rules against the supplied session snapshot.
+
+    Contextual rules may return a `None` score to indicate they were skipped
+    (preconditions not met). Skipped results are still included in
+    `rule_results` for full audit history but excluded from aggregation by
+    `_aggregate`.
     """
     results: List[RuleResult] = []
     for rule_def in CONTEXTUAL_RULES:
         if not _is_rule_enabled(rule_def.rule_id, enabled_rules):
             continue
+        rule_fn = CONTEXTUAL_RULE_FN.get(rule_def.rule_id)
+        if rule_fn is None:
+            continue
+        config = CONTEXTUAL_RULE_CONFIG.get(rule_def.rule_id, {})
+        score, explanation = rule_fn(session, config)
+        triggered = score is not None and score > 0.0
+        results.append(RuleResult(
+            rule_id=rule_def.rule_id,
+            rule_type=RuleType.CONTEXTUAL,
+            score=score,
+            hard_block=rule_def.hard_block,
+            explanation=explanation,
+            triggered=triggered,
+        ))
     return results
 
 

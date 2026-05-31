@@ -1,35 +1,57 @@
-/** Shown when a table cell has no value (user id, timestamps). En dash — longer than hyphen, same for all empty cells. */
+/** Shown when a table cell has no value (user id, timestamps). */
 export const EMPTY_CELL_DISPLAY = '–';
 
-/**
- * Loads per-session aggregates from the backend (list `/sessions` does not include average risk).
- * Returns null if the request fails or the payload is invalid.
- * @param {Record<string, string>} [headers]
- */
+/** Utility to get risk level string from score */
+export function getRiskLevel(score) {
+  if (typeof score !== 'number' || Number.isNaN(score)) return 'low';
+  if (score > 0.7) return 'high';
+  if (score > 0.4) return 'medium';
+  return 'low';
+}
+
+/** Get API base URL from env */
+export function getApiBase() {
+  const base = import.meta.env.VITE_API_BASE_URL;
+  if (!base) return null;
+  return String(base).replace(/\/$/, '');
+}
+
+import { getToken } from '../../api/authToken.js';
+
+/** Helper for fetching from API with base URL */
+export async function fetchWithBase(path, options = {}) {
+  const base = getApiBase();
+  if (!base) throw new Error('API base URL not configured');
+  
+  const token = getToken();
+  const headers = { ...options.headers };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  return fetch(`${base}${path}`, { ...options, headers });
+}
+
+/** Loads per-session aggregates from the backend. */
 export async function fetchSessionEventStats(baseUrl, sessionId, headers) {
-  const url = `${baseUrl}/sessions/${Number(sessionId)}/events/stats`;
   try {
-    const response = await fetch(url, headers ? { headers } : undefined);
+    const response = await fetchWithBase(`/sessions/${Number(sessionId)}/events/stats`, headers ? { headers } : undefined);
     if (!response.ok) return null;
     const data = await response.json();
     const avg = data?.average_risk_score;
-    if (typeof avg === 'number' && !Number.isNaN(avg)) return avg;
-    return 0;
+    return typeof avg === 'number' && !Number.isNaN(avg) ? avg : 0;
   } catch {
     return null;
   }
 }
 
-/** Maps API session objects to the shape used by the table (list endpoint may omit some fields). */
+/** Maps API session objects to the shape used by the table. */
 export function normalizeSession(sessionData) {
   const avg = sessionData.average_risk_score;
-  const risk =
-    typeof avg === 'number' && !Number.isNaN(avg) ? avg : 0;
+  const risk = typeof avg === 'number' && !Number.isNaN(avg) ? avg : 0;
   const rawUserId = sessionData.user_id;
-  const user_id =
-    typeof rawUserId === 'number' && Number.isFinite(rawUserId)
-      ? rawUserId
-      : null;
+  const user_id = typeof rawUserId === 'number' && Number.isFinite(rawUserId) ? rawUserId : null;
+  
   return {
     session_id: String(sessionData.session_id),
     agent_name: sessionData.agent_name ?? '',
@@ -40,7 +62,6 @@ export function normalizeSession(sessionData) {
   };
 }
 
-/** True when `formatIsoLocal` would show {@link EMPTY_CELL_DISPLAY} instead of a formatted time. */
 export function isIsoEmpty(iso) {
   if (iso == null || iso === '') return true;
   const d = new Date(iso);
@@ -52,21 +73,13 @@ export function formatIsoLocal(iso) {
   return new Date(iso).toLocaleString();
 }
 
-/**
- * @param {Response} response
- * @param {string} [resourceLabel] noun phrase for errors, e.g. "sessions" or "rules"
- */
+/** Read error message from response body or status */
 export async function readErrorMessage(response, resourceLabel = 'data') {
   try {
     const body = await response.json();
-    if (body && typeof body.error === 'string' && body.error) {
-      return body.error;
-    }
-  } catch {
-    /* ignore */
-  }
-  if (response.status >= 500) {
-    return 'The server had a problem. Please try again later.';
-  }
+    if (body?.error) return body.error;
+  } catch { /* ignore */ }
+  
+  if (response.status >= 500) return 'The server had a problem. Please try again later.';
   return `Could not load ${resourceLabel} (${response.status}).`;
 }
