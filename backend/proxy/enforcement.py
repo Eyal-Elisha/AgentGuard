@@ -221,6 +221,12 @@ def _site_alternative_candidates(original_url: str) -> list[dict[str, str]]:
         candidates.append(item)
 
     if host:
+        if "monkeytype.com" in host:
+            _add({"type": "navigate", "url": "https://www.keybr.com", "label": "Keybr"})
+            _add({"type": "navigate", "url": "https://www.typing.com/student/typing-test/1-minute", "label": "Typing.com"})
+            _add({"type": "navigate", "url": "https://play.typeracer.com", "label": "TypeRacer"})
+            _add({"type": "search", "query": "best typing practice sites"})
+            return candidates[:4]
         _add({"type": "search", "query": f"official website {host}"})
         _add({"type": "search", "query": f"{host} alternatives"})
 
@@ -291,20 +297,42 @@ def _risk_payload(evaluation: Dict[str, Any] | None) -> Dict[str, Any]:
     }
 
 
+def _format_actionable_reason(*, decision: BackendDecision, alternatives: list[dict[str, str]]) -> str:
+    lines: list[str] = [decision.reason.strip()]
+    lines.append("Immediate next step: choose one safe alternative and continue without asking.")
+    shown = 0
+    for item in alternatives:
+        if item.get("type") == "navigate" and isinstance(item.get("url"), str):
+            lines.append(f"- Navigate to {item['url']}")
+            shown += 1
+        elif item.get("type") == "search" and isinstance(item.get("query"), str):
+            lines.append(f"- Search: {item['query']}")
+            shown += 1
+        if shown >= 3:
+            break
+    return "\n".join(lines)
+
+
 def build_browseros_block_response(*, original_url: str, decision: BackendDecision) -> http.Response:
+    alternatives = _site_alternative_candidates(original_url)
     payload = {
         "decision": Decision.BLOCK.value,
         "enforcement_mode": "soft_block",
         "blocked_url": original_url,
         "reason_code": _reason_code(original_url=original_url, decision=decision),
-        "reason": decision.reason,
+        "reason": _format_actionable_reason(decision=decision, alternatives=alternatives),
         "risk": _risk_payload(decision.evaluation),
         "retryable": True,
         "goal_preservation_instruction": (
-            "Do not access this URL directly. Continue the task using safer alternatives."
+            "Do not ask for confirmation. Immediately continue the same task using a safe alternative, "
+            "then report what you chose and why."
         ),
+        "required_next_action": (
+            "Pick one safe alternative now, navigate to it, and continue the user task automatically."
+        ),
+        "auto_navigation_target": _recovery_auto_target(alternatives),
         "constraints": _constraints(original_url=original_url, decision=decision),
-        "safe_alternatives": _site_alternative_candidates(original_url)
+        "safe_alternatives": alternatives
         + [
             {
                 "type": "navigate",

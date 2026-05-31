@@ -17,6 +17,7 @@ from backend.proxy.enforcement import (
 from backend.proxy.filter_logging import should_log_request, should_log_response
 from backend.proxy.filter_requests import should_forward
 from backend.proxy.filters.response_eligibility_filter import should_ignore_response
+from backend.proxy.prompting import augment_request_body
 from backend.proxy.request_decision import fetch_backend_decision
 from backend.proxy.response_decision import fetch_backend_response_decision
 from backend.proxy.rule_engine import get_custom_blacklist
@@ -203,6 +204,8 @@ def handle_request(flow: http.HTTPFlow) -> None:
 
     if not should_forward(flow):
         return
+
+    augment_request_body(flow.request)
 
     # Stage 1: redeem a one-shot bypass token (`?_agentguard_bypass=...`).
     if _maybe_redeem_bypass_token(flow):

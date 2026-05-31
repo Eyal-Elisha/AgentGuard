@@ -1,0 +1,71 @@
+:root[data-theme='light'] body {
+  background: radial-gradient(circle at top, #fffaf2 0, #edf5ff 58%, #f8fcff 100%);
+}
+
+:root[data-theme='light'] .app-header,
+:root[data-theme='light'] .app-layout {
+  background: linear-gradient(to right, #fffdf8 0, #f6faff 42%, #fffefb 100%);
+}
+
+:root[data-theme='light'] .app-header {
+  border-bottom-color: rgba(184, 200, 221, 0.65);
+}
+
+:root[data-theme='light'] .home-shell,
+:root[data-theme='light'] .sessions-shell,
+:root[data-theme='light'] .rules-shell,
+:root[data-theme='light'] .admin-dashboard {
+  background: linear-gradient(135deg, #ffffff 0, #f9fcff 60%, #fffdf8 100%);
+  border-color: rgba(184, 200, 221, 0.62);
+  box-shadow: 0 14px 28px rgba(78, 120, 172, 0.1);
+}
+
+:root[data-theme='light'] .sessions-table-wrap,
+:root[data-theme='light'] .rules-table-wrap,
+:root[data-theme='light'] .events-table-wrap,
+:root[data-theme='light'] .timeline-panel,
+:root[data-theme='light'] .analysis-panel {
+  background: linear-gradient(to bottom, #ffffff, #f7fbff) !important;
+  border-color: rgba(184, 200, 221, 0.62) !important;
+}
+
+:root[data-theme='light'] .sessions-table thead,
+:root[data-theme='light'] .rules-table thead,
+:root[data-theme='light'] .events-table thead {
+  background: #f1f7ff !important;
+}
+
+:root[data-theme='light'] .sessions-row,
+:root[data-theme='light'] .rules-row,
+:root[data-theme='light'] .events-row {
+  background: rgba(255, 255, 255, 1) !important;
+  border-top-color: rgba(214, 225, 240, 0.86) !important;
+}
+
+:root[data-theme='light'] .sessions-row:hover,
+:root[data-theme='light'] .rules-row:hover,
+:root[data-theme='light'] .events-row:hover {
+  background: rgba(235, 245, 255, 0.72) !important;
+}
+
+:root[data-theme='light'] .session-search-input,
+:root[data-theme='light'] .rules-filter-select,
+:root[data-theme='light'] .agent-selector,
+:root[data-theme='light'] .theme-toggle-btn {
+  background: #ffffff !important;
+  border-color: rgba(184, 200, 221, 0.82) !important;
+}
+
+:root[data-theme='light'] .home-power-button--off {
+  background: linear-gradient(145deg, #d8e6f7 0%, #bdd3ee 100%) !important;
+  color: #355678 !important;
+}
+
+:root[data-theme='light'] .home-status-panel,
+:root[data-theme='light'] .proxy-toggle {
+  border-color: rgba(184, 200, 221, 0.82) !important;
+}
+
+:root[data-theme='light'] .nav-tab--active {
+  border: 1px solid rgba(163, 188, 219, 0.88);
+}

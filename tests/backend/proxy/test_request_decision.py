@@ -301,3 +301,28 @@ def test_build_browseros_block_response_shape():
     assert "example.com" in payload["constraints"]["forbidden_hosts"]
     assert any(item.get("type") == "search" for item in payload["safe_alternatives"])
     assert any(item.get("type") == "navigate" for item in payload["safe_alternatives"])
+
+
+def test_build_browseros_block_response_monkeytype_has_direct_alternatives():
+    from backend.proxy.enforcement import build_browseros_block_response
+    import json
+
+    decision = BackendDecision(
+        decision=Decision.BLOCK,
+        reason="blocked upstream",
+        evaluation={"risk_score": 1.0, "hard_block_triggered": True},
+        source="backend",
+    )
+
+    response = build_browseros_block_response(
+        original_url="https://monkeytype.com/",
+        decision=decision,
+    )
+
+    payload = json.loads(response.content.decode("utf-8"))
+    urls = [item.get("url") for item in payload["safe_alternatives"] if item.get("type") == "navigate"]
+    assert "https://www.keybr.com" in urls
+    assert "https://play.typeracer.com" in urls
+    assert payload["required_next_action"].startswith("Pick one safe alternative now")
+    assert isinstance(payload["auto_navigation_target"], str)
+    assert "Immediate next step: choose one safe alternative" in payload["reason"]
