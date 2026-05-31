@@ -127,6 +127,57 @@ class AuthSessionsEventsTestCase(BackendApiTestCase):
         self.assertEqual(body["block"], 0)
         self.assertAlmostEqual(body["average_risk_score"], 0.525)
 
+    def test_historical_events_can_be_queried_by_user_and_risk(self):
+        alice_id = store.user_create("alice-events", hash_password("alice-pass"), False)
+        bob_id = store.user_create("bob-events", hash_password("bob-pass"), False)
+        timestamp = datetime(2026, 3, 25, 12, 0, tzinfo=timezone.utc)
+        alice_session_id = store.session_create(alice_id, timestamp, "test", "agent-a")
+        bob_session_id = store.session_create(bob_id, timestamp, "test", "agent-b")
+
+        alice_event_id = store.event_create(
+            alice_session_id,
+            timestamp,
+            "https://example.test/alice-high",
+            "Warn",
+            0.82,
+            "GET",
+            "{}",
+        )
+        store.event_create(
+            alice_session_id,
+            timestamp,
+            "https://example.test/alice-low",
+            "Allow",
+            0.15,
+            "GET",
+            "{}",
+        )
+        store.event_create(
+            bob_session_id,
+            timestamp,
+            "https://example.test/bob-high",
+            "Block",
+            0.95,
+            "POST",
+            "{}",
+        )
+
+        response = self.client.get(
+            "/events",
+            query_string={"user_id": str(alice_id), "min_risk_score": "0.7"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        body = response.get_json()
+        self.assertEqual(len(body), 1)
+        self.assertEqual(body[0]["event_id"], alice_event_id)
+        self.assertEqual(body[0]["session_id"], alice_session_id)
+        self.assertEqual(body[0]["user_id"], alice_id)
+
+        invalid_user = self.client.get("/events", query_string={"user_id": "not-an-id"})
+        self.assertEqual(invalid_user.status_code, 400)
+        self.assertEqual(invalid_user.get_json()["error"], "Invalid user_id")
+
     def test_second_close_returns_409(self):
         session_id = self.create_session().get_json()["session_id"]
         first = self.client.post(f"/sessions/{session_id}/close")

@@ -266,6 +266,7 @@ def record_proxy_decision(
             rule_code=rule_result.rule_id,
             rule_score=rule_result.score,
             details=rule_result.explanation,
+            hard_block=rule_result.hard_block,
         )
         persisted_rules += 1
         if rule_result.triggered:

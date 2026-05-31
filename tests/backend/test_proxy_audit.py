@@ -145,6 +145,10 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         analyses = store.rule_analysis_list_for_event(audit["event_id"])
         self.assertEqual(len(analyses), 2)
         self.assertEqual({item["rule_code"] for item in analyses}, {"sensitive_fields", "custom_blacklist"})
+        sensitive_analysis = next(item for item in analyses if item["rule_code"] == "sensitive_fields")
+        blacklist_analysis = next(item for item in analyses if item["rule_code"] == "custom_blacklist")
+        self.assertEqual(sensitive_analysis["hard_block"], 0)
+        self.assertEqual(blacklist_analysis["hard_block"], 1)
         self.assertIsNotNone(store.rule_get("sensitive_fields"))
         self.assertIsNotNone(store.rule_get("custom_blacklist"))
 
@@ -333,6 +337,7 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
             if item["rule_code"] == "previously_warned_domain_in_session"
         )
         self.assertEqual(contextual_row["rule_score"], 0.4)
+        self.assertEqual(contextual_row["hard_block"], 0)
         self.assertIn("evil.com", contextual_row["details"])
 
         registered = store.rule_get("previously_warned_domain_in_session")
