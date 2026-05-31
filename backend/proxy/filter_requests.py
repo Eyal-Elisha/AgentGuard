@@ -15,11 +15,23 @@ def should_audit_blacklisted_request(flow: http.HTTPFlow) -> bool:
     return is_top_level_navigation(flow) or is_meaningful_user_action(flow)
 
 
+def _is_speculative_load(flow: http.HTTPFlow) -> bool:
+    """Browser prefetch/prerender — not a deliberate user navigation."""
+    purpose = (flow.request.headers.get("sec-purpose") or "").lower()
+    return "prefetch" in purpose or "prerender" in purpose
+
+
 def should_forward(flow: http.HTTPFlow) -> bool:
     """Forward only user-relevant browser traffic to backend analysis."""
 
     if custom_blacklist_matches(flow.request.host, flow.request.pretty_url, get_custom_blacklist()):
         return should_audit_blacklisted_request(flow)
+
+    if _is_local_agentguard_service(flow):
+        return False
+
+    if _is_speculative_load(flow):
+        return False
 
     if not is_browser_user_agent(flow.request.headers.get("user-agent", "")):
         return False
