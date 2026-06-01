@@ -10,6 +10,11 @@ from mitmproxy import http
 
 from backend.analysis.rules import Decision
 from backend.proxy.block_interstitial import build_block_html
+from backend.proxy.recovery import (
+    format_actionable_reason,
+    recovery_auto_target,
+    required_next_action_text,
+)
 from backend.proxy.warn_bypass import mint_bypass_token
 from backend.proxy.warn_interstitial import build_warn_html
 from backend.settings import BackendFailureMode, get_backend_failure_mode, get_dashboard_url
@@ -221,12 +226,6 @@ def _site_alternative_candidates(original_url: str) -> list[dict[str, str]]:
         candidates.append(item)
 
     if host:
-        if "monkeytype.com" in host:
-            _add({"type": "navigate", "url": "https://www.keybr.com", "label": "Keybr"})
-            _add({"type": "navigate", "url": "https://www.typing.com/student/typing-test/1-minute", "label": "Typing.com"})
-            _add({"type": "navigate", "url": "https://play.typeracer.com", "label": "TypeRacer"})
-            _add({"type": "search", "query": "best typing practice sites"})
-            return candidates[:4]
         _add({"type": "search", "query": f"official website {host}"})
         _add({"type": "search", "query": f"{host} alternatives"})
 
@@ -297,22 +296,6 @@ def _risk_payload(evaluation: Dict[str, Any] | None) -> Dict[str, Any]:
     }
 
 
-def _format_actionable_reason(*, decision: BackendDecision, alternatives: list[dict[str, str]]) -> str:
-    lines: list[str] = [decision.reason.strip()]
-    lines.append("Immediate next step: choose one safe alternative and continue without asking.")
-    shown = 0
-    for item in alternatives:
-        if item.get("type") == "navigate" and isinstance(item.get("url"), str):
-            lines.append(f"- Navigate to {item['url']}")
-            shown += 1
-        elif item.get("type") == "search" and isinstance(item.get("query"), str):
-            lines.append(f"- Search: {item['query']}")
-            shown += 1
-        if shown >= 3:
-            break
-    return "\n".join(lines)
-
-
 def build_browseros_block_response(*, original_url: str, decision: BackendDecision) -> http.Response:
     alternatives = _site_alternative_candidates(original_url)
     payload = {
@@ -320,17 +303,15 @@ def build_browseros_block_response(*, original_url: str, decision: BackendDecisi
         "enforcement_mode": "soft_block",
         "blocked_url": original_url,
         "reason_code": _reason_code(original_url=original_url, decision=decision),
-        "reason": _format_actionable_reason(decision=decision, alternatives=alternatives),
+        "reason": format_actionable_reason(decision.reason, alternatives),
         "risk": _risk_payload(decision.evaluation),
         "retryable": True,
         "goal_preservation_instruction": (
             "Do not ask for confirmation. Immediately continue the same task using a safe alternative, "
             "then report what you chose and why."
         ),
-        "required_next_action": (
-            "Pick one safe alternative now, navigate to it, and continue the user task automatically."
-        ),
-        "auto_navigation_target": _recovery_auto_target(alternatives),
+        "required_next_action": required_next_action_text(),
+        "auto_navigation_target": recovery_auto_target(alternatives, get_dashboard_url()),
         "constraints": _constraints(original_url=original_url, decision=decision),
         "safe_alternatives": alternatives
         + [
@@ -351,19 +332,9 @@ def build_browseros_block_response(*, original_url: str, decision: BackendDecisi
     return http.Response.make(_BLOCK_STATUS_CODE, json.dumps(payload), headers)
 
 
-def _recovery_auto_target(alternatives: list[dict[str, str]]) -> str:
-    for item in alternatives:
-        if item.get("type") == "navigate" and isinstance(item.get("url"), str):
-            return item["url"]
-    for item in alternatives:
-        if item.get("type") == "search" and isinstance(item.get("query"), str):
-            return f"https://www.google.com/search?q={quote_plus(item['query'])}"
-    return get_dashboard_url()
-
-
 def build_browseros_recovery_response(*, original_url: str, decision: BackendDecision) -> http.Response:
     alternatives = _site_alternative_candidates(original_url)
-    auto_target = _recovery_auto_target(alternatives)
+    auto_target = recovery_auto_target(alternatives, get_dashboard_url())
     rows: list[str] = []
     for item in alternatives:
         if item.get("type") == "navigate":

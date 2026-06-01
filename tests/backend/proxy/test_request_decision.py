@@ -303,7 +303,7 @@ def test_build_browseros_block_response_shape():
     assert any(item.get("type") == "navigate" for item in payload["safe_alternatives"])
 
 
-def test_build_browseros_block_response_monkeytype_has_direct_alternatives():
+def test_build_browseros_block_response_includes_actionable_reason_and_auto_target():
     from backend.proxy.enforcement import build_browseros_block_response
     import json
 
@@ -315,14 +315,11 @@ def test_build_browseros_block_response_monkeytype_has_direct_alternatives():
     )
 
     response = build_browseros_block_response(
-        original_url="https://monkeytype.com/",
+        original_url="https://example.com/",
         decision=decision,
     )
 
     payload = json.loads(response.content.decode("utf-8"))
-    urls = [item.get("url") for item in payload["safe_alternatives"] if item.get("type") == "navigate"]
-    assert "https://www.keybr.com" in urls
-    assert "https://play.typeracer.com" in urls
     assert payload["required_next_action"].startswith("Pick one safe alternative now")
     assert isinstance(payload["auto_navigation_target"], str)
     assert "Immediate next step: choose one safe alternative" in payload["reason"]
