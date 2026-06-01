@@ -4,17 +4,12 @@ from dataclasses import dataclass
 import html
 import json
 from typing import Any, Dict
-from urllib.parse import quote_plus, urlsplit
+from urllib.parse import urlsplit
 
 from mitmproxy import http
 
 from backend.analysis.rules import Decision
 from backend.proxy.block_interstitial import build_block_html
-from backend.proxy.recovery import (
-    format_actionable_reason,
-    recovery_auto_target,
-    required_next_action_text,
-)
 from backend.proxy.warn_bypass import mint_bypass_token
 from backend.proxy.warn_interstitial import build_warn_html
 from backend.settings import BackendFailureMode, get_backend_failure_mode, get_dashboard_url
@@ -188,62 +183,6 @@ def is_backend_failure_source(source: str) -> bool:
     return source in _BACKEND_FAILURE_SOURCES
 
 
-def _normalize_likely_typos(host: str) -> str:
-    table = str.maketrans({
-        "0": "o",
-        "1": "l",
-        "3": "e",
-        "5": "s",
-        "7": "t",
-        "@": "a",
-        "$": "s",
-    })
-    translated = host.translate(table)
-    # Collapse over-repeated characters (e.g., "gooogle" -> "google").
-    collapsed: list[str] = []
-    for ch in translated:
-        if len(collapsed) >= 2 and collapsed[-1] == ch and collapsed[-2] == ch:
-            continue
-        collapsed.append(ch)
-    return "".join(collapsed)
-
-
-def _site_alternative_candidates(original_url: str) -> list[dict[str, str]]:
-    try:
-        parts = urlsplit(original_url)
-        host = (parts.hostname or "").strip().lower()
-    except ValueError:
-        host = ""
-
-    candidates: list[dict[str, str]] = []
-    seen: set[str] = set()
-
-    def _add(item: dict[str, str]) -> None:
-        key = json.dumps(item, sort_keys=True)
-        if key in seen:
-            return
-        seen.add(key)
-        candidates.append(item)
-
-    if host:
-        _add({"type": "search", "query": f"official website {host}"})
-        _add({"type": "search", "query": f"{host} alternatives"})
-
-        typo_fixed = _normalize_likely_typos(host)
-        if typo_fixed != host and "." in typo_fixed:
-            _add({"type": "navigate", "url": f"https://{typo_fixed}"})
-
-        if host.startswith("www.") and len(host) > 4:
-            _add({"type": "navigate", "url": f"https://{host[4:]}"})
-        else:
-            _add({"type": "navigate", "url": f"https://www.{host}"})
-    else:
-        _add({"type": "search", "query": "official website for requested service"})
-        _add({"type": "search", "query": "safe alternatives for requested service"})
-
-    return candidates[:4]
-
-
 def _reason_code(*, original_url: str, decision: BackendDecision) -> str:
     evaluation = decision.evaluation if isinstance(decision.evaluation, dict) else None
     if isinstance(evaluation, dict):
@@ -297,30 +236,16 @@ def _risk_payload(evaluation: Dict[str, Any] | None) -> Dict[str, Any]:
 
 
 def build_browseros_block_response(*, original_url: str, decision: BackendDecision) -> http.Response:
-    alternatives = _site_alternative_candidates(original_url)
     payload = {
         "decision": Decision.BLOCK.value,
         "enforcement_mode": "soft_block",
         "blocked_url": original_url,
         "reason_code": _reason_code(original_url=original_url, decision=decision),
-        "reason": format_actionable_reason(decision.reason, alternatives),
+        "reason": decision.reason,
         "risk": _risk_payload(decision.evaluation),
         "retryable": True,
-        "goal_preservation_instruction": (
-            "Do not ask for confirmation. Immediately continue the same task using a safe alternative, "
-            "then report what you chose and why."
-        ),
-        "required_next_action": required_next_action_text(),
-        "auto_navigation_target": recovery_auto_target(alternatives, get_dashboard_url()),
         "constraints": _constraints(original_url=original_url, decision=decision),
-        "safe_alternatives": alternatives
-        + [
-            {
-                "type": "navigate",
-                "url": get_dashboard_url(),
-                "label": "AgentGuard dashboard",
-            }
-        ],
+        "safe_alternatives": [{"type": "navigate", "url": get_dashboard_url(), "label": "AgentGuard dashboard"}],
         "cooldown_seconds": 30,
     }
     headers = {
@@ -333,21 +258,8 @@ def build_browseros_block_response(*, original_url: str, decision: BackendDecisi
 
 
 def build_browseros_recovery_response(*, original_url: str, decision: BackendDecision) -> http.Response:
-    alternatives = _site_alternative_candidates(original_url)
-    auto_target = recovery_auto_target(alternatives, get_dashboard_url())
-    rows: list[str] = []
-    for item in alternatives:
-        if item.get("type") == "navigate":
-            url = str(item.get("url", ""))
-            rows.append(
-                f'<li><a href="{html.escape(url)}">Try: {html.escape(url)}</a></li>'
-            )
-        elif item.get("type") == "search":
-            query = str(item.get("query", ""))
-            url = f"https://www.google.com/search?q={quote_plus(query)}"
-            rows.append(
-                f'<li><a href="{html.escape(url)}">Search: {html.escape(query)}</a></li>'
-            )
+    auto_target = get_dashboard_url()
+    rows = [f'<li><a href="{html.escape(auto_target)}">Open AgentGuard dashboard</a></li>']
 
     body = f"""<!doctype html>
 <html lang="en">
