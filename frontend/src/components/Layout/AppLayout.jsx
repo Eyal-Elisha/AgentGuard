@@ -9,7 +9,7 @@ export default function AppLayout() {
   const { currentUser, logout } = useAuth();
 
   return (
-    <div className="app-layout agentguard-theme">
+    <div className="app-layout">
       <header className="app-header">
         <div className="app-header-left" style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
           <NavLink to="/" className="app-brand" end>
