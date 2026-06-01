@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import ipaddress
+import logging
+import sqlite3
 from typing import Any
 
 from flask import jsonify, request, g
@@ -21,6 +23,8 @@ from backend.storage import sqlite_store as store
 from backend.validation.common import ALLOWED_ENVIRONMENTS, parse_iso_datetime, parse_positive_int
 
 from . import api_bp
+
+_api_logger = logging.getLogger("agentguard.api")
 
 try:
     from proxy_launcher import (
@@ -171,21 +175,6 @@ def proxy_decision():
         return jsonify({"error": "'agent_name' must be a non-empty string when provided"}), 400
     agent_name_was_provided = payload.get("agent_name") is not None
 
-    if session_id is not None:
-        session = store.session_get(session_id)
-        if session is None:
-            return jsonify({"error": "Provided session_id does not reference an existing session"}), 400
-        if session.get("end_time") is not None:
-            return jsonify({"error": "Provided session_id is already closed"}), 400
-        session_environment = str(session["environment"])
-        session_agent_name = str(session["agent_name"])
-        if environment_was_provided and session_environment != environment:
-            return jsonify({"error": "Provided environment does not match the referenced session"}), 400
-        if agent_name_was_provided and normalize_proxy_agent_name(agent_name) != session_agent_name:
-            return jsonify({"error": "Provided agent_name does not match the referenced session"}), 400
-        environment = session_environment
-        agent_name = session_agent_name
-
     body = payload["body"]
     if isinstance(body, str):
         body = body.encode("utf-8", errors="replace")
@@ -195,24 +184,35 @@ def proxy_decision():
         body = str(body).encode("utf-8", errors="replace")
 
     try:
+        if session_id is not None:
+            session = store.session_get(session_id)
+            if session is None:
+                return jsonify({"error": "Provided session_id does not reference an existing session"}), 400
+            if session.get("end_time") is not None:
+                return jsonify({"error": "Provided session_id is already closed"}), 400
+            session_environment = str(session["environment"])
+            session_agent_name = str(session["agent_name"])
+            if environment_was_provided and session_environment != environment:
+                return jsonify({"error": "Provided environment does not match the referenced session"}), 400
+            if agent_name_was_provided and normalize_proxy_agent_name(agent_name) != session_agent_name:
+                return jsonify({"error": "Provided agent_name does not match the referenced session"}), 400
+            environment = session_environment
+            agent_name = session_agent_name
+
         resolved_session_id = resolve_proxy_session_id(
             session_id=session_id,
             timestamp=timestamp,
             environment=environment,
             agent_name=normalize_proxy_agent_name(agent_name),
         )
-    except ValueError as exc:
-        return jsonify({"error": str(exc)}), 400
-
-    result = evaluate_http_payload(
-        url=url,
-        method=method.upper(),
-        headers=headers,
-        body=body,
-        session_id=resolved_session_id,
-        timestamp=timestamp,
-    )
-    try:
+        result = evaluate_http_payload(
+            url=url,
+            method=method.upper(),
+            headers=headers,
+            body=body,
+            session_id=resolved_session_id,
+            timestamp=timestamp,
+        )
         audit_record = record_proxy_decision(
             timestamp=timestamp,
             url=url,
@@ -225,6 +225,14 @@ def proxy_decision():
         )
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
+    except sqlite3.OperationalError as exc:
+        _api_logger.error(
+            "POST %s database error: %s",
+            request.path,
+            exc,
+            exc_info=exc,
+        )
+        return jsonify({"error": "Database temporarily unavailable"}), 503
     return jsonify(
         {
             "decision": result.decision.value,

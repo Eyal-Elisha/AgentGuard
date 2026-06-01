@@ -107,3 +107,55 @@ def test_top_level_navigation_bypasses_noise_filter():
         "backend.proxy.filter_requests.is_noise", return_value=True
     ):
         assert should_forward(_flow(host="cdn.example.com")) is True
+
+
+def test_cross_site_json_get_is_not_forwarded():
+    flow = _flow(
+        host="ep2.adtrafficquality.google",
+        path="/sodar/sodar2/254/runner.html",
+        headers={
+            "accept": "application/json",
+            "sec-fetch-dest": "empty",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-site": "cross-site",
+        },
+    )
+    assert should_forward(flow) is False
+
+
+def test_same_site_json_get_is_forwarded():
+    flow = _flow(
+        host="example.com",
+        path="/api/account",
+        headers={
+            "accept": "application/json",
+            "sec-fetch-dest": "empty",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-site": "same-origin",
+        },
+    )
+    with patch("backend.proxy.filter_requests.custom_blacklist_matches", return_value=False), patch(
+        "backend.proxy.filter_requests.is_noise", return_value=False
+    ):
+        assert should_forward(flow) is True
+
+
+def test_google_ad_background_host_is_not_forwarded():
+    flow = _flow(
+        host="ep2.adtrafficquality.google",
+        path="/sodar/sodar2/254/runner.html",
+        headers={"sec-fetch-dest": "iframe", "sec-fetch-mode": "navigate"},
+    )
+    assert should_forward(flow) is False
+
+
+def test_prefetch_navigation_is_not_forwarded():
+    flow = _flow(
+        headers={
+            "sec-fetch-dest": "document",
+            "sec-fetch-mode": "navigate",
+            "sec-purpose": "prefetch",
+        },
+    )
+    with patch("backend.proxy.filter_requests.custom_blacklist_matches", return_value=False):
+        assert should_forward(flow) is False
