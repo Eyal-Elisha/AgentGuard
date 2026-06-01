@@ -1,4 +1,4 @@
-"""Run Stage A evaluation and custom-list checks for proxy traffic."""
+"""Run Stage A (and Stage B if needed) evaluation for proxy traffic."""
 
 from __future__ import annotations
 
@@ -8,7 +8,9 @@ from typing import Optional
 from backend.custom_blacklist import custom_blacklist_file_path, load_custom_blacklist_file
 from backend.analysis.rules import EvaluationResult
 from backend.analysis.stages.stage_a import StageAEvaluator
+from backend.analysis.stages.stage_a.evaluator import _aggregate, _make_decision
 from backend.analysis.stages.stage_a.session_loader import build_context
+from backend.analysis.stages.stage_b import StageBEvaluator
 from backend.feature_extraction.feature_extractor import FeatureExtractor
 from backend.storage import sqlite_store as store
 
@@ -22,18 +24,18 @@ def get_custom_blacklist() -> frozenset[str]:
 def reload_custom_blacklist(entries: frozenset[str]) -> None:
     global _CUSTOM_BLACKLIST
     _CUSTOM_BLACKLIST = entries
-    _evaluator.custom_blacklist = _CUSTOM_BLACKLIST
+    _stage_a.custom_blacklist = _CUSTOM_BLACKLIST
 
 
 _extractor = FeatureExtractor()
-_evaluator = StageAEvaluator(custom_blacklist=_CUSTOM_BLACKLIST)
+_stage_a = StageAEvaluator(custom_blacklist=_CUSTOM_BLACKLIST)
+_stage_b = StageBEvaluator()
 
 
 def _rule_enablement_map() -> dict[str, bool]:
     try:
         rows = store.rules_list_asc()
     except Exception:
-        # Fail open for rule execution if storage is temporarily unavailable.
         return {}
     return {str(row["rule_code"]): bool(row["is_enabled"]) for row in rows}
 
@@ -58,8 +60,24 @@ def evaluate_http_payload(
         current_timestamp=timestamp,
         current_url=url,
     )
-    return _evaluator.evaluate(
+    enablement = _rule_enablement_map()
+    stage_a_result = _stage_a.evaluate(
         features,
         session=session,
-        enabled_rules=_rule_enablement_map(),
+        enabled_rules=enablement,
+    )
+
+    if not stage_a_result.stage_b_required or stage_a_result.hard_block_triggered:
+        return stage_a_result
+
+    semantic_results = _stage_b.evaluate(features, enabled_rules=enablement)
+    combined = stage_a_result.rule_results + semantic_results
+    final_score = _aggregate(combined)
+
+    return EvaluationResult(
+        decision=_make_decision(final_score),
+        risk_score=round(final_score, 4),
+        rule_results=combined,
+        hard_block_triggered=False,
+        stage_b_required=False,
     )
