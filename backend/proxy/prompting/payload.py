@@ -7,6 +7,15 @@ from typing import Any
 from .constants import FALLBACK_INSTRUCTION
 
 _USER_ROLES = frozenset({"user", "human"})
+_INSTRUCTION_KEYS = frozenset({
+    "instructions",
+    "system",
+    "system_message",
+    "system_prompt",
+    "developer",
+    "developer_message",
+    "developer_prompt",
+})
 _TEXT_KEYS = frozenset({
     "prompt",
     "input",
@@ -57,7 +66,7 @@ def _augment_text_fields(node: dict[str, Any], only_known_keys: bool) -> bool:
     for key, value in list(node.items()):
         if not isinstance(value, str):
             continue
-        if only_known_keys and key not in _TEXT_KEYS:
+        if only_known_keys and key not in _TEXT_KEYS and key not in _INSTRUCTION_KEYS:
             continue
         updated = _append_instruction(value)
         if updated != value:

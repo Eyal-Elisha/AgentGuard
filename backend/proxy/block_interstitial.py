@@ -109,19 +109,13 @@ def _safe_alternatives(
         out.append(f"Use an encrypted connection instead: {https_url}")
 
     if host:
-        out.append(f"Search for the official {host} website and continue there.")
-        typo_fixed = _normalize_likely_typos(host)
-        if typo_fixed != host and "." in typo_fixed:
-            out.append(f"Try likely-correct domain: https://{typo_fixed}")
-        if host.startswith("www.") and len(host) > 4:
-            out.append(f"Try canonical domain: https://{host[4:]}")
-        else:
-            out.append(f"Try canonical domain: https://www.{host}")
-        out.append(f"Look up trusted alternatives for {host}.")
+        out.append(f"Look up a different trusted website that offers the same service as {host}.")
+        out.append("Search for a reputable alternative provider instead of retrying this domain.")
+        out.append("Choose a known-safe website that can accomplish the same task.")
     else:
-        out.append("Search for the official website for your task and continue there.")
-        out.append("Look up trusted alternatives for your task.")
-    out.append("Choose a known-safe provider that can accomplish the same task.")
+        out.append("Search for a different trusted website for your task.")
+        out.append("Look up trusted alternatives that accomplish the same goal.")
+        out.append("Choose a known-safe provider that can accomplish the same task.")
     return out[:3]
 
 

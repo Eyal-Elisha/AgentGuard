@@ -83,3 +83,18 @@ def test_augment_nested_user_message_key():
     payload = json.loads(request.content.decode("utf-8"))
     text = payload["conversation"]["turn"]["user_message"]
     assert FALLBACK_INSTRUCTION in text
+
+
+def test_augment_browseros_style_instructions_field():
+    request = _make_request(
+        {
+            "instructions": "You are BrowserOS. Help the user complete the task.",
+            "input": "Find a trusted shopping site for running shoes",
+        }
+    )
+
+    augment_request_body(request)
+    payload = json.loads(request.content.decode("utf-8"))
+
+    assert FALLBACK_INSTRUCTION in payload["instructions"]
+    assert FALLBACK_INSTRUCTION in payload["input"]

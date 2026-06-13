@@ -86,8 +86,9 @@ def test_build_block_html_suggests_generic_alternative_guidance():
         safe_back_url="http://127.0.0.1:5000/",
     )
     text = body.decode("utf-8")
-    assert "Search for the official example.com website and continue there." in text
-    assert "Try canonical domain: https://www.example.com" in text
+    assert "different trusted website" in text
+    assert "reputable alternative provider" in text
+    assert "https://www.example.com" not in text
 
 
 def test_build_block_html_suggests_https_upgrade_for_http_url():

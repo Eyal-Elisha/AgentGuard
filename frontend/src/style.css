@@ -1,8 +1,10 @@
 
+@import './styles/theme.css';
+
 :root {
   --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
 
-  /* Colors - Surfaces & Opacities (Using theme tokens where possible) */
+  /* Colors - Surfaces & Opacities */
   --bg-surface-primary: var(--color-bg-deep);
   --bg-surface-secondary: rgba(15, 23, 42, 0.45);
   --bg-overlay: rgba(2, 6, 23, 0.55);
@@ -23,6 +25,7 @@
   font-family: var(--font-sans);
   line-height: 1.5;
   font-weight: 400;
+  color-scheme: dark;
 
   color: var(--color-text-body);
   background-color: var(--bg-surface-primary);
