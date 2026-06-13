@@ -60,6 +60,9 @@ def _event_filter_sql(
     if filters.get("to_timestamp") is not None:
         base_where.append("timestamp <= ?")
         params.append(_dt_iso(filters["to_timestamp"]))
+    if filters.get("user_id") is not None:
+        base_where.append("s.user_id = ?")
+        params.append(filters["user_id"])
     return base_where, params
 
 
@@ -68,12 +71,14 @@ def events_list_for_session(
     filters: dict[str, Any],
     order: str = "ASC",
 ) -> list[dict[str, Any]]:
-    where = ["session_id = ?"]
+    where = ["e.session_id = ?"]
     params: list[Any] = [session_id]
     where, params = _event_filter_sql(where, params, filters)
     sql = (
-        "SELECT event_id, session_id, timestamp, url, guard_action, risk_score, http_method, headers_json "
-        f"FROM events WHERE {' AND '.join(where)} ORDER BY timestamp {order}"
+        "SELECT e.event_id, e.session_id, s.user_id, e.timestamp, e.url, e.guard_action, "
+        "e.risk_score, e.http_method, e.headers_json "
+        "FROM events e JOIN sessions s ON s.session_id = e.session_id "
+        f"WHERE {' AND '.join(where)} ORDER BY e.timestamp {order}"
     )
     with _connect() as conn:
         cur = conn.execute(sql, params)
@@ -85,8 +90,10 @@ def events_list_all(filters: dict[str, Any]) -> list[dict[str, Any]]:
     params: list[Any] = []
     where, params = _event_filter_sql(where, params, filters)
     sql = (
-        "SELECT event_id, session_id, timestamp, url, guard_action, risk_score, http_method, headers_json "
-        f"FROM events WHERE {' AND '.join(where)} ORDER BY timestamp DESC"
+        "SELECT e.event_id, e.session_id, s.user_id, e.timestamp, e.url, e.guard_action, "
+        "e.risk_score, e.http_method, e.headers_json "
+        "FROM events e JOIN sessions s ON s.session_id = e.session_id "
+        f"WHERE {' AND '.join(where)} ORDER BY e.timestamp DESC"
     )
     with _connect() as conn:
         cur = conn.execute(sql, params)

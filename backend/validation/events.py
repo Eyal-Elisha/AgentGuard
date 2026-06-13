@@ -9,6 +9,7 @@ from .common import (
     clean_string,
     parse_bounded_float,
     parse_iso_datetime,
+    parse_positive_int,
     require_dict,
 )
 
@@ -82,10 +83,17 @@ def parse_event_filters(args: dict[str, Any]) -> tuple[dict | None, str | None]:
     if from_timestamp is not None and to_timestamp is not None and from_timestamp > to_timestamp:
         return None, "Invalid query parameters"
 
+    user_id = None
+    if "user_id" in lowered_args:
+        user_id = parse_positive_int(lowered_args["user_id"])
+        if user_id is None:
+            return None, "Invalid user_id"
+
     return {
         "guard_action": guard_action,
         "min_risk_score": min_risk_score,
         "max_risk_score": max_risk_score,
         "from_timestamp": from_timestamp,
         "to_timestamp": to_timestamp,
+        "user_id": user_id,
     }, None

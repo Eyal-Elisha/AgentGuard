@@ -26,11 +26,20 @@ _SENSITIVE_PATH_HINTS = (
 )
 
 
+def _is_same_site_json_get(flow: http.HTTPFlow) -> bool:
+    """SPA/API reads on the page's own origin — not third-party ad or tracker XHR."""
+    if method(flow) != "GET":
+        return False
+    accept = header(flow, "accept").lower()
+    if "application/json" not in accept or is_likely_static_subresource(url(flow)):
+        return False
+    site = header(flow, "sec-fetch-site").lower()
+    return site in ("same-origin", "same-site")
+
+
 def is_meaningful_user_action(flow: http.HTTPFlow) -> bool:
-    if method(flow) == "GET":
-        accept = header(flow, "accept").lower()
-        if "application/json" in accept and not is_likely_static_subresource(url(flow)):
-            return True
+    if _is_same_site_json_get(flow):
+        return True
 
     if method(flow) not in _ACTION_METHODS:
         return False

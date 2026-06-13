@@ -1,5 +1,6 @@
 from flask import Flask
 
+from .api_errors import register_api_error_handlers
 from .audit_logging import configure_audit_logger
 from .config import env_flag, resolve_jwt_secret
 from .storage.sqlite_store import init_schema
@@ -21,6 +22,7 @@ def create_app() -> Flask:
     from .routes import register_blueprints
 
     register_blueprints(app)
+    register_api_error_handlers(app)
 
     @app.after_request
     def _cors(response):

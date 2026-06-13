@@ -128,6 +128,9 @@ RULE_WEIGHTS: Dict[str, float] = {
     "repeated_sensitive_action_after_warning": 0.25,
     "redirect_to_sensitive_action":            0.20,
     "previously_warned_domain_in_session":     0.20,
+    # Semantic rules (Stage B — TF-IDF + Logistic Regression, with heuristic fallback)
+    "phishing_language":                       0.30,
+    "prompt_injection":                        0.30,
 }
 
 # ---------------------------------------------------------------------------
@@ -145,6 +148,30 @@ CONTEXTUAL_RULE_CONFIG: Dict[str, Dict[str, Any]] = {
         "redirect_window_ms": 2_000,
     },
     "previously_warned_domain_in_session": {"max_events": 5},
+}
+
+# ---------------------------------------------------------------------------
+# Semantic rule tuning
+# ---------------------------------------------------------------------------
+# Each semantic rule binds to a trained classifier (model_id). At runtime the
+# classifier produces a probability in [0, 1] used directly as the rule score.
+# If no trained model artifact is present, the rule falls back to a
+# keyword-based heuristic implemented in `stage_b.heuristics`.
+
+SEMANTIC_RULE_CONFIG: Dict[str, Dict[str, Any]] = {
+    "phishing_language": {
+        "model_id": "phishing",
+        "min_text_chars": 32,
+        "trigger_threshold": 0.5,
+    },
+    "prompt_injection": {
+        "model_id": "prompt_injection",
+        "min_text_chars": 16,
+        # The trained LR is over-confident on benign technical text because the
+        # public injection corpora outnumber benign instructions ~25:1. Real
+        # injections score 0.99+, so 0.85 leaves headroom while suppressing FPs.
+        "trigger_threshold": 0.85,
+    },
 }
 
 # ---------------------------------------------------------------------------
@@ -205,6 +232,22 @@ DETERMINISTIC_RULES: List[RuleDefinition] = [
         "Custom Local Blacklist",
         RuleType.DETERMINISTIC, ComputeClass.CHEAP,
         RULE_WEIGHTS["custom_blacklist"], hard_block=True,
+    ),
+]
+
+
+SEMANTIC_RULES: List[RuleDefinition] = [
+    RuleDefinition(
+        "phishing_language",
+        "Phishing or Credential-Harvesting Language",
+        RuleType.SEMANTIC, ComputeClass.EXPENSIVE,
+        RULE_WEIGHTS["phishing_language"], hard_block=False,
+    ),
+    RuleDefinition(
+        "prompt_injection",
+        "Prompt Injection / Instruction Hierarchy Manipulation",
+        RuleType.SEMANTIC, ComputeClass.EXPENSIVE,
+        RULE_WEIGHTS["prompt_injection"], hard_block=False,
     ),
 ]
 

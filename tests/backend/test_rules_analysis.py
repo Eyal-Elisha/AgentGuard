@@ -25,6 +25,7 @@ class RulesAnalysisTestCase(BackendApiTestCase):
                 "rule_code": "RISKY",
                 "rule_score": 0.91,
                 "details": "Matched suspicious pattern",
+                "hard_block": True,
             },
         )
         self.assertEqual(analysis.status_code, 201)
@@ -33,7 +34,11 @@ class RulesAnalysisTestCase(BackendApiTestCase):
         by_event = self.client.get(f"/events/{event_id}/rules-analysis")
         self.assertEqual(by_event.status_code, 200)
         self.assertEqual(len(by_event.get_json()), 1)
-        self.assertEqual(by_event.get_json()[0]["analysis_id"], analysis_id)
+        by_event_row = by_event.get_json()[0]
+        self.assertEqual(by_event_row["analysis_id"], analysis_id)
+        self.assertTrue(by_event_row["hard_block"])
+        self.assertEqual(by_event_row["rule_type"], "deterministic")
+        self.assertEqual(by_event_row["compute_class"], "cheap")
 
         by_rule = self.client.get("/rules-analysis", query_string={"rule_code": "RISKY", "limit": "5"})
         self.assertEqual(by_rule.status_code, 200)
@@ -82,6 +87,19 @@ class RulesAnalysisTestCase(BackendApiTestCase):
         )
         self.assertEqual(invalid_rule_score.status_code, 400)
         self.assertEqual(invalid_rule_score.get_json()["error"], "Invalid rule_score")
+
+        invalid_hard_block = self.client.post(
+            "/rules-analysis",
+            json={
+                "event_id": event_id,
+                "rule_code": "TRIMMED",
+                "rule_score": 0.5,
+                "details": "Bad hard block",
+                "hard_block": "yes",
+            },
+        )
+        self.assertEqual(invalid_hard_block.status_code, 400)
+        self.assertEqual(invalid_hard_block.get_json()["error"], "Invalid hard_block")
 
         trimmed_query = self.client.get("/rules-analysis", query_string={"rule_code": "  TRIMMED  ", "limit": "5"})
         self.assertEqual(trimmed_query.status_code, 200)

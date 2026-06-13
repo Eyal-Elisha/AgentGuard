@@ -9,6 +9,7 @@ from backend.analysis.rules import (
     CONTEXTUAL_RULES,
     DETERMINISTIC_RULES,
     RULE_WEIGHTS,
+    SEMANTIC_RULES,
     ComputeClass,
     Decision,
     EvaluationResult,
@@ -19,7 +20,7 @@ from backend.storage import sqlite_store as store
 
 _logger = logging.getLogger("agentguard.audit")
 _RULE_DEFINITIONS = {
-    rule.rule_id: rule for rule in (*DETERMINISTIC_RULES, *CONTEXTUAL_RULES)
+    rule.rule_id: rule for rule in (*DETERMINISTIC_RULES, *CONTEXTUAL_RULES, *SEMANTIC_RULES)
 }
 _DEFAULT_PROXY_AGENT_NAME = "browserOS"
 _DEFAULT_PROXY_ENVIRONMENT = "prod"
@@ -266,6 +267,7 @@ def record_proxy_decision(
             rule_code=rule_result.rule_id,
             rule_score=rule_result.score,
             details=rule_result.explanation,
+            hard_block=rule_result.hard_block,
         )
         persisted_rules += 1
         if rule_result.triggered:
