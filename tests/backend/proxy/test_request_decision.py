@@ -267,3 +267,5 @@ def test_build_enforcement_response_uses_fail_closed_status_for_backend_failure(
 
     assert response.status_code == 503
     assert response.headers["X-AgentGuard-Decision"] == "block"
+
+

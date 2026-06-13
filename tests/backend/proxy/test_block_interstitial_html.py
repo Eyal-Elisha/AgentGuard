@@ -37,6 +37,7 @@ def test_build_block_html_renders_url_score_and_rules():
     assert "Should not appear" not in text
     assert "1.00" in text
     assert "127.0.0.1:5000" in text
+    assert "Safe alternatives" in text
     # No "Continue anyway" path on block.
     assert "Continue anyway" not in text
 
@@ -75,3 +76,27 @@ def test_build_block_html_escapes_user_supplied_strings():
     assert "&lt;script&gt;alert(1)&lt;/script&gt;" in text
     assert "<img src=x onerror=alert(1)>" not in text
     assert "<img src=x onerror=alert(2)>" not in text
+
+
+def test_build_block_html_suggests_generic_alternative_guidance():
+    body = build_block_html(
+        original_url="https://example.com/",
+        reason="URL matches the custom local blacklist",
+        evaluation=None,
+        safe_back_url="http://127.0.0.1:5000/",
+    )
+    text = body.decode("utf-8")
+    assert "different trusted website" in text
+    assert "reputable alternative provider" in text
+    assert "https://www.example.com" not in text
+
+
+def test_build_block_html_suggests_https_upgrade_for_http_url():
+    body = build_block_html(
+        original_url="http://neverssl.com/",
+        reason="Connection is unencrypted ('http://')",
+        evaluation=None,
+        safe_back_url="http://127.0.0.1:5000/",
+    )
+    text = body.decode("utf-8")
+    assert "https://neverssl.com/" in text

@@ -176,6 +176,10 @@ def build_enforcement_response(decision: BackendDecision) -> http.Response:
     )
 
 
+def is_backend_failure_source(source: str) -> bool:
+    return source in _BACKEND_FAILURE_SOURCES
+
+
 def _reason_text_for_block(decision: BackendDecision) -> str:
     """Strip the boilerplate `_BLOCK_SUMMARY` prefix so the interstitial
     only shows the *specific* reason. Falls back to the raw reason if
