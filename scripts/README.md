@@ -37,11 +37,20 @@ of `load_phreshphish.py` to match.
 ```bash
 python scripts/eval_offline.py \
     --input data/phreshphish_test.jsonl \
-    --output runs/phreshphish_test.jsonl
+    --output runs/phreshphish_test.jsonl \
+    --workers 8 \
+    --progress-every 500
 ```
 
 Stage B (semantic classifier) is on by default. Pass `--no-stage-b` to
 isolate Stage A.
+
+**Speed.** Defaults to `lxml` HTML parsing (~5-10x faster than `html.parser`)
+and `--workers = CPU-1` for parallelism. On an 8-core box expect a few hundred
+records/sec, so 168k → roughly 15-45 minutes. Bumping `--workers` past your
+physical core count rarely helps (the pipeline is CPU-bound, not I/O-bound).
+Pass `--parser html.parser` if you want to mirror the production proxy
+byte-for-byte (slower).
 
 Output is one JSON per row:
 
