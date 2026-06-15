@@ -7,6 +7,7 @@ from typing import Any, Dict, Optional
 from mitmproxy import http
 
 from backend.analysis.rules import EvaluationResult, RuleResult
+from backend.proxy.request_context import request_agent_name
 
 
 def _utc_timestamp() -> str:
@@ -35,7 +36,7 @@ def build_request_data(flow):
         "headers": dict(flow.request.headers),
         "body": safe_get_text(flow.request),
     }
-    agent_name = flow.request.headers.get("x-agentguard-agent") or flow.request.headers.get("x-agent-name")
+    agent_name = request_agent_name(flow)
     if isinstance(agent_name, str) and agent_name.strip():
         data["agent_name"] = agent_name
     return data
@@ -59,7 +60,7 @@ def build_response_payload(flow):
         "headers": headers,
         "body": safe_get_text(flow.response) if flow.response else "",
     }
-    agent_name = flow.request.headers.get("x-agentguard-agent") or flow.request.headers.get("x-agent-name")
+    agent_name = request_agent_name(flow)
     if isinstance(agent_name, str) and agent_name.strip():
         data["agent_name"] = agent_name
     return data

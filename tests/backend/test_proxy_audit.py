@@ -308,7 +308,7 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
 
     def test_proxy_control_start_creates_session(self):
         with (
-            patch("backend.routes.proxy.start_proxy_process", return_value=(True, "started")),
+            patch("backend.routes.proxy.start_proxy_process", return_value=(True, "started")) as start_proxy_process,
             patch("backend.routes.proxy.proxy_is_running", return_value=True),
         ):
             response = self.client.post("/api/proxy/control", json={"active": True, "environment": "test"})
@@ -325,6 +325,7 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         self.assertIsNotNone(session)
         self.assertIsNone(session["end_time"])
         self.assertEqual(session["environment"], "test")
+        start_proxy_process.assert_called_once_with(proxy_agent_name="browserOS")
 
     def test_proxy_decision_persists_contextual_rule_analysis(self):
         """Contextual RuleResults flow through to `rules_analysis` and register

@@ -279,7 +279,7 @@ def proxy_control():
     user_id = _proxy_control_user_id()
 
     if active:
-        ok, message = start_proxy_process()
+        ok, message = start_proxy_process(proxy_agent_name=agent_name)
         session = None
         if ok and message != "already_running":
             session = ensure_proxy_session_started(environment=environment, agent_name=agent_name, user_id=user_id)

@@ -1,1 +1,1 @@
-export const AGENT_OPTIONS = ['Gemini', 'BrowserOS'];
+export const AGENT_OPTIONS = ['Microsoft Edge', 'BrowserOS'];

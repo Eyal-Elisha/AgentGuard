@@ -46,10 +46,12 @@ def build_mitmweb_command() -> list[str]:
     ]
 
 
-def _mitm_env() -> dict[str, str]:
+def _mitm_env(*, proxy_agent_name: str | None = None) -> dict[str, str]:
     env = os.environ.copy()
     # TODO: Remove this once the project is packaged/installable and mitm can import `backend` without PYTHONPATH.
     env["PYTHONPATH"] = str(_repo_root())
+    if proxy_agent_name is not None:
+        env["AGENTGUARD_PROXY_AGENT_NAME"] = proxy_agent_name
     return env
 
 
@@ -60,7 +62,7 @@ def proxy_is_running() -> bool:
     return _mitm_process.poll() is None
 
 
-def start_proxy_process() -> tuple[bool, str]:
+def start_proxy_process(*, proxy_agent_name: str | None = None) -> tuple[bool, str]:
     """Start mitmweb with `traffic_interception.py` (decision enforcement). Idempotent if already running."""
     global _mitm_process, _mitm_log_handle
     if proxy_is_running():
@@ -84,7 +86,7 @@ def start_proxy_process() -> tuple[bool, str]:
         return False, f"Failed to open mitmweb log file: {exc}"
     popen_kw: dict = {
         "cwd": str(repo_root),
-        "env": _mitm_env(),
+        "env": _mitm_env(proxy_agent_name=proxy_agent_name),
         "stdout": _mitm_log_handle or subprocess.DEVNULL,
         "stderr": subprocess.STDOUT if _mitm_log_handle else subprocess.DEVNULL,
         "stdin": subprocess.DEVNULL,
