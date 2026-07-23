@@ -4,11 +4,12 @@ import { useAdminUsers } from '../../hooks/useAdminUsers.js';
 import { useAdminStats } from '../../hooks/useAdminStats.js';
 import AdminStatsBar from './AdminStatsBar.jsx';
 import AdminUsersTable from './AdminUsersTable.jsx';
+import CustomBlacklist from '../RulesDashboard/CustomBlacklist.jsx';
 import './AdminDashboard.css';
 
 export default function AdminDashboard() {
   const { currentUser } = useAuth();
-  const { users, isLoading: usersLoading, error: usersError } = useAdminUsers();
+  const { users, isLoading: usersLoading, error: usersError, promoteToAdmin } = useAdminUsers();
   const { stats, isLoading: statsLoading, error: statsError } = useAdminStats();
 
   if (!currentUser?.isAdmin) {
@@ -26,14 +27,16 @@ export default function AdminDashboard() {
       </div>
 
       {error && <div className="sessions-error-alert">{error}</div>}
-      
+
       {isLoading ? (
         <div className="sessions-loading">Loading admin data...</div>
       ) : (
         <>
           <AdminStatsBar stats={stats} />
           <h2 className="admin-section-title">Registered Users</h2>
-          <AdminUsersTable users={users} />
+          <AdminUsersTable users={users} onPromote={promoteToAdmin} />
+          <h2 className="admin-section-title admin-section-title--spaced">Custom Domain Blacklist</h2>
+          <CustomBlacklist />
         </>
       )}
     </div>

@@ -17,6 +17,9 @@ function RuleScoreBar({ score }) {
 export default function EventAnalysis({ selectedEvent, ruleAnalysisRows }) {
   const guardAction = selectedEvent?.guard_action?.toLowerCase() || '';
   const riskColorClass = guardAction ? ` events-risk-value--${guardAction}` : '';
+  const eventHardBlock = ruleAnalysisRows.some(
+    (row) => Boolean(row.is_hard_block) && typeof row.rule_score === 'number' && row.rule_score > 0,
+  ) || ruleAnalysisRows.some((row) => Boolean(row.hard_block));
 
   return (
     <section className="events-analysis-pane">
@@ -25,11 +28,19 @@ export default function EventAnalysis({ selectedEvent, ruleAnalysisRows }) {
         <span className="events-pane-pill">Event ID: {selectedEvent ? selectedEvent.event_id : '–'}</span>
       </div>
 
-      <div className="events-risk-card">
-        <p className="events-risk-label">Event Risk Score</p>
-        <p className={`events-risk-value${riskColorClass}`}>
-          {selectedEvent ? selectedEvent.risk_score.toFixed(2) : '0.00'}
-        </p>
+      <div className="events-risk-row">
+        <div className="events-risk-card">
+          <p className="events-risk-label">Event Risk Score</p>
+          <p className={`events-risk-value${riskColorClass}`}>
+            {selectedEvent ? selectedEvent.risk_score.toFixed(2) : '0.00'}
+          </p>
+        </div>
+        {selectedEvent && (
+          <div className={`events-hardblock-card events-hardblock-card--${eventHardBlock ? 'on' : 'off'}`}>
+            <p className="events-risk-label">Hard Block</p>
+            <p className="events-hardblock-value">{eventHardBlock ? 'TRIGGERED' : 'NONE'}</p>
+          </div>
+        )}
       </div>
 
       {selectedEvent && (
@@ -48,22 +59,31 @@ export default function EventAnalysis({ selectedEvent, ruleAnalysisRows }) {
               <th>RULE CODE</th>
               <th>RULE TYPE</th>
               <th>WEIGHT</th>
+              <th>HARD BLOCK</th>
               <th>RULE SCORE</th>
               <th>DETAILS</th>
             </tr>
           </thead>
           <tbody>
-            {ruleAnalysisRows.map((row) => (
-              <tr key={row.analysis_id} className="sessions-row">
-                <td>{row.rule_code}</td>
-                <td>{row.rule_type || '–'}</td>
-                <td>{row.weight != null ? row.weight : '–'}</td>
-                <td><RuleScoreBar score={row.rule_score} /></td>
-                <td>{row.details}</td>
-              </tr>
-            ))}
+            {ruleAnalysisRows.map((row) => {
+              const hard = Boolean(row.is_hard_block ?? row.hard_block);
+              return (
+                <tr key={row.analysis_id} className="sessions-row">
+                  <td>{row.rule_code}</td>
+                  <td>{row.rule_type || '–'}</td>
+                  <td>{row.weight != null ? row.weight : '–'}</td>
+                  <td>
+                    <span className={`rules-badge ${hard ? 'rules-badge--hard-block' : 'rules-badge--neutral'}`}>
+                      {hard ? 'Yes' : 'No'}
+                    </span>
+                  </td>
+                  <td><RuleScoreBar score={row.rule_score} /></td>
+                  <td>{row.details}</td>
+                </tr>
+              );
+            })}
             {ruleAnalysisRows.length === 0 && (
-              <tr><td colSpan={5} className="sessions-empty-state">No analysis for this event yet.</td></tr>
+              <tr><td colSpan={6} className="sessions-empty-state">No analysis for this event yet.</td></tr>
             )}
           </tbody>
         </table>

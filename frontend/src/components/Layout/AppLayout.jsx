@@ -11,20 +11,17 @@ export default function AppLayout() {
   return (
     <div className="app-layout agentguard-theme">
       <header className="app-header">
-        <div className="app-header-left" style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+        <div className="app-header-left">
           <NavLink to="/" className="app-brand" end>
             <ShieldIcon />
             <span>AgentGuard</span>
           </NavLink>
           {currentUser && (
-            <div className="app-user-info" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
-                Hi, <strong style={{ color: 'var(--color-text-primary)' }}>{currentUser.username}</strong>
+            <div className="app-user-info">
+              <span className="app-user-greeting">
+                Hi, <strong>{currentUser.username}</strong>
               </span>
-              <button 
-                onClick={logout}
-                style={{ background: 'transparent', border: '1px solid var(--color-border-subtle)', borderRadius: '4px', padding: '0.2rem 0.5rem', color: 'var(--color-text-body)', cursor: 'pointer', fontSize: '0.75rem' }}
-              >
+              <button type="button" onClick={logout} className="nav-logout-btn">
                 Logout
               </button>
             </div>

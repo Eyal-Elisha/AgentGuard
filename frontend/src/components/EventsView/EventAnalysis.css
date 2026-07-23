@@ -1,11 +1,58 @@
+.events-risk-row {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+  flex-wrap: wrap;
+}
+
 .events-risk-card {
   max-width: 12rem;
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-md);
   background: linear-gradient(to bottom, var(--bg-surface-primary), var(--bg-surface-secondary));
   padding: var(--space-md) var(--space-lg);
-  margin-bottom: var(--space-xl);
 }
+
+.events-hardblock-card {
+  margin-left: auto;
+  border-radius: var(--radius-md);
+  padding: var(--space-md) var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  min-width: 10rem;
+  border: 1px solid var(--color-border-subtle);
+}
+
+.events-hardblock-card--on {
+  background: rgba(234, 88, 12, 0.18);
+  border-color: rgba(234, 88, 12, 0.55);
+}
+
+.events-hardblock-card--off {
+  background: var(--bg-surface-secondary);
+}
+
+.events-hardblock-card .events-risk-label {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.events-hardblock-value {
+  margin: 0;
+  font-size: 1.25rem;
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.events-hardblock-card--on .events-hardblock-value { color: #fdba74; }
+.events-hardblock-card--off .events-hardblock-value { color: var(--color-text-muted); }
 
 .events-risk-label {
   margin: 0 0 var(--space-xs);
@@ -45,11 +92,27 @@
   table-layout: fixed;
 }
 
-.events-rules-table th:nth-child(1) { width: 25%; }
-.events-rules-table th:nth-child(2) { width: 16%; }
-.events-rules-table th:nth-child(3) { width: 12%; }
+.events-rules-table th:nth-child(1) { width: 19%; }
+.events-rules-table th:nth-child(2) { width: 12%; }
+.events-rules-table th:nth-child(3) { width: 9%; }
 .events-rules-table th:nth-child(4) { width: 14%; }
-.events-rules-table th:nth-child(5) { width: 33%; }
+.events-rules-table th:nth-child(5) { width: 16%; }
+.events-rules-table th:nth-child(6) { width: 30%; }
+
+.events-rules-table th { padding-right: var(--space-sm); }
+
+.events-rules-table .rules-badge {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.events-rules-table .rules-badge--hard-block { background: rgba(234, 88, 12, 0.28); color: #ffedd5; }
+.events-rules-table .rules-badge--neutral { background: rgba(55, 65, 81, 0.5); color: var(--color-text-muted); }
 
 .events-rules-table th {
   white-space: nowrap;
