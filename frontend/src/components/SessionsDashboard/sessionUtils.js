@@ -70,7 +70,13 @@ export function isIsoEmpty(iso) {
 
 export function formatIsoLocal(iso) {
   if (isIsoEmpty(iso)) return EMPTY_CELL_DISPLAY;
-  return new Date(iso).toLocaleString();
+  const d = new Date(iso);
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = String(d.getFullYear() % 100).padStart(2, '0');
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  return `${day}.${month}.${year} at ${hours}:${minutes}`;
 }
 
 /** Read error message from response body or status */
