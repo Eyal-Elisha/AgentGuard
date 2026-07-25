@@ -51,7 +51,7 @@ export default function EventAnalysis({ selectedEvent, ruleAnalysisRows }) {
           <h3 className="events-rules-details-heading">Rules analysis details</h3>
           {sections.map((section) => (
             <RulesAnalysisSection
-              key={`${selectedEvent.event_id}-${section.type}`}
+              key={`${selectedEvent?.event_id ?? 'none'}-${section.type}`}
               section={section}
             />
           ))}

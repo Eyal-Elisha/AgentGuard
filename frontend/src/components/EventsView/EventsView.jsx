@@ -50,7 +50,7 @@ function EventsView() {
             <>
               <EventFilterBar
                 filterAction={filterAction}
-                onFilterChange={(action) => { setFilterAction(action); setSelectedEventId(null); }}
+                onFilterChange={setFilterAction}
                 sortOrder={sortOrder}
                 onToggleSort={toggleSort}
                 actionOptions={actionOptions}
