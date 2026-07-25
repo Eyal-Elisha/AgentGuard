@@ -61,7 +61,7 @@
   text-transform: uppercase;
 }
 
-.events-hardblock-card--on .events-hardblock-value { color: #fdba74; }
+.events-hardblock-card--on .events-hardblock-value { color: color-mix(in srgb, #ea580c 70%, var(--color-text-primary)); }
 .events-hardblock-card--off .events-hardblock-value { color: var(--color-text-muted); }
 
 .events-risk-label {
@@ -279,8 +279,11 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
-.events-rules-table .rules-badge--hard-block { background: rgba(234, 88, 12, 0.28); color: #ffedd5; }
-.events-rules-table .rules-badge--neutral { background: rgba(55, 65, 81, 0.5); color: var(--color-text-muted); }
+.events-rules-table .rules-badge--hard-block {
+  background: color-mix(in srgb, #ea580c 28%, transparent);
+  color: color-mix(in srgb, #ea580c 55%, var(--color-text-primary));
+}
+.events-rules-table .rules-badge--neutral { background: var(--color-nav-hover); color: var(--color-text-muted); }
 
 .events-rules-table th {
   white-space: nowrap;

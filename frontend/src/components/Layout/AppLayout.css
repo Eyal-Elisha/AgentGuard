@@ -36,7 +36,7 @@
   padding: 0 var(--space-sm);
   border-radius: var(--radius-pill);
   border: 1px solid var(--color-border-subtle);
-  background: rgba(15, 23, 42, 0.45);
+  background: var(--color-chip-bg);
   color: var(--color-text-muted);
   font-family: var(--font-sans);
   font-size: var(--font-xs);
@@ -49,7 +49,7 @@
 .app-help-btn:hover {
   color: var(--color-text-primary);
   border-color: var(--color-text-muted);
-  background: rgba(30, 41, 59, 0.7);
+  background: var(--color-chip-bg-hover);
 }
 
 .app-help-btn:focus-visible {
@@ -116,7 +116,7 @@
 
 .nav-logout-btn:hover,
 .nav-logout-btn:focus {
-  border-color: rgba(75, 85, 99, 1);
+  border-color: var(--color-border-subtle);
   outline: none;
 }
 

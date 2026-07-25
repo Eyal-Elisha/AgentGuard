@@ -3,6 +3,7 @@ import { NavLink, Outlet } from 'react-router-dom';
 import ShieldIcon from '../SessionsDashboard/ShieldIcon.jsx';
 import HelpIcon from '../Help/HelpIcon.jsx';
 import HelpDrawer from '../Help/HelpDrawer.jsx';
+import ThemeToggle from '../Theme/ThemeToggle.jsx';
 import { TourProvider } from '../../onboarding/TourProvider.jsx';
 import TourOverlay from '../../onboarding/TourOverlay.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -69,6 +70,7 @@ export default function AppLayout() {
           </nav>
 
           <div className="app-header-right">
+            <ThemeToggle />
             {currentUser && (
               <div className="app-user-info">
                 <span className="app-user-greeting">

@@ -10,7 +10,7 @@
   border: none;
   padding: 0;
   margin: 0;
-  background: rgba(2, 6, 23, 0.45);
+  background: var(--bg-overlay);
   cursor: pointer;
   animation: help-fade-in 160ms ease;
 }
@@ -25,10 +25,10 @@
   max-height: min(80vh, 32rem);
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.98), var(--color-bg-deep));
+  background: linear-gradient(180deg, var(--color-panel-fill), var(--color-bg-elevated));
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-lg);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-dropdown);
   animation: help-panel-in 180ms ease;
   overflow: hidden;
 }

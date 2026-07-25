@@ -9,7 +9,7 @@
   padding: var(--space-md) var(--space-lg);
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border-subtle);
-  background: rgba(15, 23, 42, 0.35);
+  background: var(--color-status-surface-soft);
 }
 
 .home-endpoint-row {

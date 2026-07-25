@@ -11,29 +11,32 @@ import AdminDashboard from './components/AdminDashboard/AdminDashboard.jsx';
 import { AgentProvider } from './context/AgentContext.jsx';
 import { ProxyProvider } from './context/ProxyContext.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
+import { ThemeProvider } from './context/ThemeContext.jsx';
 
 function App() {
   return (
-    <AuthProvider>
-      <ProxyProvider>
-        <AgentProvider>
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/signup" element={<SignupPage />} />
-            <Route element={<ProtectedRoute />}>
-              <Route element={<AppLayout />}>
-                <Route index element={<Home />} />
-                <Route path="sessions" element={<SessionsDashboard />} />
-                <Route path="sessions/:sessionId/events" element={<EventsView />} />
-                <Route path="rules" element={<RulesDashboard />} />
-                <Route path="admin" element={<AdminDashboard />} />
+    <ThemeProvider>
+      <AuthProvider>
+        <ProxyProvider>
+          <AgentProvider>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/signup" element={<SignupPage />} />
+              <Route element={<ProtectedRoute />}>
+                <Route element={<AppLayout />}>
+                  <Route index element={<Home />} />
+                  <Route path="sessions" element={<SessionsDashboard />} />
+                  <Route path="sessions/:sessionId/events" element={<EventsView />} />
+                  <Route path="rules" element={<RulesDashboard />} />
+                  <Route path="admin" element={<AdminDashboard />} />
+                </Route>
               </Route>
-            </Route>
-            <Route path="*" element={<Navigate to="/login" replace />} />
-          </Routes>
-        </AgentProvider>
-      </ProxyProvider>
-    </AuthProvider>
+              <Route path="*" element={<Navigate to="/login" replace />} />
+            </Routes>
+          </AgentProvider>
+        </ProxyProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 
