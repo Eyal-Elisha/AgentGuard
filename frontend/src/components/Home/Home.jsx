@@ -17,43 +17,50 @@ export default function Home() {
   return (
     <main className="home-page">
       <div className="home-card">
-        <h1 className="home-title">Proxy Control</h1>
-        <p className="home-tagline">Activate and configure the proxy</p>
-        <div className="home-agent-row">
+        <header className="home-heading">
+          <h1 className="home-title">Guard</h1>
+          <p className="home-tagline">Turn on protection for your agent</p>
+        </header>
+
+        <div className="home-agent-row" data-tour="agent">
           <SessionAgentSelector
-            selectedAgent={selectedAgent} agentDropdownOpen={agentDropdownOpen}
+            selectedAgent={selectedAgent}
+            agentDropdownOpen={agentDropdownOpen}
             onToggleAgentDropdown={() => setAgentDropdownOpen((o) => !o)}
             onCloseAgentDropdown={() => setAgentDropdownOpen(false)}
             onAgentSelect={(a) => { setSelectedAgent(a); setAgentDropdownOpen(false); }}
           />
         </div>
+
         <div className="home-power-block">
           <button
-            type="button" className={`home-power-button ${isProxyActive ? 'home-power-button--on' : 'home-power-button--off'}`}
-            onClick={toggleProxy} aria-pressed={isProxyActive}
+            type="button"
+            className={`home-power-button ${isProxyActive ? 'home-power-button--on' : 'home-power-button--off'}`}
+            onClick={toggleProxy}
+            aria-pressed={isProxyActive}
+            aria-label={isProxyActive ? 'Turn protection off' : 'Turn protection on'}
+            data-tour="power"
           >
             <PowerIcon className="home-power-icon" />
           </button>
         </div>
-        <HomeStatus isProxyActive={isProxyActive} isPassiveMode={isPassiveMode} togglePassiveMode={togglePassiveMode} />
+
+        <HomeStatus
+          isProxyActive={isProxyActive}
+          isPassiveMode={isPassiveMode}
+          togglePassiveMode={togglePassiveMode}
+        />
+
         <dl className="home-endpoints">
-          <div className="home-endpoint-row"><dt>Proxy address</dt><dd>{host}</dd></div>
-          <div className="home-endpoint-row"><dt>Port</dt><dd>{port}</dd></div>
+          <div className="home-endpoint-row">
+            <dt>Proxy address</dt>
+            <dd>{host}</dd>
+          </div>
+          <div className="home-endpoint-row">
+            <dt>Port</dt>
+            <dd>{port}</dd>
+          </div>
         </dl>
-        <section className="home-copy">
-          <h2 className="home-copy-heading">What this does</h2>
-          <p>
-            Activating AgentGuard requests the backend to launch the mitmproxy pipeline and
-            open a session for the selected environment. Active proxy traffic is then inspected,
-            evaluated, and recorded in sessions and events.
-          </p>
-          <h2 className="home-copy-heading">System and app settings</h2>
-          <p className="home-copy-note">
-            Traffic only routes through AgentGuard if Windows, your browser, or app is
-            configured to use this proxy and port. This toggle controls the AgentGuard service
-            and sessions, but does not change your OS or browser settings for you.
-          </p>
-        </section>
       </div>
     </main>
   );

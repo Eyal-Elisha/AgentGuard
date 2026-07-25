@@ -1,11 +1,15 @@
 .home-endpoints {
-  margin: 0;
+  margin: var(--space-md) 0 0;
   width: 100%;
   max-width: 22rem;
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
+  gap: 0;
   text-align: left;
+  padding: var(--space-md) var(--space-lg);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-subtle);
+  background: rgba(15, 23, 42, 0.35);
 }
 
 .home-endpoint-row {
@@ -13,15 +17,12 @@
   justify-content: space-between;
   align-items: baseline;
   gap: var(--space-xl);
-  padding: var(--space-sm) 0;
-  border-bottom: 1px solid rgba(55, 65, 81, 0.5);
+  padding: var(--space-xs) 0;
 }
-
-.home-endpoint-row:last-child { border-bottom: none; }
 
 .home-endpoints dt {
   margin: 0;
-  font-size: 0.75rem;
+  font-size: 0.68rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--color-text-muted);
@@ -30,26 +31,6 @@
 .home-endpoints dd {
   margin: 0;
   font-family: ui-monospace, 'Cascadia Code', 'Segoe UI Mono', monospace;
-  font-size: 0.95rem;
-  color: var(--color-text-body);
-}
-
-.home-copy { width: 100%; text-align: left; max-width: 100%; }
-
-.home-copy-heading {
-  margin: 0 0 var(--space-sm);
-  font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 0.82rem;
   color: var(--color-text-muted);
 }
-
-.home-copy p {
-  margin: 0 0 var(--space-lg);
-  font-size: 0.9rem;
-  line-height: 1.55;
-  color: var(--color-text-body);
-}
-
-.home-copy-note { font-size: 0.82rem !important; color: var(--color-text-muted) !important; }

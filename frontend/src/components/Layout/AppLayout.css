@@ -22,8 +22,54 @@
 .app-header-left {
   display: flex;
   align-items: center;
-  gap: var(--space-2xl);
+  gap: var(--space-sm);
   justify-self: start;
+}
+
+.app-help-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  height: 2rem;
+  margin-left: var(--space-lg);
+  padding: 0 var(--space-sm);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border-subtle);
+  background: rgba(15, 23, 42, 0.45);
+  color: var(--color-text-muted);
+  font-family: var(--font-sans);
+  font-size: var(--font-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+
+.app-help-btn:hover {
+  color: var(--color-text-primary);
+  border-color: var(--color-text-muted);
+  background: rgba(30, 41, 59, 0.7);
+}
+
+.app-help-btn:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+}
+
+.app-help-btn-label {
+  line-height: 1;
+}
+
+@media (max-width: 640px) {
+  .app-help-btn-label {
+    display: none;
+  }
+
+  .app-help-btn {
+    width: 2rem;
+    padding: 0;
+  }
 }
 
 .app-header-right {
