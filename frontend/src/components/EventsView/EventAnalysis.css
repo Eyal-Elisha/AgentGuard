@@ -87,7 +87,7 @@
   margin-top: var(--space-lg);
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border-subtle);
-  overflow: hidden;
+  overflow: visible;
   max-width: 100%;
 }
 
@@ -158,13 +158,13 @@
 .events-rules-type-block .events-rules-table-wrap {
   border: none;
   border-radius: 0;
-  overflow-x: auto;
+  overflow: visible;
 }
 
 .events-rules-table-wrap {
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border-subtle);
-  overflow-x: auto;
+  overflow: visible;
   max-width: 100%;
 }
 
@@ -173,13 +173,101 @@
   table-layout: fixed;
 }
 
-.events-rules-table th:nth-child(1) { width: 22%; }
-.events-rules-table th:nth-child(2) { width: 10%; }
-.events-rules-table th:nth-child(3) { width: 14%; }
-.events-rules-table th:nth-child(4) { width: 18%; }
-.events-rules-table th:nth-child(5) { width: 36%; }
+.events-rules-table th:nth-child(1) { width: 42%; }
+.events-rules-table th:nth-child(2) { width: 16%; }
+.events-rules-table th:nth-child(3) { width: 20%; }
+.events-rules-table th:nth-child(4) { width: 22%; }
 
 .events-rules-table th { padding-right: var(--space-sm); }
+
+.events-rules-code-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.events-rules-code {
+  min-width: 0;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.events-rules-details-info {
+  position: relative;
+  flex-shrink: 0;
+  display: inline-flex;
+}
+
+.events-rules-details-info-btn {
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--color-border-subtle);
+  background: var(--bg-overlay);
+  color: var(--color-text-muted);
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  font-weight: 700;
+  font-style: italic;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+
+.events-rules-details-info-btn:hover,
+.events-rules-details-info--open .events-rules-details-info-btn,
+.events-rules-details-info:focus-within .events-rules-details-info-btn {
+  color: var(--color-text-primary);
+  border-color: var(--color-text-muted);
+  background: var(--color-bg-elevated);
+}
+
+.events-rules-details-info-btn:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+}
+
+.events-rules-details-tip {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  z-index: 40;
+  width: max-content;
+  max-width: min(22rem, 70vw);
+  max-height: 12rem;
+  overflow-y: auto;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-body);
+  font-family: var(--font-sans);
+  font-size: var(--font-xs);
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  box-shadow: var(--shadow-dropdown, 0 8px 24px rgba(0, 0, 0, 0.35));
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 120ms ease, visibility 120ms ease;
+}
+
+.events-rules-details-info:hover .events-rules-details-tip,
+.events-rules-details-info:focus-within .events-rules-details-tip,
+.events-rules-details-info--open .events-rules-details-tip {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
 
 .events-rules-table .rules-badge {
   display: inline-block;
@@ -200,7 +288,7 @@
 
 .events-rules-table th,
 .events-rules-table td {
-  padding: var(--space-sm) var(--space-xs);
+  padding: var(--space-sm);
   vertical-align: top;
 }
 
@@ -226,7 +314,10 @@
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  min-width: 6rem;
+  max-width: 7.5rem;
+  width: 100%;
+  margin-inline: auto;
+  min-width: 0;
 }
 
 .rule-score-bar-track {
