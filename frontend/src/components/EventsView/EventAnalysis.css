@@ -8,14 +8,24 @@
 
 .events-risk-card {
   max-width: 12rem;
+  flex-shrink: 0;
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-md);
   background: linear-gradient(to bottom, var(--bg-surface-primary), var(--bg-surface-secondary));
   padding: var(--space-md) var(--space-lg);
 }
 
+.events-risk-row .event-meta-section {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: none;
+  justify-content: center;
+}
+
 .events-hardblock-card {
-  margin-left: auto;
+  flex-shrink: 0;
   border-radius: var(--radius-md);
   padding: var(--space-md) var(--space-lg);
   display: flex;

@@ -27,20 +27,19 @@ export default function EventAnalysis({ selectedEvent, ruleAnalysisRows }) {
           </p>
         </div>
         {selectedEvent && (
+          <EventMetadata
+            url={selectedEvent.url}
+            http_method={selectedEvent.http_method}
+            headers={selectedEvent.headers}
+          />
+        )}
+        {selectedEvent && (
           <div className={`events-hardblock-card events-hardblock-card--${eventHardBlock ? 'on' : 'off'}`}>
             <p className="events-risk-label">Hard Block</p>
             <p className="events-hardblock-value">{eventHardBlock ? 'TRIGGERED' : 'NONE'}</p>
           </div>
         )}
       </div>
-
-      {selectedEvent && (
-        <EventMetadata
-          url={selectedEvent.url}
-          http_method={selectedEvent.http_method}
-          headers={selectedEvent.headers}
-        />
-      )}
 
       {sections.length === 0 ? (
         <div className="events-rules-details events-rules-details--empty">
