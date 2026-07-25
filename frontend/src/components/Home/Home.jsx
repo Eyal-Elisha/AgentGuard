@@ -18,7 +18,7 @@ export default function Home() {
     <main className="home-page">
       <div className="home-card">
         <h1 className="home-title">Proxy Control</h1>
-        <p className="home-tagline">AgentGuard Home</p>
+        <p className="home-tagline">Activate and configure the proxy</p>
         <div className="home-agent-row">
           <SessionAgentSelector
             selectedAgent={selectedAgent} agentDropdownOpen={agentDropdownOpen}

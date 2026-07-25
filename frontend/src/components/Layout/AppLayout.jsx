@@ -1,7 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import ShieldIcon from '../SessionsDashboard/ShieldIcon.jsx';
-import NavbarAgentToolbar from './NavbarAgentToolbar.jsx';
-import NavbarProxyControl from '../Proxy/NavbarProxyControl.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import './AppLayout.css';
 
@@ -16,23 +14,11 @@ export default function AppLayout() {
             <ShieldIcon />
             <span>AgentGuard</span>
           </NavLink>
-          {currentUser && (
-            <div className="app-user-info">
-              <span className="app-user-greeting">
-                Hi, <strong>{currentUser.username}</strong>
-              </span>
-              <button type="button" onClick={logout} className="nav-logout-btn">
-                Logout
-              </button>
-            </div>
-          )}
         </div>
-        
-        <div className="nav-separator" aria-hidden="true" />
-        
+
         <nav className="app-nav" aria-label="Main">
           <NavLink to="/" className={({ isActive }) => `nav-tab${isActive ? ' nav-tab--active' : ''}`} end>
-            Home
+            Guard
           </NavLink>
           <NavLink to="/sessions" className={({ isActive }) => `nav-tab${isActive ? ' nav-tab--active' : ''}`}>
             Sessions
@@ -46,12 +32,18 @@ export default function AppLayout() {
             </NavLink>
           )}
         </nav>
-        
-        <div className="nav-separator" aria-hidden="true" />
 
         <div className="app-header-right">
-          <NavbarAgentToolbar />
-          <NavbarProxyControl />
+          {currentUser && (
+            <div className="app-user-info">
+              <span className="app-user-greeting">
+                Hi, <strong>{currentUser.username}</strong>
+              </span>
+              <button type="button" onClick={logout} className="nav-logout-btn">
+                Logout
+              </button>
+            </div>
+          )}
         </div>
       </header>
       <div className="app-main">

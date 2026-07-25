@@ -1,3 +1,5 @@
+import './proxy-controls.css';
+
 export default function ProxyToggleButton({
   isActive,
   onToggle,
