@@ -58,9 +58,9 @@ export default function EventAnalysis({ selectedEvent, ruleAnalysisRows }) {
             <tr>
               <th>RULE CODE</th>
               <th>RULE TYPE</th>
-              <th>WEIGHT</th>
-              <th>HARD BLOCK</th>
-              <th>RULE SCORE</th>
+              <th className="th-centered">WEIGHT</th>
+              <th className="th-centered">HARD BLOCK</th>
+              <th className="th-centered">RULE SCORE</th>
               <th>DETAILS</th>
             </tr>
           </thead>
@@ -71,13 +71,13 @@ export default function EventAnalysis({ selectedEvent, ruleAnalysisRows }) {
                 <tr key={row.analysis_id} className="sessions-row">
                   <td>{row.rule_code}</td>
                   <td>{row.rule_type || '–'}</td>
-                  <td>{row.weight != null ? row.weight : '–'}</td>
-                  <td>
+                  <td className="td-centered">{row.weight != null ? row.weight : '–'}</td>
+                  <td className="td-centered">
                     <span className={`rules-badge ${hard ? 'rules-badge--hard-block' : 'rules-badge--neutral'}`}>
                       {hard ? 'Yes' : 'No'}
                     </span>
                   </td>
-                  <td><RuleScoreBar score={row.rule_score} /></td>
+                  <td className="td-centered"><RuleScoreBar score={row.rule_score} /></td>
                   <td>{row.details}</td>
                 </tr>
               );
