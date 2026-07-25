@@ -22,8 +22,14 @@ _logger = logging.getLogger("agentguard.audit")
 _RULE_DEFINITIONS = {
     rule.rule_id: rule for rule in (*DETERMINISTIC_RULES, *CONTEXTUAL_RULES, *SEMANTIC_RULES)
 }
-_DEFAULT_PROXY_AGENT_NAME = "browserOS"
+_DEFAULT_PROXY_AGENT_NAME = "BrowserOS"
 _DEFAULT_PROXY_ENVIRONMENT = "prod"
+_CANONICAL_AGENT_NAMES = ("MicrosoftEdge", "BrowserOS")
+# Renamed agents only — keep in sync with LEGACY_AGENT_KEYS in frontend/src/constants/agentOptions.js
+_LEGACY_AGENT_ALIASES = {
+    "gemini": "MicrosoftEdge",
+    "browseros": "BrowserOS",
+}
 
 
 def _iso_z(dt: datetime) -> str:
@@ -51,9 +57,21 @@ def _clean_agent_name(value: str) -> str:
     return cleaned[:20]
 
 
+def _to_canonical_agent_name(cleaned: str) -> str:
+    legacy = _LEGACY_AGENT_ALIASES.get(cleaned.lower())
+    if legacy:
+        return legacy
+    lower = cleaned.lower()
+    for name in _CANONICAL_AGENT_NAMES:
+        if name.lower() == lower:
+            return name
+    return cleaned
+
+
 def normalize_proxy_agent_name(explicit_agent_name: str | None) -> str:
     if isinstance(explicit_agent_name, str) and explicit_agent_name.strip():
-        return _clean_agent_name(explicit_agent_name)
+        cleaned = _clean_agent_name(explicit_agent_name)
+        return _to_canonical_agent_name(cleaned)
     return _DEFAULT_PROXY_AGENT_NAME
 
 

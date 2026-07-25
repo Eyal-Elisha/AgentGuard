@@ -65,7 +65,8 @@
 }
 
 .agent-select-option {
-  display: block;
+  display: flex;
+  align-items: center;
   width: 100%;
   padding: var(--space-sm) var(--space-md);
   border: none;

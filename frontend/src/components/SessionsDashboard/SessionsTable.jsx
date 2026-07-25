@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { EMPTY_CELL_DISPLAY, formatIsoLocal, isIsoEmpty } from './sessionUtils.js';
-import SessionStatusBadge from './SessionStatusBadge.jsx';
+import AgentDisplay from '../Agents/AgentDisplay.jsx';
 import DeleteSessionModal from './DeleteSessionModal.jsx';
+import SessionStatusBadge from './SessionStatusBadge.jsx';
 
 // TODO: Risk score thresholds (low, medium, high) are currently hardcoded for the mockup and should be configurable or driven by the backend in the future.
 function getRiskLevel(score) {
@@ -72,7 +73,9 @@ export default function SessionsTable({ filteredSessions, sessions, onDeleteSess
               const isDeleting = animatingDeleteId === session.session_id;
               return (
                 <tr key={session.session_id} className={`sessions-row ${isDeleting ? 'sessions-row-deleting' : ''}`} onClick={() => navigate(`/sessions/${session.session_id}/events`)}>
-                  <td className="cell-agent-name">{session.agent_name}</td>
+                  <td className="cell-agent-name">
+                    <AgentDisplay agentName={session.agent_name} />
+                  </td>
                   <td className="cell-session-id">{session.session_id}</td>
                   <td className="td-centered"><SessionStatusBadge endTime={session.end_time} /></td>
                   <td className={`cell-user-id td-centered${session.user_id == null ? ' cell-value-empty' : ''}`}>

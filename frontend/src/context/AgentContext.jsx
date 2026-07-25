@@ -5,7 +5,7 @@ import {
   useMemo,
   useSyncExternalStore,
 } from 'react';
-import { AGENT_OPTIONS } from '../constants/agentOptions.js';
+import { AGENT_OPTIONS, resolveStoredAgent } from '../constants/agentOptions.js';
 import { deactivateProxy } from './ProxyContext.jsx';
 
 const STORAGE_KEY = 'agentguard-selected-agent';
@@ -14,7 +14,7 @@ function readStored() {
   if (typeof window === 'undefined') return AGENT_OPTIONS[0];
   try {
     const v = window.localStorage.getItem(STORAGE_KEY);
-    if (v != null && AGENT_OPTIONS.includes(v)) return v;
+    return resolveStoredAgent(v);
   } catch {
     /* ignore */
   }

@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useAgent } from '../../context/AgentContext.jsx';
+import AgentDisplay from '../Agents/AgentDisplay.jsx';
 import { EMPTY_CELL_DISPLAY, getRiskLevel } from '../SessionsDashboard/sessionUtils.js';
 
 export default function EventsHeader({ sessionId, meta }) {
@@ -19,7 +20,7 @@ export default function EventsHeader({ sessionId, meta }) {
       </button>
       <h1 className="events-view-title">
         <span className="events-view-title-left">
-          Agent: <span>{selectedAgent}</span>
+          Agent: <AgentDisplay agentName={selectedAgent} />
         </span>
         <span className="events-view-title-metric">
           <span className="events-view-title-metric-label">Average Risk Score:</span>

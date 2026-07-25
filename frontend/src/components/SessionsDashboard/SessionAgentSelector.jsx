@@ -1,4 +1,5 @@
 import { AGENT_OPTIONS } from '../../constants/agentOptions.js';
+import AgentDisplay from '../Agents/AgentDisplay.jsx';
 import './agent-selector.css';
 
 export default function SessionAgentSelector({
@@ -21,7 +22,7 @@ export default function SessionAgentSelector({
           aria-expanded={agentDropdownOpen}
           aria-label="Select agent"
         >
-          {selectedAgent}
+          <AgentDisplay agentName={selectedAgent} />
         </button>
         {agentDropdownOpen && (
           <div className="agent-select-options" role="listbox">
@@ -37,7 +38,7 @@ export default function SessionAgentSelector({
                   onAgentSelect(agent);
                 }}
               >
-                {agent}
+                <AgentDisplay agentName={agent} />
               </button>
             ))}
           </div>

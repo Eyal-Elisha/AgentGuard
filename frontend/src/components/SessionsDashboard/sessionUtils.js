@@ -1,3 +1,6 @@
+import { getToken } from '../../api/authToken.js';
+import { normalizeAgentName } from '../../constants/agentOptions.js';
+
 /** Shown when a table cell has no value (user id, timestamps). */
 export const EMPTY_CELL_DISPLAY = '–';
 
@@ -15,8 +18,6 @@ export function getApiBase() {
   if (!base) return null;
   return String(base).replace(/\/$/, '');
 }
-
-import { getToken } from '../../api/authToken.js';
 
 /** Helper for fetching from API with base URL */
 export async function fetchWithBase(path, options = {}) {
@@ -54,7 +55,7 @@ export function normalizeSession(sessionData) {
   
   return {
     session_id: String(sessionData.session_id),
-    agent_name: sessionData.agent_name ?? '',
+    agent_name: normalizeAgentName(sessionData.agent_name ?? ''),
     user_id,
     average_risk_score: risk,
     start_time: sessionData.start_time,
