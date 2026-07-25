@@ -4,8 +4,8 @@ export function useRuleFilters(rules) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRuleType, setFilterRuleType] = useState('');
   const [filterComputeClass, setFilterComputeClass] = useState('');
-  const [filterHardBlock, setFilterHardBlock] = useState('all');
-  const [filterEnabled, setFilterEnabled] = useState('all');
+  const [filterHardBlock, setFilterHardBlock] = useState('');
+  const [filterEnabled, setFilterEnabled] = useState('');
 
   const ruleTypes = useMemo(() => {
     const set = new Set();

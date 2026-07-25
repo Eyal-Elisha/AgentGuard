@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useAgent } from '../../context/AgentContext.jsx';
 import { useProxy } from '../../context/ProxyContext.jsx';
 import SessionAgentSelector from '../SessionsDashboard/SessionAgentSelector.jsx';
@@ -12,7 +11,6 @@ const port = import.meta.env.VITE_PROXY_PORT?.trim() || '8080';
 export default function Home() {
   const { isProxyActive, toggleProxy, isPassiveMode, togglePassiveMode } = useProxy();
   const { selectedAgent, setSelectedAgent } = useAgent();
-  const [agentDropdownOpen, setAgentDropdownOpen] = useState(false);
 
   return (
     <main className="home-page">
@@ -25,10 +23,7 @@ export default function Home() {
         <div className="home-agent-row" data-tour="agent">
           <SessionAgentSelector
             selectedAgent={selectedAgent}
-            agentDropdownOpen={agentDropdownOpen}
-            onToggleAgentDropdown={() => setAgentDropdownOpen((o) => !o)}
-            onCloseAgentDropdown={() => setAgentDropdownOpen(false)}
-            onAgentSelect={(a) => { setSelectedAgent(a); setAgentDropdownOpen(false); }}
+            onAgentSelect={setSelectedAgent}
           />
         </div>
 

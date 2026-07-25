@@ -24,12 +24,18 @@ export default function RulesDashboard() {
         <div className="sessions-dashboard-card rules-dashboard-card">
           <div data-tour="rules-main">
             <RulesToolbar
-              {...filters}
+              searchTerm={filters.searchTerm}
               onSearchChange={filters.setSearchTerm}
+              ruleType={filters.filterRuleType}
               onRuleTypeChange={filters.setFilterRuleType}
+              computeClass={filters.filterComputeClass}
               onComputeClassChange={filters.setFilterComputeClass}
+              hardBlock={filters.filterHardBlock}
               onHardBlockChange={filters.setFilterHardBlock}
+              enabled={filters.filterEnabled}
               onEnabledChange={filters.setFilterEnabled}
+              ruleTypes={filters.ruleTypes}
+              computeClasses={filters.computeClasses}
               disabled={!showTable}
               showManageBlacklist={false}
             />

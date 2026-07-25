@@ -29,24 +29,9 @@
 
 .sessions-header-controls .session-search-input { max-width: 220px; }
 
-.session-user-filter {
-  padding: 0.55rem 0.9rem;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--color-border-subtle);
-  background-color: var(--color-input-bg);
-  color: var(--color-text-body);
-  font-family: var(--font-sans);
-  font-size: 0.9rem;
-  cursor: pointer;
+.sessions-header-controls .session-user-filter {
+  min-width: 11rem;
 }
-
-.session-user-filter:focus-visible {
-  outline: 2px solid var(--color-border-focus);
-  outline-offset: 1px;
-  border-color: transparent;
-}
-
-.session-user-filter:disabled { opacity: 0.55; cursor: not-allowed; }
 
 .sessions-loading {
   margin: 2.5rem 0 2rem;
