@@ -1,7 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import EventsView from './components/EventsView/EventsView.jsx';
 import AppLayout from './components/Layout/AppLayout.jsx';
-import Home from './components/Home/Home.jsx';
+import Guard from './components/Guard/Guard.jsx';
 import RulesDashboard from './components/RulesDashboard/RulesDashboard.jsx';
 import SessionsDashboard from './components/SessionsDashboard/SessionsDashboard.jsx';
 import LoginPage from './components/Auth/LoginPage.jsx';
@@ -24,7 +24,7 @@ function App() {
               <Route path="/signup" element={<SignupPage />} />
               <Route element={<ProtectedRoute />}>
                 <Route element={<AppLayout />}>
-                  <Route index element={<Home />} />
+                  <Route index element={<Guard />} />
                   <Route path="sessions" element={<SessionsDashboard />} />
                   <Route path="sessions/:sessionId/events" element={<EventsView />} />
                   <Route path="rules" element={<RulesDashboard />} />

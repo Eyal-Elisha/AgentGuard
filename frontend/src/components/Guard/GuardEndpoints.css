@@ -1,4 +1,4 @@
-.home-endpoints {
+.guard-endpoints {
   margin: var(--space-md) 0 0;
   width: 100%;
   max-width: 22rem;
@@ -12,7 +12,7 @@
   background: var(--color-status-surface-soft);
 }
 
-.home-endpoint-row {
+.guard-endpoint-row {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
@@ -20,7 +20,7 @@
   padding: var(--space-xs) 0;
 }
 
-.home-endpoints dt {
+.guard-endpoints dt {
   margin: 0;
   font-size: 0.68rem;
   letter-spacing: 0.1em;
@@ -28,7 +28,7 @@
   color: var(--color-text-muted);
 }
 
-.home-endpoints dd {
+.guard-endpoints dd {
   margin: 0;
   font-family: ui-monospace, 'Cascadia Code', 'Segoe UI Mono', monospace;
   font-size: 0.82rem;

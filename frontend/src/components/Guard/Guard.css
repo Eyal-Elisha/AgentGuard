@@ -1,14 +1,15 @@
-@import './HomeHero.css';
-@import './HomeDetails.css';
+@import './GuardControls.css';
+@import './GuardStatus.css';
+@import './GuardEndpoints.css';
 
-.home-page {
+.guard-page {
   flex: 1;
   display: flex;
   justify-content: center;
   padding: var(--space-main-y) var(--space-header-x) 3rem;
 }
 
-.home-card {
+.guard-card {
   width: 100%;
   max-width: 40rem;
   background: radial-gradient(circle at top left, var(--color-bg-card-gradient-start) 0, var(--color-bg-elevated) 55%);
@@ -23,14 +24,14 @@
   gap: var(--space-xl);
 }
 
-.home-heading {
+.guard-heading {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--space-sm);
 }
 
-.home-title {
+.guard-title {
   margin: 0;
   font-size: 1.85rem;
   font-weight: 700;
@@ -38,7 +39,7 @@
   color: var(--color-text-primary);
 }
 
-.home-tagline {
+.guard-tagline {
   margin: 0;
   font-size: 0.95rem;
   letter-spacing: 0.02em;
@@ -47,10 +48,9 @@
   font-weight: 500;
 }
 
-.home-agent-row {
+.guard-agent-row {
   display: flex;
   justify-content: center;
   width: 100%;
   padding-top: var(--space-sm);
 }
-
