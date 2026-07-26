@@ -6,7 +6,6 @@ import AgentDisplay from '../Agents/AgentDisplay.jsx';
 import DeleteSessionModal from './DeleteSessionModal.jsx';
 import SessionStatusBadge from './SessionStatusBadge.jsx';
 
-// TODO: Risk score thresholds (low, medium, high) are currently hardcoded for the mockup and should be configurable or driven by the backend in the future.
 function getRiskLevel(score) {
   if (score > 0.7) return 'high';
   if (score > 0.4) return 'medium';
