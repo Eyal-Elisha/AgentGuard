@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
-import { TOUR_STEPS } from '../content/helpCopy.js';
+import { TOUR_STEPS } from '../content/helpContent.js';
 import { isTourCompleted, setTourCompleted } from './tourStorage.js';
 
 const TourContext = createContext(null);

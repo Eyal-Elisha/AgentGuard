@@ -1,4 +1,4 @@
-export const HELP_COPY = {
+export const HELP_CONTENT = {
   title: 'How AgentGuard works',
   blurb: [
     'AgentGuard watches your agent’s web traffic, flags risky behavior, and saves sessions so you can review what happened.',

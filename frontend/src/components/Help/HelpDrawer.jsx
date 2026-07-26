@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef } from 'react';
-import { HELP_COPY } from '../../content/helpCopy.js';
+import { HELP_CONTENT } from '../../content/helpContent.js';
 import { useTour } from '../../onboarding/TourProvider.jsx';
 import './HelpDrawer.css';
 
@@ -53,25 +53,25 @@ export default function HelpDrawer({ id, open, onClose }) {
         aria-labelledby={titleId}
       >
         <div className="help-drawer-header">
-          <h2 id={titleId} className="help-drawer-title">{HELP_COPY.title}</h2>
+          <h2 id={titleId} className="help-drawer-title">{HELP_CONTENT.title}</h2>
           <button
             ref={closeRef}
             type="button"
             className="help-drawer-close"
             onClick={onClose}
-            aria-label={HELP_COPY.closeLabel}
+            aria-label={HELP_CONTENT.closeLabel}
           >
             ×
           </button>
         </div>
 
         <div className="help-drawer-body">
-          {HELP_COPY.blurb.map((p) => (
+          {HELP_CONTENT.blurb.map((p) => (
             <p key={p} className="help-drawer-blurb">{p}</p>
           ))}
 
           <button type="button" className="help-drawer-tour-btn" onClick={handleStartTour}>
-            {HELP_COPY.tourButtonLabel}
+            {HELP_CONTENT.tourButtonLabel}
           </button>
         </div>
       </aside>
