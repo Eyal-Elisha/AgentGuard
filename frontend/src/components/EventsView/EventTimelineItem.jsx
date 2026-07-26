@@ -1,4 +1,4 @@
-import { formatIsoLocal } from '../SessionsDashboard/sessionUtils.js';
+import { formatDateTime } from '../SessionsDashboard/sessionUtils.js';
 
 const ACTION_CLASS_MAP = { Block: 'event-action--block', Warn: 'event-action--warn', Allow: 'event-action--allow' };
 
@@ -31,7 +31,7 @@ export default function EventTimelineItem({ event, isSelected, isLast, onSelect,
       {!isLast && <span className="events-timeline-line" />}
       <div className="events-timeline-content">
         <div className="events-timeline-row">
-          <span className="events-timestamp">{formatIsoLocal(event.timestamp)}</span>
+          <span className="events-timestamp">{formatDateTime(event.timestamp)}</span>
           <span className={`events-action-badge ${actionClass}`}>{event.guard_action.toUpperCase()}</span>
         </div>
         <div className="events-url-row">

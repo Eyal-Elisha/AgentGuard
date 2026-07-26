@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { EMPTY_CELL_DISPLAY, formatIsoLocal, isIsoEmpty } from './sessionUtils.js';
+import { EMPTY_CELL_DISPLAY, formatDateTime, isIsoEmpty } from './sessionUtils.js';
 import AgentDisplay from '../Agents/AgentDisplay.jsx';
 import DeleteSessionModal from './DeleteSessionModal.jsx';
 import SessionStatusBadge from './SessionStatusBadge.jsx';
@@ -84,10 +84,10 @@ export default function SessionsTable({ filteredSessions, sessions, onDeleteSess
                     {session.average_risk_score.toFixed(2)}
                   </td>
                   <td className={`cell-timestamp td-centered-block${isIsoEmpty(session.start_time) ? ' cell-value-empty' : ''}`}>
-                    {formatIsoLocal(session.start_time)}
+                    {formatDateTime(session.start_time)}
                   </td>
                   <td className={`cell-timestamp td-centered-block${isIsoEmpty(session.end_time) ? ' cell-value-empty' : ''}`}>
-                    {formatIsoLocal(session.end_time)}
+                    {formatDateTime(session.end_time)}
                   </td>
                   <td className="cell-actions" onClick={(e) => e.stopPropagation()}>
                     {canDeleteSessions && isClosed && (

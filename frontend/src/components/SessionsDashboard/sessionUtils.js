@@ -69,7 +69,7 @@ export function isIsoEmpty(iso) {
   return Number.isNaN(d.getTime());
 }
 
-export function formatIsoLocal(iso) {
+export function formatDateTime(iso) {
   if (isIsoEmpty(iso)) return EMPTY_CELL_DISPLAY;
   const d = new Date(iso);
   const day = String(d.getDate()).padStart(2, '0');
