@@ -394,9 +394,6 @@ class NormalizeProxyAgentNameTestCase(unittest.TestCase):
     def test_legacy_gemini_maps_to_microsoft_edge(self):
         self.assertEqual(normalize_proxy_agent_name("Gemini"), "MicrosoftEdge")
 
-    def test_legacy_browseros_maps_to_browser_os(self):
-        self.assertEqual(normalize_proxy_agent_name("browserOS"), "BrowserOS")
-
     def test_canonical_names_are_unchanged(self):
         self.assertEqual(normalize_proxy_agent_name("MicrosoftEdge"), "MicrosoftEdge")
         self.assertEqual(normalize_proxy_agent_name("BrowserOS"), "BrowserOS")

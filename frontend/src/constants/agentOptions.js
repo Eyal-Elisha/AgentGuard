@@ -4,7 +4,6 @@ export const AGENT_OPTIONS = ['MicrosoftEdge', 'BrowserOS'];
 /** Renamed agents only — keep in sync with _LEGACY_AGENT_ALIASES in backend/proxy/audit.py */
 const LEGACY_AGENT_KEYS = {
   gemini: 'MicrosoftEdge',
-  browseros: 'BrowserOS',
 };
 
 function toCanonicalAgentName(trimmed) {

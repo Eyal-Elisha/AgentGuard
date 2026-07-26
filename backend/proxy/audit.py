@@ -28,7 +28,6 @@ _CANONICAL_AGENT_NAMES = ("MicrosoftEdge", "BrowserOS")
 # Renamed agents only — keep in sync with LEGACY_AGENT_KEYS in frontend/src/constants/agentOptions.js
 _LEGACY_AGENT_ALIASES = {
     "gemini": "MicrosoftEdge",
-    "browseros": "BrowserOS",
 }
 
 
