@@ -4,7 +4,7 @@ export default function ProxyToggleButton({
   isActive,
   onToggle,
   ariaLabel,
-  className = '',
+  className = '', // '' so we don't get "undefined" in className
 }) {
   return (
     <button
