@@ -1,0 +1,20 @@
+.events-view-subtitle {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-lg);
+  font-weight: 600;
+}
+
+.events-view-subtitle strong {
+  color: var(--color-text-primary);
+}
+
+.events-view-subtitle-sep {
+  margin-left: var(--space-lg);
+  margin-right: var(--space-sm);
+}
+
+/* Risk colors title usage */
+.events-view-title .cell-risk--high { color: var(--color-risk-high); }
+.events-view-title .cell-risk--medium { color: var(--color-risk-medium); }
+.events-view-title .cell-risk--low { color: var(--color-risk-low); }

@@ -1,7 +1,7 @@
 import EventMetadata from './EventMetadata.jsx';
 import RulesAnalysisSection from './RulesAnalysisSection.jsx';
 import { groupRuleAnalysisSections } from './eventAnalysisUtils.js';
-import './EventAnalysis.css';
+import './eventAnalysis/index.css';
 
 export default function EventAnalysis({ selectedEvent, ruleAnalysisRows }) {
   const guardAction = selectedEvent?.guard_action?.toLowerCase() || '';
