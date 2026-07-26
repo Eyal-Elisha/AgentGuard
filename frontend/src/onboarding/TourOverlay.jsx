@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useTour } from './TourProvider.jsx';
-import './TourOverlay.css';
+import './tourOverlay/index.css';
 
 const POPOVER_EST_HEIGHT = 200;
 const POPOVER_GAP = 14;
