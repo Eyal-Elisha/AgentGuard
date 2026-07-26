@@ -1,5 +1,10 @@
 const STORAGE_PREFIX = 'agentguard-tour-v1:';
 
+export function userKeyFrom(user) {
+  if (!user) return 'anonymous';
+  return String(user.userId ?? user.username ?? 'anonymous');
+}
+
 export function tourStorageKey(userKey) {
   return `${STORAGE_PREFIX}${userKey || 'anonymous'}`;
 }
