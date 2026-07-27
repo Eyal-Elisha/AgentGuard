@@ -7,6 +7,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Literal
 
+from backend.log_encryption import decrypt_float
+
 from .db import _connect, _dt_iso
 
 
@@ -117,11 +119,16 @@ def session_stats(session_id: int) -> dict[str, Any] | None:
             "SELECT COUNT(*) AS c FROM events WHERE session_id = ? AND guard_action = 'Block'",
             (session_id,),
         ).fetchone()["c"]
-        avg_row = conn.execute(
-            "SELECT AVG(risk_score) AS a FROM events WHERE session_id = ?",
+        risk_rows = conn.execute(
+            "SELECT risk_score FROM events WHERE session_id = ?",
             (session_id,),
-        ).fetchone()
-        avg = avg_row["a"]
+        ).fetchall()
+        risk_scores = [
+            score
+            for score in (decrypt_float(row["risk_score"]) for row in risk_rows)
+            if score is not None
+        ]
+        avg = sum(risk_scores) / len(risk_scores) if risk_scores else None
         return {
             "total_events": int(total),
             "allow": int(allow),

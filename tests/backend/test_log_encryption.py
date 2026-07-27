@@ -5,7 +5,13 @@ import unittest
 
 from cryptography.fernet import Fernet
 
-from backend.log_encryption import ENCRYPTED_VALUE_PREFIX, decrypt_text, encrypt_text
+from backend.log_encryption import (
+    ENCRYPTED_VALUE_PREFIX,
+    decrypt_float,
+    decrypt_text,
+    encrypt_float,
+    encrypt_text,
+)
 
 
 class LogEncryptionTestCase(unittest.TestCase):
@@ -45,10 +51,21 @@ class LogEncryptionTestCase(unittest.TestCase):
         self.assertNotEqual(encrypted, plaintext)
         self.assertEqual(decrypt_text(encrypted), plaintext)
 
+    def test_encrypts_and_decrypts_float_scores(self):
+        os.environ["AGENTGUARD_LOG_ENCRYPTION_KEY"] = Fernet.generate_key().decode("utf-8")
+
+        encrypted = encrypt_float(0.82)
+
+        self.assertIsNotNone(encrypted)
+        self.assertTrue(encrypted.startswith(ENCRYPTED_VALUE_PREFIX))
+        self.assertNotIn("0.82", encrypted)
+        self.assertEqual(decrypt_float(encrypted), 0.82)
+
     def test_plaintext_legacy_values_read_without_key(self):
         os.environ.pop("AGENTGUARD_LOG_ENCRYPTION_KEY", None)
 
         self.assertEqual(decrypt_text("legacy plaintext"), "legacy plaintext")
+        self.assertEqual(decrypt_float(0.25), 0.25)
 
 
 if __name__ == "__main__":

@@ -153,6 +153,7 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         self.assertEqual(event["guard_action"], "Warn")
         self.assertEqual(event["http_method"], "POST")
         self.assertEqual(event["url"], "https://example.com/login")
+        self.assertEqual(event["risk_score"], 0.42)
 
         analyses = store.rule_analysis_list_for_event(audit["event_id"])
         self.assertEqual(len(analyses), 2)
@@ -160,27 +161,32 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         sensitive_analysis = next(item for item in analyses if item["rule_code"] == "sensitive_fields")
         blacklist_analysis = next(item for item in analyses if item["rule_code"] == "custom_blacklist")
         self.assertEqual(sensitive_analysis["hard_block"], 0)
+        self.assertEqual(sensitive_analysis["rule_score"], 1.0)
         self.assertEqual(blacklist_analysis["hard_block"], 1)
+        self.assertEqual(blacklist_analysis["rule_score"], 0.0)
         self.assertIsNotNone(store.rule_get("sensitive_fields"))
         self.assertIsNotNone(store.rule_get("custom_blacklist"))
 
         conn = sqlite3.connect(self.db_path)
         try:
             raw_event = conn.execute(
-                "SELECT url, headers_json FROM events WHERE event_id = ?",
+                "SELECT url, risk_score, headers_json FROM events WHERE event_id = ?",
                 (audit["event_id"],),
             ).fetchone()
-            raw_details = conn.execute(
-                "SELECT details FROM rules_analysis WHERE event_id = ?",
+            raw_analyses = conn.execute(
+                "SELECT rule_score, details FROM rules_analysis WHERE event_id = ?",
                 (audit["event_id"],),
             ).fetchall()
         finally:
             conn.close()
         self.assertTrue(raw_event[0].startswith(ENCRYPTED_VALUE_PREFIX))
         self.assertTrue(raw_event[1].startswith(ENCRYPTED_VALUE_PREFIX))
+        self.assertTrue(raw_event[2].startswith(ENCRYPTED_VALUE_PREFIX))
         self.assertNotIn("https://example.com/login", raw_event[0])
-        self.assertTrue(all(row[0].startswith(ENCRYPTED_VALUE_PREFIX) for row in raw_details))
-        self.assertTrue(all("Sensitive fields present on page" not in row[0] for row in raw_details))
+        self.assertNotIn("0.42", raw_event[1])
+        self.assertTrue(all(row[0].startswith(ENCRYPTED_VALUE_PREFIX) for row in raw_analyses))
+        self.assertTrue(all(row[1].startswith(ENCRYPTED_VALUE_PREFIX) for row in raw_analyses))
+        self.assertTrue(all("Sensitive fields present on page" not in row[1] for row in raw_analyses))
 
         raw_log_lines = Path(self.log_path).read_text(encoding="utf-8").splitlines()
         self.assertEqual(len(raw_log_lines), 2)
