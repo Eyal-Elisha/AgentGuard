@@ -16,10 +16,14 @@ Stage B (the semantic TF-IDF classifier) is enabled by default. Pass --no-stage-
 to evaluate Stage A (deterministic + contextual rules) in isolation.
 
 Speed tips:
-- Pass --workers N to parallelize across N processes (defaults to CPU-1).
+- Pass --workers N to parallelize across N processes (defaults to CPU count).
 - The harness defaults to BeautifulSoup's `lxml` parser, ~5-10x faster than
   `html.parser`. Pass --parser html.parser to mirror the production proxy
   exactly (slower but bit-identical to the live runtime).
+- Network blacklist lookups (PhishTank/URLhaus) are skipped by default; each
+  uncached domain can block up to 3s and every worker has its own cache.
+  Pass --blacklist-network to match live-proxy behavior (much slower).
+- Raise --chunksize (e.g. 32) on large runs to cut worker IPC overhead.
 """
 
 from __future__ import annotations
@@ -30,6 +34,7 @@ import multiprocessing
 import os
 import sys
 import time
+import warnings
 from pathlib import Path
 from typing import Iterable, Iterator
 
@@ -39,12 +44,26 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from backend.analysis.rules import (  # noqa: E402
+    HIGH_RISK_THRESHOLD,
+    WARN_THRESHOLD,
+)
+
 
 # ---------------------------------------------------------------------------
 # Per-worker state. Populated by `_worker_init` in each pool process.
 # ---------------------------------------------------------------------------
 
 _WORKER: dict = {}
+
+
+def _decide(score: float, warn_threshold: float, block_threshold: float) -> str:
+    """Map a risk score to allow/warn/block using the supplied thresholds."""
+    if score >= block_threshold:
+        return "block"
+    if score >= warn_threshold:
+        return "warn"
+    return "allow"
 
 
 def _patch_bs4_parser(parser: str) -> None:
@@ -69,9 +88,29 @@ def _patch_bs4_parser(parser: str) -> None:
     BeautifulSoup.__init__ = patched_init
 
 
-def _worker_init(use_stage_b: bool, parser: str) -> None:
+def _skip_blacklist_network() -> None:
+    """Offline eval: don't call PhishTank/URLhaus (up to 3s per uncached domain)."""
+    from backend.analysis.stages.stage_a import blacklist as bl_mod
+
+    def _offline_listed(domain: str) -> tuple[bool, str]:
+        return False, "offline (network skipped)"
+
+    bl_mod.blacklist_cache.is_listed = _offline_listed  # type: ignore[method-assign]
+
+
+def _worker_init(
+    use_stage_b: bool,
+    parser: str,
+    warn_threshold: float,
+    block_threshold: float,
+    stage_b_always: bool,
+    skip_blacklist_network: bool,
+) -> None:
     """Per-process setup: import backend, instantiate evaluators once."""
+    warnings.filterwarnings("ignore", category=UserWarning, module="sklearn")
     _patch_bs4_parser(parser)
+    if skip_blacklist_network:
+        _skip_blacklist_network()
 
     from backend.analysis.stages.stage_a import StageAEvaluator
     from backend.analysis.stages.stage_b import StageBEvaluator
@@ -86,6 +125,9 @@ def _worker_init(use_stage_b: bool, parser: str) -> None:
     _WORKER["extractor"] = FeatureExtractor()
     _WORKER["stage_a"] = StageAEvaluator(custom_blacklist=blacklist)
     _WORKER["stage_b"] = StageBEvaluator() if use_stage_b else None
+    _WORKER["warn_threshold"] = warn_threshold
+    _WORKER["block_threshold"] = block_threshold
+    _WORKER["stage_b_always"] = stage_b_always
 
     try:
         rows = store.rules_list_asc()
@@ -97,7 +139,7 @@ def _worker_init(use_stage_b: bool, parser: str) -> None:
 def _score_one(record: dict) -> dict:
     """Run the pipeline for a single record. Catches per-record exceptions."""
     from backend.analysis.rules import EvaluationResult
-    from backend.analysis.stages.stage_a.evaluator import _aggregate, _make_decision
+    from backend.analysis.stages.stage_a.evaluator import _aggregate
     from backend.analysis.stages.stage_a.session_loader import build_context
 
     url = record.get("url") or ""
@@ -112,13 +154,22 @@ def _score_one(record: dict) -> dict:
         stage_a = _WORKER["stage_a"]
         stage_b = _WORKER["stage_b"]
         enablement = _WORKER["enablement"]
+        warn_threshold = _WORKER["warn_threshold"]
+        block_threshold = _WORKER["block_threshold"]
+        stage_b_always = _WORKER["stage_b_always"]
 
         features = extractor.extract(url=url, method="GET", headers=headers, body=body)
         session = build_context(session_id=None, current_timestamp=None, current_url=url)
 
         stage_a_result = stage_a.evaluate(features, session=session, enabled_rules=enablement)
 
-        if stage_b is None or stage_a_result.hard_block_triggered or not stage_a_result.stage_b_required:
+        run_stage_b = (
+            stage_b is not None
+            and not stage_a_result.hard_block_triggered
+            and (stage_b_always or stage_a_result.stage_b_required)
+        )
+
+        if not run_stage_b:
             result = stage_a_result
             stage_b_ran = False
         else:
@@ -126,13 +177,18 @@ def _score_one(record: dict) -> dict:
             combined = stage_a_result.rule_results + semantic_results
             final_score = _aggregate(combined)
             result = EvaluationResult(
-                decision=_make_decision(final_score),
+                decision=stage_a_result.decision,
                 risk_score=round(final_score, 4),
                 rule_results=combined,
                 hard_block_triggered=False,
                 stage_b_required=False,
             )
             stage_b_ran = True
+
+        score = float(result.risk_score)
+        decision = "block" if result.hard_block_triggered else _decide(
+            score, warn_threshold, block_threshold
+        )
 
         triggered = [
             {"rule_id": r.rule_id, "score": r.score, "hard_block": bool(r.hard_block)}
@@ -143,8 +199,8 @@ def _score_one(record: dict) -> dict:
         return {
             "url": url,
             "label": label,
-            "score": float(result.risk_score),
-            "decision": result.decision.value if hasattr(result.decision, "value") else str(result.decision),
+            "score": score,
+            "decision": decision,
             "hard_block": bool(result.hard_block_triggered),
             "stage_b_ran": stage_b_ran,
             "triggered_rules": triggered,
@@ -172,8 +228,19 @@ def run_serial(
     use_stage_b: bool,
     parser: str,
     progress_every: int,
+    warn_threshold: float,
+    block_threshold: float,
+    stage_b_always: bool,
+    skip_blacklist_network: bool,
 ) -> tuple[int, int]:
-    _worker_init(use_stage_b=use_stage_b, parser=parser)
+    _worker_init(
+        use_stage_b=use_stage_b,
+        parser=parser,
+        warn_threshold=warn_threshold,
+        block_threshold=block_threshold,
+        stage_b_always=stage_b_always,
+        skip_blacklist_network=skip_blacklist_network,
+    )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     n_total = 0
     n_failed = 0
@@ -188,7 +255,6 @@ def run_serial(
             if progress_every and n_total % progress_every == 0:
                 elapsed = time.monotonic() - start
                 rate = n_total / elapsed if elapsed > 0 else 0.0
-                eta_s = (rate and (n_total / rate)) or 0
                 print(f"  scored {n_total} ({rate:.1f}/s, {n_failed} failed)", file=sys.stderr)
     return n_total, n_failed
 
@@ -202,6 +268,10 @@ def run_parallel(
     workers: int,
     chunksize: int,
     progress_every: int,
+    warn_threshold: float,
+    block_threshold: float,
+    stage_b_always: bool,
+    skip_blacklist_network: bool,
 ) -> tuple[int, int]:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     n_total = 0
@@ -211,8 +281,15 @@ def run_parallel(
     with ctx.Pool(
         processes=workers,
         initializer=_worker_init,
-        initargs=(use_stage_b, parser),
-    ) as pool, output_path.open("w", encoding="utf-8") as out:
+        initargs=(
+            use_stage_b,
+            parser,
+            warn_threshold,
+            block_threshold,
+            stage_b_always,
+            skip_blacklist_network,
+        ),
+    ) as pool, output_path.open("w", encoding="utf-8", buffering=1024 * 1024) as out:
         for scored in pool.imap_unordered(_score_one, records, chunksize=chunksize):
             n_total += 1
             if "error" in scored:
@@ -231,16 +308,40 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--no-stage-b", action="store_true", help="Skip Stage B (semantic classifier)")
     parser.add_argument(
+        "--stage-b-always",
+        action="store_true",
+        help="Run Stage B on every non-hard-blocked page, ignoring the Stage A gate "
+        "(useful for measuring semantic coverage).",
+    )
+    parser.add_argument(
+        "--warn-threshold",
+        type=float,
+        default=WARN_THRESHOLD,
+        help=f"Score at/above which a page is 'warn' (default {WARN_THRESHOLD}).",
+    )
+    parser.add_argument(
+        "--block-threshold",
+        type=float,
+        default=HIGH_RISK_THRESHOLD,
+        help=f"Score at/above which a page is 'block' (default {HIGH_RISK_THRESHOLD}).",
+    )
+    parser.add_argument(
         "--workers",
         type=int,
-        default=max(1, (os.cpu_count() or 2) - 1),
-        help="Parallel worker processes (default = CPU-1). Use 1 for serial.",
+        default=os.cpu_count() or 4,
+        help="Parallel worker processes (default = CPU count). Use 1 for serial.",
     )
     parser.add_argument(
         "--chunksize",
         type=int,
-        default=8,
-        help="Records per work-unit handed to each worker. Smaller = smoother progress, bigger = less IPC overhead.",
+        default=32,
+        help="Records batched per worker task (default 32). Higher = less IPC overhead.",
+    )
+    parser.add_argument(
+        "--blacklist-network",
+        action="store_true",
+        help="Query PhishTank/URLhaus for domain_blacklist (slow; live-proxy behavior). "
+        "Skipped by default in offline eval.",
     )
     parser.add_argument(
         "--parser",
@@ -257,6 +358,8 @@ def main(argv: list[str] | None = None) -> int:
 
     print(
         f"running with workers={args.workers}, parser={args.parser}, "
+        f"chunksize={args.chunksize}, "
+        f"blacklist_network={'on' if args.blacklist_network else 'off'}, "
         f"stage_b={'off' if args.no_stage_b else 'on'}",
         file=sys.stderr,
     )
@@ -266,6 +369,10 @@ def main(argv: list[str] | None = None) -> int:
         use_stage_b=not args.no_stage_b,
         parser=args.parser,
         progress_every=args.progress_every,
+        warn_threshold=args.warn_threshold,
+        block_threshold=args.block_threshold,
+        stage_b_always=args.stage_b_always,
+        skip_blacklist_network=not args.blacklist_network,
     )
 
     if args.workers <= 1:

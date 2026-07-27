@@ -156,6 +156,17 @@ BRAND_DOMAINS: Dict[str, List[str]] = {
     "expressvpn":    ["expressvpn.com"],
 }
 
+# Top-level domains repeatedly over-represented in phishing/abuse feeds
+# (free or near-free registration, weak abuse handling). Used as a weak,
+# stackable signal — never a hard block, since legitimate sites use these too.
+HIGH_ABUSE_TLDS: frozenset = frozenset({
+    "cfd", "xyz", "top", "gq", "ml", "ga", "cf", "tk", "work", "click",
+    "link", "rest", "fit", "icu", "cyou", "sbs", "monster", "quest", "buzz",
+    "country", "kim", "loan", "racing", "win", "bar", "wang", "men",
+    "download", "stream", "review", "date", "faith", "science", "party",
+    "pw", "su", "best", "live", "shop", "online", "site", "uno", "autos",
+})
+
 # input type="password" is unconditionally sensitive
 SENSITIVE_INPUT_TYPES: frozenset = frozenset({"password"})
 

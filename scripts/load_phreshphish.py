@@ -74,7 +74,11 @@ def _iter_rows(args: argparse.Namespace) -> Iterator[dict]:
         except ImportError as exc:
             print(f"error: --parquet-glob requires pyarrow ({exc})", file=sys.stderr)
             raise SystemExit(2)
-        files = sorted(Path().glob(args.parquet_glob))
+        glob_path = Path(args.parquet_glob)
+        if glob_path.anchor:
+            files = sorted(glob_path.parent.glob(glob_path.name))
+        else:
+            files = sorted(Path().glob(args.parquet_glob))
         if not files:
             print(f"error: no parquet files matched {args.parquet_glob!r}", file=sys.stderr)
             raise SystemExit(2)

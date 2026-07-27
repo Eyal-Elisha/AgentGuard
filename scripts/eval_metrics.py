@@ -120,6 +120,14 @@ def _threshold_for_recall(labels: list[int], scores: list[float], target_recall:
     return best
 
 
+def _decide(score: float, warn_threshold: float, block_threshold: float) -> str:
+    if score >= block_threshold:
+        return "block"
+    if score >= warn_threshold:
+        return "warn"
+    return "allow"
+
+
 def _confusion(labels: list[int], preds: list[int]) -> dict:
     tp = sum(1 for y, p in zip(labels, preds) if y == 1 and p == 1)
     fp = sum(1 for y, p in zip(labels, preds) if y == 0 and p == 1)
@@ -164,7 +172,56 @@ def _rule_breakdown(records: list[dict]) -> dict:
     return breakdown
 
 
-def compute(records: list[dict]) -> dict:
+_SCORE_BINS: tuple[tuple[str, float, float], ...] = (
+    ("== 0",        0.0,  0.0),
+    ("(0, 0.10)",   0.0,  0.10),
+    ("[0.10, 0.25)", 0.10, 0.25),
+    ("[0.25, 0.50)", 0.25, 0.50),
+    ("[0.50, 0.70)", 0.50, 0.70),
+    ("[0.70, 1.0]",  0.70, 1.01),
+)
+
+
+def _score_histogram(labeled: list[dict]) -> dict:
+    """Count scores per bin, split by label, to show where phish/benign land."""
+    out: dict[str, dict[str, int]] = {}
+    for name, lo, hi in _SCORE_BINS:
+        phish = benign = 0
+        for r in labeled:
+            s = float(r["score"])
+            in_bin = (s == 0.0) if (lo == 0.0 and hi == 0.0) else (lo <= s < hi)
+            if not in_bin:
+                continue
+            if r["label"] == 1:
+                phish += 1
+            else:
+                benign += 1
+        out[name] = {"phish": phish, "benign": benign}
+    return out
+
+
+def _decision_breakdown(labeled: list[dict], decisions: list[str]) -> dict:
+    """allow/warn/block counts overall and split by label."""
+    overall: dict[str, int] = defaultdict(int)
+    phish: dict[str, int] = defaultdict(int)
+    benign: dict[str, int] = defaultdict(int)
+    for r, d in zip(labeled, decisions):
+        overall[d] += 1
+        (phish if r["label"] == 1 else benign)[d] += 1
+    keys = ("allow", "warn", "block")
+    return {
+        "overall": {k: overall.get(k, 0) for k in keys},
+        "phish": {k: phish.get(k, 0) for k in keys},
+        "benign": {k: benign.get(k, 0) for k in keys},
+    }
+
+
+def compute(
+    records: list[dict],
+    *,
+    warn_threshold: float | None = None,
+    block_threshold: float | None = None,
+) -> dict:
     labeled = [r for r in records if r.get("label") in (0, 1) and isinstance(r.get("score"), (int, float))]
     skipped = len(records) - len(labeled)
     if not labeled:
@@ -172,7 +229,18 @@ def compute(records: list[dict]) -> dict:
 
     labels = [int(r["label"]) for r in labeled]
     scores = [float(r["score"]) for r in labeled]
-    decisions = [str(r.get("decision", "")) for r in labeled]
+
+    # Effective decision: recompute from score when thresholds are overridden
+    # (so a single scored run can be re-judged at any threshold), otherwise
+    # trust the decision the harness already wrote.
+    override = warn_threshold is not None and block_threshold is not None
+    if override:
+        decisions = [
+            "block" if r.get("hard_block") else _decide(float(r["score"]), warn_threshold, block_threshold)
+            for r in labeled
+        ]
+    else:
+        decisions = [str(r.get("decision", "")) for r in labeled]
 
     # "Default" decision = the product's actual behavior: Warn or Block both count as positive.
     preds_default = [1 if d in ("warn", "block") else 0 for d in decisions]
@@ -186,6 +254,9 @@ def compute(records: list[dict]) -> dict:
     n_pos = sum(labels)
     n_neg = len(labels) - n_pos
 
+    stage_b_flags = [r.get("stage_b_ran") for r in labeled if "stage_b_ran" in r]
+    stage_b_ran_rate = (sum(1 for f in stage_b_flags if f) / len(stage_b_flags)) if stage_b_flags else None
+
     return {
         "n_input": len(records),
         "n_skipped": skipped,
@@ -193,11 +264,19 @@ def compute(records: list[dict]) -> dict:
         "n_positives": n_pos,
         "n_negatives": n_neg,
         "base_rate": n_pos / len(labeled),
+        "thresholds": {
+            "warn": warn_threshold,
+            "block": block_threshold,
+            "source": "override" if override else "as-scored",
+        },
         "average_precision": ap,
         "roc_auc": auc,
         "precision_at_recall_0.9": p_at_r09,
         "fpr_at_recall_0.9": fpr_at_r09,
         "threshold_at_recall_0.9": thr_r09,
+        "stage_b_ran_rate": stage_b_ran_rate,
+        "decision_breakdown": _decision_breakdown(labeled, decisions),
+        "score_histogram": _score_histogram(labeled),
         "default_decision_warn_or_block": _confusion(labels, preds_default),
         "default_decision_block_only": _confusion(labels, preds_block_only),
         "tuned_threshold_at_recall_0.9": _confusion(labels, preds_r09) if preds_r09 else None,
@@ -221,11 +300,33 @@ def _print_report(m: dict, *, stream=sys.stdout) -> None:
     w(f"  positives:      {m['n_positives']}")
     w(f"  negatives:      {m['n_negatives']}")
     w(f"  base rate:      {m['base_rate']:.4f}")
+    sb = m.get("stage_b_ran_rate")
+    if sb is not None:
+        w(f"  stage B ran on: {sb:.1%} of scored pages")
+    th = m.get("thresholds", {})
+    if th.get("source") == "override":
+        w(f"  thresholds:     warn>={th['warn']}  block>={th['block']} (override)")
     w()
     w("score-based metrics (threshold-free)")
     w(f"  average precision : {m['average_precision']:.4f}")
     w(f"  ROC AUC           : {m['roc_auc']:.4f}")
     w()
+
+    hist = m.get("score_histogram")
+    if hist:
+        w("score distribution (phish / benign)")
+        for name, counts in hist.items():
+            w(f"  {name:<14} {counts['phish']:>7} / {counts['benign']}")
+        w()
+
+    dec = m.get("decision_breakdown")
+    if dec:
+        w("decision breakdown (allow / warn / block)")
+        for grp in ("overall", "phish", "benign"):
+            d = dec[grp]
+            w(f"  {grp:<8} allow={d['allow']:<7} warn={d['warn']:<7} block={d['block']}")
+        w()
+
     w(f"precision @ recall=0.9 : {m['precision_at_recall_0.9']:.4f}")
     w(f"FPR        @ recall=0.9 : {m['fpr_at_recall_0.9']:.4f}")
     w(f"threshold  @ recall=0.9 : {m['threshold_at_recall_0.9']:.4f}")
@@ -256,14 +357,35 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", required=True, type=Path, help="Scored JSONL from eval_offline.py")
     parser.add_argument("--json", type=Path, help="Also write metrics as JSON")
+    parser.add_argument(
+        "--warn-threshold",
+        type=float,
+        default=None,
+        help="Re-judge decisions at this warn cutoff from the stored score "
+        "(use together with --block-threshold; otherwise the as-scored decisions are used).",
+    )
+    parser.add_argument(
+        "--block-threshold",
+        type=float,
+        default=None,
+        help="Re-judge decisions at this block cutoff from the stored score.",
+    )
     args = parser.parse_args(argv)
+
+    if (args.warn_threshold is None) != (args.block_threshold is None):
+        print("error: pass both --warn-threshold and --block-threshold, or neither", file=sys.stderr)
+        return 2
 
     if not args.input.exists():
         print(f"error: input not found: {args.input}", file=sys.stderr)
         return 2
 
     records = list(_iter_scored(args.input))
-    metrics = compute(records)
+    metrics = compute(
+        records,
+        warn_threshold=args.warn_threshold,
+        block_threshold=args.block_threshold,
+    )
     _print_report(metrics)
     if args.json:
         args.json.parent.mkdir(parents=True, exist_ok=True)
