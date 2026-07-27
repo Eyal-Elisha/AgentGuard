@@ -1,7 +1,7 @@
 .sessions-table-wrapper {
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border-subtle);
-  background: linear-gradient(to bottom, rgba(15, 23, 42, 0.9), var(--color-bg-table-gradient-end));
+  background: linear-gradient(to bottom, var(--color-bg-table-gradient-start), var(--color-bg-table-gradient-end));
   overflow: hidden;
 }
 
@@ -34,9 +34,10 @@
   text-align: left;
 }
 
-.sessions-table th.th-risk-center, .sessions-table td.td-risk-center { text-align: center; }
-
-.cell-risk-inner { display: inline-block; text-align: left; width: 5ch; }
+.sessions-table th.th-centered,
+.sessions-table td.td-centered {
+  text-align: center;
+}
 
 .sessions-row {
   background: var(--color-bg-row);
@@ -51,7 +52,7 @@
 .cell-session-id { letter-spacing: 0.04em; color: var(--color-text-session-id); }
 .cell-user-id { color: var(--color-text-body); }
 .sessions-table td.cell-timestamp { font-weight: 400; font-variant-numeric: tabular-nums; }
-.cell-risk { font-weight: 600; }
+.cell-risk { font-weight: 600; font-variant-numeric: tabular-nums; }
 
 .sessions-table td.cell-risk--high { color: var(--color-risk-high); }
 .sessions-table td.cell-risk--medium { color: var(--color-risk-medium); }

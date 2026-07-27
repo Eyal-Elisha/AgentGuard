@@ -1,10 +1,5 @@
 @import './EventTimelineBadges.css';
-
-.events-timeline-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
-}
+@import './EventTimelineList.css';
 
 .events-timeline-item {
   position: relative;
@@ -53,44 +48,4 @@
 .events-timeline-item--selected.event-action--allow {
   border-color: var(--color-risk-low);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-risk-low) 20%, transparent), 0 0 10px color-mix(in srgb, var(--color-risk-low) 20%, transparent);
-}
-
-.events-timeline-dot {
-  position: absolute;
-  left: calc(-1 * var(--space-sm));
-  top: var(--space-md);
-  width: var(--space-sm);
-  height: var(--space-sm);
-  border-radius: var(--radius-pill);
-  z-index: 1;
-}
-
-.events-timeline-line {
-  position: absolute;
-  left: calc(-1 * var(--space-sm));
-  top: var(--space-lg);
-  width: 2px;
-  height: calc(100% + var(--space-md));
-  background: var(--color-border-subtle);
-}
-
-.events-timeline-content {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-  padding-left: 3.5rem; /* Indentation for corner badge */
-}
-
-.events-timeline-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--space-md);
-}
-
-.events-timestamp {
-  color: var(--color-text-body);
-  font-size: var(--font-sm);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
 }

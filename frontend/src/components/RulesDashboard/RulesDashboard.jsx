@@ -22,16 +22,24 @@ export default function RulesDashboard() {
     <div className="sessions-page">
       <main className="sessions-dashboard-main">
         <div className="sessions-dashboard-card rules-dashboard-card">
-          <RulesToolbar
-            {...filters}
-            onSearchChange={filters.setSearchTerm}
-            onRuleTypeChange={filters.setFilterRuleType}
-            onComputeClassChange={filters.setFilterComputeClass}
-            onHardBlockChange={filters.setFilterHardBlock}
-            onEnabledChange={filters.setFilterEnabled}
-            disabled={!showTable}
-            showManageBlacklist={false}
-          />
+          <div data-tour="rules-main">
+            <RulesToolbar
+              searchTerm={filters.searchTerm}
+              onSearchChange={filters.setSearchTerm}
+              ruleType={filters.filterRuleType}
+              onRuleTypeChange={filters.setFilterRuleType}
+              computeClass={filters.filterComputeClass}
+              onComputeClassChange={filters.setFilterComputeClass}
+              hardBlock={filters.filterHardBlock}
+              onHardBlockChange={filters.setFilterHardBlock}
+              enabled={filters.filterEnabled}
+              onEnabledChange={filters.setFilterEnabled}
+              ruleTypes={filters.ruleTypes}
+              computeClasses={filters.computeClasses}
+              disabled={!showTable}
+              showManageBlacklist={false}
+            />
+          </div>
 
           {isLoading && <div className="sessions-loading" role="status">Loading rules…</div>}
           {error && <div className="sessions-error-alert" role="alert">{error}</div>}

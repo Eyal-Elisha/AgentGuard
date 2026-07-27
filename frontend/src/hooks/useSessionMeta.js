@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
+import { normalizeAgentName } from '../constants/agentOptions.js';
 import { fetchSessionEventStats, fetchWithBase } from '../components/SessionsDashboard/sessionUtils.js';
 
 export function useSessionMeta(resolvedSessionId) {
-  const [sessionMeta, setSessionMeta] = useState({ avgScore: null, userId: null, username: null });
+  const [sessionMeta, setSessionMeta] = useState({ avgScore: null, userId: null, username: null, agentName: null });
 
   useEffect(() => {
     let cancelled = false;
@@ -14,10 +15,11 @@ export function useSessionMeta(resolvedSessionId) {
           fetchSessionEventStats(baseUrl, resolvedSessionId)
         ]);
         
-        let meta = { avgScore: avg, userId: null, username: null };
+        let meta = { avgScore: avg, userId: null, username: null, agentName: null };
         if (res.ok) {
           const data = await res.json();
           meta.userId = typeof data?.user_id === 'number' ? data.user_id : null;
+          meta.agentName = normalizeAgentName(data?.agent_name ?? '') || null;
           if (meta.userId != null) {
             const uRes = await fetchWithBase(`/users/${meta.userId}`);
             if (uRes.ok) {

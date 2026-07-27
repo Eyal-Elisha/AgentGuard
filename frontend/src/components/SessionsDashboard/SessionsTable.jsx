@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { EMPTY_CELL_DISPLAY, formatIsoLocal, isIsoEmpty } from './sessionUtils.js';
-import SessionStatusBadge from './SessionStatusBadge.jsx';
+import { EMPTY_CELL_DISPLAY, formatDateTime, isIsoEmpty } from './sessionUtils.js';
+import AgentDisplay from '../Agents/AgentDisplay.jsx';
 import DeleteSessionModal from './DeleteSessionModal.jsx';
+import SessionStatusBadge from './SessionStatusBadge.jsx';
 
-// TODO: Risk score thresholds (low, medium, high) are currently hardcoded for the mockup and should be configurable or driven by the backend in the future.
 function getRiskLevel(score) {
   if (score > 0.7) return 'high';
   if (score > 0.4) return 'medium';
@@ -57,9 +57,9 @@ export default function SessionsTable({ filteredSessions, sessions, onDeleteSess
             <tr>
               <th>AGENT NAME</th>
               <th>SESSION ID</th>
-              <th>STATUS</th>
-              <th>USER ID</th>
-              <th className="th-risk-center">AVG RISK</th>
+              <th className="th-centered">STATUS</th>
+              <th className="th-centered">USER ID</th>
+              <th className="th-centered">AVG RISK</th>
               <th className="th-centered-block">START TIME</th>
               <th className="th-centered-block">END TIME</th>
               <th aria-label="Actions" />
@@ -72,20 +72,22 @@ export default function SessionsTable({ filteredSessions, sessions, onDeleteSess
               const isDeleting = animatingDeleteId === session.session_id;
               return (
                 <tr key={session.session_id} className={`sessions-row ${isDeleting ? 'sessions-row-deleting' : ''}`} onClick={() => navigate(`/sessions/${session.session_id}/events`)}>
-                  <td className="cell-agent-name">{session.agent_name}</td>
+                  <td className="cell-agent-name">
+                    <AgentDisplay agentName={session.agent_name} />
+                  </td>
                   <td className="cell-session-id">{session.session_id}</td>
-                  <td><SessionStatusBadge endTime={session.end_time} /></td>
-                  <td className={`cell-user-id${session.user_id == null ? ' cell-value-empty' : ''}`}>
+                  <td className="td-centered"><SessionStatusBadge endTime={session.end_time} /></td>
+                  <td className={`cell-user-id td-centered${session.user_id == null ? ' cell-value-empty' : ''}`}>
                     {session.user_id == null ? EMPTY_CELL_DISPLAY : session.user_id}
                   </td>
-                  <td className={`cell-risk cell-risk--${riskLevel} td-risk-center`}>
-                    <span className="cell-risk-inner">{session.average_risk_score.toFixed(2)}</span>
+                  <td className={`cell-risk cell-risk--${riskLevel} td-centered`}>
+                    {session.average_risk_score.toFixed(2)}
                   </td>
                   <td className={`cell-timestamp td-centered-block${isIsoEmpty(session.start_time) ? ' cell-value-empty' : ''}`}>
-                    {formatIsoLocal(session.start_time)}
+                    {formatDateTime(session.start_time)}
                   </td>
                   <td className={`cell-timestamp td-centered-block${isIsoEmpty(session.end_time) ? ' cell-value-empty' : ''}`}>
-                    {formatIsoLocal(session.end_time)}
+                    {formatDateTime(session.end_time)}
                   </td>
                   <td className="cell-actions" onClick={(e) => e.stopPropagation()}>
                     {canDeleteSessions && isClosed && (

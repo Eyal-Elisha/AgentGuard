@@ -1,21 +1,29 @@
+import StyledSelect from '../ui/StyledSelect.jsx';
+
 export default function SessionUserFilter({ value, onChange, users, disabled }) {
+  const options = [
+    { value: 'all', label: 'All users' },
+    { value: 'admins', label: 'Admins only' },
+    { value: 'users', label: 'Non-admins only' },
+    ...(users.length > 0
+      ? [
+          { divider: true, value: '__divider__', label: '' },
+          ...users.map((u) => ({
+            value: String(u.user_id),
+            label: `${u.username}${u.is_admin ? ' (admin)' : ''}`,
+          })),
+        ]
+      : []),
+  ];
+
   return (
-    <select
-      className="session-user-filter"
+    <StyledSelect
+      className="styled-select--pill session-user-filter"
       value={value}
-      onChange={(e) => onChange(e.target.value)}
+      onChange={onChange}
+      options={options}
       disabled={disabled}
-      aria-label="Filter sessions by user"
-    >
-      <option value="all">All users</option>
-      <option value="admins">Admins only</option>
-      <option value="users">Non-admins only</option>
-      {users.length > 0 && <option disabled>──────────</option>}
-      {users.map((u) => (
-        <option key={u.user_id} value={String(u.user_id)}>
-          {u.username}{u.is_admin ? ' (admin)' : ''}
-        </option>
-      ))}
-    </select>
+      ariaLabel="Filter sessions by user"
+    />
   );
 }

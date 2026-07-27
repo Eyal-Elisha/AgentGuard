@@ -1,0 +1,10 @@
+.agent-display {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.agent-display__name {
+  min-width: 0;
+}

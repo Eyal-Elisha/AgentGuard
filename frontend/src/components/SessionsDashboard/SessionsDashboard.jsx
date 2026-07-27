@@ -49,7 +49,7 @@ function SessionsDashboard() {
     <div className="sessions-page">
       <main className="sessions-dashboard-main">
         <div className="sessions-dashboard-card">
-          <div className="sessions-dashboard-card-header">
+          <div className="sessions-dashboard-card-header" data-tour="sessions-main">
             <h1 className="sessions-title">Sessions</h1>
             <div className="sessions-header-controls">
               {isAdmin && (

@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 from backend import create_app
 from backend.analysis.rules import Decision, EvaluationResult, RuleResult, RuleType
-from backend.proxy.audit import ensure_proxy_session_started
+from backend.proxy.audit import ensure_proxy_session_started, normalize_proxy_agent_name
 from backend.storage import sqlite_store as store
 
 
@@ -125,7 +125,7 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         body = response.get_json()
         audit = body["audit"]
         self.assertEqual(body["decision"], "warn")
-        self.assertEqual(audit["agent"], "browserOS")
+        self.assertEqual(audit["agent"], "BrowserOS")
         self.assertEqual(audit["environment"], "test")
         self.assertEqual(audit["decision"], "warn")
         self.assertEqual(audit["risk_score"], 0.42)
@@ -133,7 +133,7 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
 
         session = store.session_get(audit["session_id"])
         self.assertIsNotNone(session)
-        self.assertEqual(session["agent_name"], "browserOS")
+        self.assertEqual(session["agent_name"], "BrowserOS")
         self.assertEqual(session["environment"], "test")
 
         event = store.event_get(audit["event_id"])
@@ -160,7 +160,7 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         self.assertEqual(log_entry["session_id"], audit["session_id"])
         self.assertEqual(log_entry["event_id"], audit["event_id"])
         self.assertEqual(log_entry["timestamp"], "2026-03-29T22:30:00Z")
-        self.assertEqual(log_entry["agent"], "browserOS")
+        self.assertEqual(log_entry["agent"], "BrowserOS")
         self.assertEqual(log_entry["url"], "https://example.com/login")
         self.assertEqual(log_entry["risk_score"], 0.42)
         self.assertEqual(log_entry["decision"], "warn")
@@ -185,7 +185,7 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
     def test_proxy_start_creates_browseros_session_used_by_decisions(self):
         started = ensure_proxy_session_started(environment="test")
         self.assertTrue(started["created"])
-        self.assertEqual(started["agent"], "browserOS")
+        self.assertEqual(started["agent"], "BrowserOS")
 
         with patch("backend.routes.proxy.evaluate_http_payload", return_value=_make_result(Decision.ALLOW)):
             response = self.client.post("/api/proxy/decision", json=self._payload(timestamp="2026-03-29T22:32:00Z"))
@@ -193,7 +193,7 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         audit = response.get_json()["audit"]
         self.assertEqual(audit["session_id"], started["session_id"])
-        self.assertEqual(audit["agent"], "browserOS")
+        self.assertEqual(audit["agent"], "BrowserOS")
 
     def test_proxy_start_rotates_to_new_session_id(self):
         first = ensure_proxy_session_started(environment="test")
@@ -235,11 +235,11 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
 
         started = ensure_proxy_session_started(environment="test")
 
-        self.assertEqual(started["agent"], "browserOS")
+        self.assertEqual(started["agent"], "BrowserOS")
         self.assertEqual(started["environment"], "test")
         stored = store.session_get(started["session_id"])
         self.assertIsNotNone(stored)
-        self.assertEqual(stored["agent_name"], "browserOS")
+        self.assertEqual(stored["agent_name"], "BrowserOS")
         log_lines = Path(self.log_path).read_text(encoding="utf-8").splitlines()
         self.assertEqual(len(log_lines), 1)
         log_entry = json.loads(log_lines[0])
@@ -317,7 +317,7 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         body = response.get_json()
         self.assertEqual(body["active"], True)
         self.assertEqual(body["message"], "started")
-        self.assertEqual(body["session"]["agent"], "browserOS")
+        self.assertEqual(body["session"]["agent"], "BrowserOS")
         self.assertEqual(body["session"]["environment"], "test")
         self.assertTrue(body["session"]["created"])
 
@@ -388,6 +388,23 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         closed = json.loads(log_lines[1])
         self.assertEqual(closed["event"], "proxy_session_closed")
         self.assertEqual(closed["reason"], "proxy_stopped")
+
+
+class NormalizeProxyAgentNameTestCase(unittest.TestCase):
+    def test_legacy_gemini_maps_to_microsoft_edge(self):
+        self.assertEqual(normalize_proxy_agent_name("Gemini"), "MicrosoftEdge")
+
+    def test_canonical_names_are_unchanged(self):
+        self.assertEqual(normalize_proxy_agent_name("MicrosoftEdge"), "MicrosoftEdge")
+        self.assertEqual(normalize_proxy_agent_name("BrowserOS"), "BrowserOS")
+
+    def test_canonical_names_match_case_insensitively(self):
+        self.assertEqual(normalize_proxy_agent_name("microsoftedge"), "MicrosoftEdge")
+        self.assertEqual(normalize_proxy_agent_name("browseros"), "BrowserOS")
+
+    def test_default_agent_when_missing(self):
+        self.assertEqual(normalize_proxy_agent_name(None), "BrowserOS")
+        self.assertEqual(normalize_proxy_agent_name(""), "BrowserOS")
 
 
 if __name__ == "__main__":

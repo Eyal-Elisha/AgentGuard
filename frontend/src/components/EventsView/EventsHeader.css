@@ -1,3 +1,5 @@
+@import './EventsHeaderSubtitle.css';
+
 .events-view-title-area {
   display: flex;
   flex-direction: column;
@@ -43,9 +45,14 @@
 
 .events-view-title-left {
   display: inline-flex;
-  align-items: baseline;
+  align-items: center;
   gap: var(--space-sm);
   min-width: 0;
+}
+
+.events-view-title-left .agent-icon {
+  width: 1.25em;
+  height: 1.25em;
 }
 
 .events-view-title-metric {
@@ -67,24 +74,3 @@
   font-weight: 800;
   letter-spacing: 0.02em;
 }
-
-.events-view-subtitle {
-  margin: 0;
-  color: var(--color-text-muted);
-  font-size: var(--font-lg);
-  font-weight: 600;
-}
-
-.events-view-subtitle strong {
-  color: var(--color-text-primary);
-}
-
-.events-view-subtitle-sep {
-  margin-left: var(--space-lg);
-  margin-right: var(--space-sm);
-}
-
-/* Risk colors title usage */
-.events-view-title .cell-risk--high { color: var(--color-risk-high); }
-.events-view-title .cell-risk--medium { color: var(--color-risk-medium); }
-.events-view-title .cell-risk--low { color: var(--color-risk-low); }

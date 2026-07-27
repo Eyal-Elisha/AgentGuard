@@ -1,7 +1,7 @@
 .rules-table-wrapper {
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border-subtle);
-  background: linear-gradient(to bottom, rgba(15, 23, 42, 0.9), var(--color-bg-table-gradient-end));
+  background: linear-gradient(to bottom, var(--color-bg-table-gradient-start), var(--color-bg-table-gradient-end));
   overflow: hidden;
 }
 
@@ -41,11 +41,11 @@
 .rules-cell-numeric { font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 .rules-row--hard-block {
-  background: linear-gradient(90deg, rgba(234, 88, 12, 0.12) 0, rgba(245, 158, 11, 0.06) 0.5rem, rgba(15, 23, 42, 0.35) 100%);
+  background: linear-gradient(90deg, rgba(234, 88, 12, 0.12) 0, rgba(245, 158, 11, 0.06) 0.5rem, var(--color-status-surface-soft) 100%);
   box-shadow: inset 3px 0 0 0 #ea580c;
 }
 
-.rules-row--hard-block:hover { background: linear-gradient(90deg, rgba(234, 88, 12, 0.18) 0, rgba(245, 158, 11, 0.09) 0.5rem, rgba(31, 41, 55, 0.5) 100%); }
+.rules-row--hard-block:hover { background: linear-gradient(90deg, rgba(234, 88, 12, 0.18) 0, rgba(245, 158, 11, 0.09) 0.5rem, var(--color-bg-row-hover) 100%); }
 .rules-row--disabled { opacity: 0.55; }
 .rules-row--disabled.rules-row--hard-block { opacity: 0.65; }
 
@@ -54,10 +54,16 @@
 .rules-row, .rules-row td, .rules-row .rules-cell-code, .rules-row .rules-cell-mono, .rules-row .rules-cell-rule-type, .rules-row .rules-cell-description { transition: opacity 140ms ease, color 140ms ease, background-color 140ms ease; }
 
 .rules-badge { display: inline-block; padding: 0.15rem 0.55rem; border-radius: var(--radius-pill); font-family: var(--font-sans); font-size: 0.72rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
-.rules-badge--hard-block { background: rgba(234, 88, 12, 0.28); color: #ffedd5; }
-.rules-badge--neutral { background: rgba(55, 65, 81, 0.5); color: var(--color-text-muted); }
-.rules-badge--ok { background: rgba(34, 197, 94, 0.18); color: #bbf7d0; }
-.rules-badge--muted { background: rgba(75, 85, 99, 0.45); color: var(--color-text-muted); }
+.rules-badge--hard-block {
+  background: color-mix(in srgb, #ea580c 28%, transparent);
+  color: color-mix(in srgb, #ea580c 55%, var(--color-text-primary));
+}
+.rules-badge--neutral { background: var(--color-nav-hover); color: var(--color-text-muted); }
+.rules-badge--ok {
+  background: color-mix(in srgb, var(--color-risk-low) 18%, transparent);
+  color: color-mix(in srgb, var(--color-risk-low) 45%, var(--color-text-primary));
+}
+.rules-badge--muted { background: var(--color-nav-active-bg); color: var(--color-text-muted); }
 
 .rules-switch { appearance: none; border: 0; background: transparent; padding: 0; display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--color-text-body); }
 .rules-switch-track { width: 2rem; height: 1.1rem; border-radius: 999px; position: relative; background: rgba(75, 85, 99, 0.45); border: 1px solid var(--color-border-subtle); transition: background-color 140ms ease; }

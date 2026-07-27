@@ -1,0 +1,29 @@
+:root {
+  /* Shared design tokens for AgentGuard (theme-independent) */
+  --space-xs: 0.4rem;
+  --space-sm: 0.5rem;
+  --space-md: 0.75rem;
+  --space-lg: 1rem;
+  --space-xl: 1.25rem;
+  --space-2xl: 1.5rem;
+  --space-3xl: 1.75rem;
+  --space-header-x: 3.5rem;
+  --space-main-y: 2.5rem;
+  --max-content-width: 1100px;
+
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --radius-pill: 999px;
+
+  --shield-icon-size: 1.5rem;
+
+  /* Semantic accents shared across themes */
+  --color-proxy-on-start: #4ade80;
+  --color-proxy-on-end: #22c55e;
+  --color-risk-high: #ef4444;
+  --color-risk-medium: #eab308;
+  --color-risk-low: #22c55e;
+  --color-border-focus: #38bdf8;
+}
