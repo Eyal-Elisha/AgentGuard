@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Mapping, Optional
 
 
 # ---------------------------------------------------------------------------
@@ -103,11 +103,29 @@ class SessionContext:
 # Scoring thresholds (to be calibrated during model evaluation phase)
 # ---------------------------------------------------------------------------
 
-HIGH_RISK_THRESHOLD: float = 0.70   # Score above this → BLOCK
-WARN_THRESHOLD: float = 0.25      # Score above this (and below HIGH) → WARN
-AMBIGUOUS_LOW: float = 0.25         # Deterministic score below this → skip contextual rules
-STAGE_B_LOW: float = WARN_THRESHOLD
+HIGH_RISK_THRESHOLD: float = 0.19   # Score above this -> BLOCK
+WARN_THRESHOLD: float = 0.15        # Score above this (and below HIGH) -> WARN
+AMBIGUOUS_LOW: float = 0.15         # Deterministic score below this -> skip contextual rules
+# Stage B (semantic) gate. Decoupled from WARN_THRESHOLD so the expensive
+# classifier still runs on weak-but-non-zero pages that the weighted average
+# keeps below the warn line — otherwise a single soft signal never reaches a
+# semantic check. Calibrate WARN/HIGH on a dev split via
+# scripts/calibrate_thresholds.py before quoting numbers.
+STAGE_B_LOW: float = 0.0
 STAGE_B_HIGH: float = HIGH_RISK_THRESHOLD
+
+# Rules turned off in code until recalibrated (DB toggle cannot re-enable these).
+CODE_DISABLED_RULES: frozenset[str] = frozenset({"sensitive_fields"})
+
+
+def is_rule_enabled(rule_id: str, enabled_rules: Optional[Mapping[str, bool]] = None) -> bool:
+    """Return whether ``rule_id`` should run for this evaluation."""
+    if rule_id in CODE_DISABLED_RULES:
+        return False
+    if enabled_rules is None:
+        return True
+    return enabled_rules.get(rule_id, True)
+
 
 # ---------------------------------------------------------------------------
 # Rule weights (placeholder — to be calibrated)
@@ -116,12 +134,17 @@ STAGE_B_HIGH: float = HIGH_RISK_THRESHOLD
 RULE_WEIGHTS: Dict[str, float] = {
     "domain_blacklist":       0.25,
     "unencrypted_connection": 0.20,
-    "sensitive_fields":       0.20,
+    # Down-weighted: on webpage HTML this fired on more benign than phishing
+    # pages (negative lift), so a high weight mostly pushed benign pages up.
+    "sensitive_fields":       0.10,
     "brand_domain_mismatch":  0.15,
     "unexpected_redirect":    0.10,
     "external_form_action":   0.10,
     "typosquatting":          0.25,
     "ip_based_url":           0.05,
+    # Weak standalone signal (high-abuse TLD); meant to stack with brand/host
+    # signals rather than fire alone.
+    "suspicious_tld":         0.05,
     "custom_blacklist":       0.25,
     # Contextual rules (calibration knobs — tune after observing real traffic)
     "sensitive_action_frequency_spike":        0.20,
@@ -191,6 +214,7 @@ DETERMINISTIC_RULES: List[RuleDefinition] = [
         RuleType.DETERMINISTIC, ComputeClass.CHEAP,
         RULE_WEIGHTS["unencrypted_connection"], hard_block=True,
     ),
+    # Disabled in CODE_DISABLED_RULES — negative lift on webpage HTML until recalibrated.
     RuleDefinition(
         "sensitive_fields",
         "Sensitive Fields Present",
@@ -226,6 +250,12 @@ DETERMINISTIC_RULES: List[RuleDefinition] = [
         "IP Based URL Usage",
         RuleType.DETERMINISTIC, ComputeClass.CHEAP,
         RULE_WEIGHTS["ip_based_url"], hard_block=False,
+    ),
+    RuleDefinition(
+        "suspicious_tld",
+        "High-Abuse Top-Level Domain",
+        RuleType.DETERMINISTIC, ComputeClass.CHEAP,
+        RULE_WEIGHTS["suspicious_tld"], hard_block=False,
     ),
     RuleDefinition(
         "custom_blacklist",

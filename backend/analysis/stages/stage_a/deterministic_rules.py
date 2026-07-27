@@ -10,7 +10,12 @@ from urllib.parse import urlparse
 from backend.custom_blacklist import custom_blacklist_entry_matches, custom_blacklist_matches
 from backend.feature_extraction.feature_extractor import ExtractedFeatures
 from backend.analysis.stages.stage_a.blacklist import blacklist_cache
-from backend.analysis.stages.stage_a.data import BRAND_DOMAINS, SENSITIVE_INPUT_TYPES, SENSITIVE_NAME_RE
+from backend.analysis.stages.stage_a.data import (
+    BRAND_DOMAINS,
+    HIGH_ABUSE_TLDS,
+    SENSITIVE_INPUT_TYPES,
+    SENSITIVE_NAME_RE,
+)
 from backend.analysis.stages.stage_a.helpers import (
     domain_matches,
     get_sld_label,
@@ -65,18 +70,65 @@ def rule_sensitive_fields(features: ExtractedFeatures) -> Tuple[float, str]:
     return 0.0, "No sensitive input fields detected"
 
 
+@lru_cache(maxsize=1)
+def _brand_token_patterns() -> Tuple[Tuple[str, Tuple[str, ...], "re.Pattern[str]"], ...]:
+    """Compile a word-boundary matcher per brand (length >= 3).
+
+    The brand must be flanked by non-letters (separators, digits, or string
+    edges) so 'paypal-login', 'secure.amazon', and 'amazon1' match while
+    dictionary collisions like 'pineapple' (→apple) or 'discovery' (→discover)
+    do not.
+    """
+    patterns = []
+    for brand, official in BRAND_DOMAINS.items():
+        if len(brand) < 3:
+            continue
+        patterns.append((
+            brand,
+            tuple(official),
+            re.compile(r"(?<![a-z])" + re.escape(brand) + r"(?![a-z])"),
+        ))
+    return tuple(patterns)
+
+
 def rule_brand_domain_mismatch(features: ExtractedFeatures) -> Tuple[float, str]:
-    """Rule 4 — Brand Domain Mismatch."""
+    """Rule 4 — Brand Domain Mismatch.
+
+    Flags three impersonation patterns on a non-official domain:
+      1. Brand named in the page <title>.
+      2. Brand embedded as a token in the hostname (e.g. 'amazon.zaolir.cfd').
+      3. Brand token in the URL path on a page that also collects credentials
+         (path-only matches are gated on sensitive inputs to avoid flagging
+         benign pages that merely mention a brand).
+    """
     if not features.dom:
         return 0.0, "No DOM content to inspect"
     title = features.dom.page_title.lower()
     host = strip_www(features.host)
+    path = urlparse(features.url).path.lower()
+    has_sensitive = has_sensitive_inputs(features)
+
     for brand, official_domains in BRAND_DOMAINS.items():
         if brand in title and not domain_matches(host, official_domains):
             return 1.0, (
                 f"Page title references brand '{brand}' "
                 f"but is hosted on non-official domain '{host}'"
             )
+
+    for brand, official_domains, pattern in _brand_token_patterns():
+        if domain_matches(host, official_domains):
+            continue
+        if pattern.search(host):
+            return 1.0, (
+                f"Hostname '{host}' embeds brand '{brand}' "
+                f"but is not an official '{brand}' domain"
+            )
+        if has_sensitive and pattern.search(path):
+            return 1.0, (
+                f"URL path references brand '{brand}' on a credential-collecting "
+                f"page hosted off '{brand}'s official domain ('{host}')"
+            )
+
     return 0.0, "No brand-domain mismatch detected"
 
 
@@ -193,6 +245,22 @@ def rule_ip_based_url(features: ExtractedFeatures) -> Tuple[float, str]:
     return 0.0, "Page uses a registered domain name"
 
 
+def rule_suspicious_tld(features: ExtractedFeatures) -> Tuple[float, str]:
+    """Rule 10 — High-Abuse Top-Level Domain.
+
+    Weak, non-blocking signal: many phishing pages sit on free/cheap TLDs.
+    Legitimate sites use them too, so this only nudges the score and is meant
+    to stack with brand/host signals rather than fire alone.
+    """
+    host = strip_www(features.host)
+    if not host or is_ip(host):
+        return 0.0, "No registrable domain to inspect"
+    tld = host.rsplit(".", 1)[-1]
+    if tld in HIGH_ABUSE_TLDS:
+        return 1.0, f"Domain uses '.{tld}', a top-level domain frequently abused for phishing"
+    return 0.0, "Top-level domain is not in the high-abuse list"
+
+
 def _host_matches_blacklist_entry(host_stripped: str, entry_host: str) -> bool:
     return bool(entry_host) and (
         host_stripped == entry_host or host_stripped.endswith("." + entry_host)
@@ -221,4 +289,5 @@ RULE_FN: Dict[str, callable] = {
     "external_form_action":   rule_external_form_action,
     "typosquatting":          rule_typosquatting,
     "ip_based_url":           rule_ip_based_url,
+    "suspicious_tld":         rule_suspicious_tld,
 }

