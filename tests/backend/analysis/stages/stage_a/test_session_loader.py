@@ -8,6 +8,8 @@ import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from cryptography.fernet import Fernet
+
 from backend.analysis.stages.stage_a.session_loader import build_context
 from backend.storage import sqlite_store as store
 
@@ -17,8 +19,10 @@ class SessionLoaderTestCase(unittest.TestCase):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.db_path = os.path.join(self.temp_dir.name, "session_loader.db")
         self._old_db_url = os.environ.get("DATABASE_URL")
+        self._old_log_encryption_key = os.environ.get("AGENTGUARD_LOG_ENCRYPTION_KEY")
         db_url_path = Path(self.db_path).resolve().as_posix()
         os.environ["DATABASE_URL"] = f"sqlite:///{db_url_path}"
+        os.environ["AGENTGUARD_LOG_ENCRYPTION_KEY"] = Fernet.generate_key().decode("utf-8")
         store.init_schema()
 
         self.session_id = store.session_create(
@@ -33,6 +37,10 @@ class SessionLoaderTestCase(unittest.TestCase):
             os.environ.pop("DATABASE_URL", None)
         else:
             os.environ["DATABASE_URL"] = self._old_db_url
+        if self._old_log_encryption_key is None:
+            os.environ.pop("AGENTGUARD_LOG_ENCRYPTION_KEY", None)
+        else:
+            os.environ["AGENTGUARD_LOG_ENCRYPTION_KEY"] = self._old_log_encryption_key
         self.temp_dir.cleanup()
 
     def _insert_event(

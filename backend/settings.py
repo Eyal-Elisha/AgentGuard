@@ -20,6 +20,7 @@ _ENV_PROXY_PORT = "PROXY_PORT"
 _ENV_TIMEOUT_SECONDS = "AGENTGUARD_BACKEND_TIMEOUT_SECONDS"
 _ENV_FAILURE_MODE = "AGENTGUARD_BACKEND_FAILURE_MODE"
 _ENV_AUDIT_LOG_PATH = "AGENTGUARD_AUDIT_LOG_PATH"
+_ENV_LOG_ENCRYPTION_KEY = "AGENTGUARD_LOG_ENCRYPTION_KEY"
 _ENV_FRONTEND_URL = "AGENTGUARD_FRONTEND_URL"
 _ENV_FRONTEND_PORT = "FRONTEND_PORT"
 _DEFAULT_API_HOST = "127.0.0.1"
@@ -203,6 +204,18 @@ def get_audit_log_path() -> Path:
             return path
         return (_BACKEND_DIR.parent / path).resolve()
     return _BACKEND_DIR.parent / "logs" / "agentguard_audit.jsonl"
+
+
+def get_log_encryption_key() -> str:
+    load_settings_env()
+    key = (os.getenv(_ENV_LOG_ENCRYPTION_KEY) or "").strip()
+    if not key:
+        raise RuntimeError(
+            "AGENTGUARD_LOG_ENCRYPTION_KEY must be set before persisting logs. "
+            "Generate one with: python -c \"from cryptography.fernet import Fernet; "
+            "print(Fernet.generate_key().decode())\""
+        )
+    return key
 
 
 # ---------------------------------------------------------------------------

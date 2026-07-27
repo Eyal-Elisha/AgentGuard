@@ -10,8 +10,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
 
+from cryptography.fernet import Fernet
+
 from backend import create_app
 from backend.analysis.rules import Decision, EvaluationResult, RuleResult, RuleType
+from backend.log_encryption import ENCRYPTED_VALUE_PREFIX, decrypt_text
 from backend.proxy.audit import ensure_proxy_session_started, normalize_proxy_agent_name
 from backend.storage import sqlite_store as store
 from backend.validation.proxy_requests import (
@@ -86,12 +89,14 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
             "JWT_SECRET": os.environ.get("JWT_SECRET"),
             "REQUIRE_AUTH": os.environ.get("REQUIRE_AUTH"),
             "AGENTGUARD_AUDIT_LOG_PATH": os.environ.get("AGENTGUARD_AUDIT_LOG_PATH"),
+            "AGENTGUARD_LOG_ENCRYPTION_KEY": os.environ.get("AGENTGUARD_LOG_ENCRYPTION_KEY"),
         }
         db_url_path = Path(self.db_path).resolve().as_posix()
         os.environ["DATABASE_URL"] = f"sqlite:///{db_url_path}"
         os.environ["JWT_SECRET"] = "test-secret"
         os.environ["REQUIRE_AUTH"] = "false"
         os.environ["AGENTGUARD_AUDIT_LOG_PATH"] = self.log_path
+        os.environ["AGENTGUARD_LOG_ENCRYPTION_KEY"] = Fernet.generate_key().decode("utf-8")
 
         self.app = create_app()
         self.client = self.app.test_client()
@@ -107,6 +112,12 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
             else:
                 os.environ[key] = value
         self.temp_dir.cleanup()
+
+    def _audit_log_records(self) -> list[dict]:
+        return [
+            json.loads(decrypt_text(line))
+            for line in Path(self.log_path).read_text(encoding="utf-8").splitlines()
+        ]
 
     def _payload(self, **overrides):
         payload = {
@@ -158,10 +169,31 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         self.assertIsNotNone(store.rule_get("sensitive_fields"))
         self.assertIsNotNone(store.rule_get("custom_blacklist"))
 
-        log_lines = Path(self.log_path).read_text(encoding="utf-8").splitlines()
-        self.assertEqual(len(log_lines), 2)
-        self.assertEqual(json.loads(log_lines[0])["event"], "proxy_session_started")
-        log_entry = json.loads(log_lines[1])
+        conn = sqlite3.connect(self.db_path)
+        try:
+            raw_event = conn.execute(
+                "SELECT url, headers_json FROM events WHERE event_id = ?",
+                (audit["event_id"],),
+            ).fetchone()
+            raw_details = conn.execute(
+                "SELECT details FROM rules_analysis WHERE event_id = ?",
+                (audit["event_id"],),
+            ).fetchall()
+        finally:
+            conn.close()
+        self.assertTrue(raw_event[0].startswith(ENCRYPTED_VALUE_PREFIX))
+        self.assertTrue(raw_event[1].startswith(ENCRYPTED_VALUE_PREFIX))
+        self.assertNotIn("https://example.com/login", raw_event[0])
+        self.assertTrue(all(row[0].startswith(ENCRYPTED_VALUE_PREFIX) for row in raw_details))
+        self.assertTrue(all("Sensitive fields present on page" not in row[0] for row in raw_details))
+
+        raw_log_lines = Path(self.log_path).read_text(encoding="utf-8").splitlines()
+        self.assertEqual(len(raw_log_lines), 2)
+        self.assertTrue(all(line.startswith(ENCRYPTED_VALUE_PREFIX) for line in raw_log_lines))
+        self.assertNotIn("https://example.com/login", "\n".join(raw_log_lines))
+        log_records = self._audit_log_records()
+        self.assertEqual(log_records[0]["event"], "proxy_session_started")
+        log_entry = log_records[1]
         self.assertEqual(log_entry["session_id"], audit["session_id"])
         self.assertEqual(log_entry["event_id"], audit["event_id"])
         self.assertEqual(log_entry["timestamp"], "2026-03-29T22:30:00Z")
@@ -216,11 +248,11 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         self.assertIsNotNone(first_session["end_time"])
         self.assertIsNone(second_session["end_time"])
 
-        log_lines = Path(self.log_path).read_text(encoding="utf-8").splitlines()
-        self.assertEqual(len(log_lines), 3)
-        first_started = json.loads(log_lines[0])
-        closed = json.loads(log_lines[1])
-        second_started = json.loads(log_lines[2])
+        log_records = self._audit_log_records()
+        self.assertEqual(len(log_records), 3)
+        first_started = log_records[0]
+        closed = log_records[1]
+        second_started = log_records[2]
         self.assertEqual(first_started["event"], "proxy_session_started")
         self.assertEqual(closed["event"], "proxy_session_closed")
         self.assertEqual(closed["session_id"], first["session_id"])
@@ -245,9 +277,9 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         stored = store.session_get(started["session_id"])
         self.assertIsNotNone(stored)
         self.assertEqual(stored["agent_name"], "BrowserOS")
-        log_lines = Path(self.log_path).read_text(encoding="utf-8").splitlines()
-        self.assertEqual(len(log_lines), 1)
-        log_entry = json.loads(log_lines[0])
+        log_records = self._audit_log_records()
+        self.assertEqual(len(log_records), 1)
+        log_entry = log_records[0]
         self.assertEqual(log_entry["event"], "proxy_session_started")
         self.assertEqual(log_entry["session_id"], started["session_id"])
 
@@ -463,10 +495,10 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         self.assertIsNotNone(session)
         self.assertIsNotNone(session["end_time"])
 
-        log_lines = Path(self.log_path).read_text(encoding="utf-8").splitlines()
-        self.assertEqual(len(log_lines), 2)
-        self.assertEqual(json.loads(log_lines[0])["event"], "proxy_session_started")
-        closed = json.loads(log_lines[1])
+        log_records = self._audit_log_records()
+        self.assertEqual(len(log_records), 2)
+        self.assertEqual(log_records[0]["event"], "proxy_session_started")
+        closed = log_records[1]
         self.assertEqual(closed["event"], "proxy_session_closed")
         self.assertEqual(closed["reason"], "proxy_stopped")
 
