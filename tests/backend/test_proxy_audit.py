@@ -17,6 +17,11 @@ from backend.analysis.rules import Decision, EvaluationResult, RuleResult, RuleT
 from backend.log_encryption import ENCRYPTED_VALUE_PREFIX, decrypt_text
 from backend.proxy.audit import ensure_proxy_session_started, normalize_proxy_agent_name
 from backend.storage import sqlite_store as store
+from backend.validation.proxy_requests import (
+    MAX_BODY_BYTES,
+    MAX_PROXY_ENVELOPE_BYTES,
+    validate_proxy_payload,
+)
 
 
 def _make_result(decision: Decision) -> EvaluationResult:
@@ -315,6 +320,56 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.get_json(), {"error": "No active proxy session is available"})
 
+    def test_proxy_decision_rejects_invalid_structures_before_evaluation(self):
+        invalid_payloads = (
+            self._payload(url="/relative"),
+            self._payload(url="ftp://example.com/file"),
+            self._payload(url="https://user:pass@example.com/"),
+            self._payload(method="TRACE"),
+            self._payload(headers={"x-count": 1}),
+            self._payload(headers={"x-test": "ok\r\nInjected: yes"}),
+            self._payload(body={"nested": "object"}),
+            self._payload(type="UNKNOWN"),
+            self._payload(host="other.example"),
+        )
+
+        with patch("backend.routes.proxy.evaluate_http_payload") as evaluate:
+            for payload in invalid_payloads:
+                with self.subTest(payload=payload):
+                    response = self.client.post("/api/proxy/decision", json=payload)
+                    self.assertEqual(response.status_code, 400)
+
+        evaluate.assert_not_called()
+        self.assertEqual(store.events_list_all({}), [])
+
+    def test_proxy_decision_rejects_oversized_body(self):
+        response = self.client.post(
+            "/api/proxy/decision",
+            json=self._payload(body="x" * (MAX_BODY_BYTES + 1)),
+        )
+
+        self.assertEqual(response.status_code, 413)
+        self.assertIn("size limit", response.get_json()["error"])
+
+    def test_proxy_decision_rejects_oversized_json_envelope(self):
+        response = self.client.post(
+            "/api/proxy/decision",
+            data=b"{" + b"x" * MAX_PROXY_ENVELOPE_BYTES + b"}",
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 413)
+        self.assertIn("capacity limit", response.get_json()["error"].lower())
+
+    def test_proxy_payload_accepts_body_at_exact_limit(self):
+        payload, error, status = validate_proxy_payload(
+            self._payload(body="x" * MAX_BODY_BYTES)
+        )
+
+        self.assertIsNone(error)
+        self.assertEqual(status, 200)
+        self.assertEqual(len(payload["body"]), MAX_BODY_BYTES)
+
     def test_proxy_decision_rejects_mismatched_session_environment(self):
         started = ensure_proxy_session_started(environment="test")
 
@@ -366,7 +421,7 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
 
     def test_proxy_control_start_uses_selected_agent(self):
         with (
-            patch("backend.routes.proxy.start_proxy_process", return_value=(True, "started")),
+            patch("backend.routes.proxy.start_proxy_process", return_value=(True, "started")) as start_proxy,
             patch("backend.routes.proxy.proxy_is_running", return_value=True),
         ):
             response = self.client.post(
@@ -381,6 +436,10 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         body = response.get_json()
         self.assertEqual(body["session"]["agent"], "MicrosoftEdge")
+        start_proxy.assert_called_once_with(
+            agent_name="MicrosoftEdge",
+            environment="test",
+        )
 
         session = store.session_get(body["session"]["session_id"])
         self.assertIsNotNone(session)
