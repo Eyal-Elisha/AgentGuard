@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import datetime
 import json
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
-from mitmproxy import http
+if TYPE_CHECKING:
+    from mitmproxy import http
 
 from backend.analysis.rules import EvaluationResult, RuleResult
 

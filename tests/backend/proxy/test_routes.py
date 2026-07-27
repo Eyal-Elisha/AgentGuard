@@ -3,12 +3,14 @@ from __future__ import annotations
 import os
 import tempfile
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import ANY, patch
 
 import pytest
+from cryptography.fernet import Fernet
 
 from backend import create_app
 from backend.analysis.rules import Decision, EvaluationResult
+from backend.proxy.audit import ensure_proxy_session_started
 
 
 @pytest.fixture
@@ -21,10 +23,13 @@ def proxy_test_client():
             {
                 "JWT_SECRET": "test-jwt-secret-proxy-routes",
                 "DATABASE_URL": f"sqlite:///{db_url_path}",
+                "AGENTGUARD_LOG_ENCRYPTION_KEY": Fernet.generate_key().decode("utf-8"),
             },
             clear=False,
         ):
-            yield create_app().test_client()
+            app = create_app()
+            ensure_proxy_session_started(environment="prod")
+            yield app.test_client()
 
 
 def _make_result(decision: Decision) -> EvaluationResult:
@@ -115,6 +120,8 @@ def test_proxy_decision_route_normalizes_method_and_headers(proxy_test_client):
         method="POST",
         headers={"x-retry-count": "1"},
         body=b"",
+        session_id=ANY,
+        timestamp=ANY,
     )
 
 
@@ -127,8 +134,8 @@ def test_proxy_decision_route_rejects_non_local_requests(proxy_test_client):
             "headers": {},
             "body": "",
         },
-        environ_overrides={"REMOTE_ADDR": "203.0.113.25"},
+        environ_overrides={"REMOTE_ADDR": "8.8.8.8"},
     )
 
     assert response.status_code == 403
-    assert "localhost" in response.json["error"]
+    assert "trusted local network client" in response.json["error"]

@@ -7,6 +7,8 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
+from backend.log_encryption import decrypt_row_fields, encrypt_text
+
 from .db import _connect, _dt_iso
 
 
@@ -20,11 +22,21 @@ def event_create(
     headers_json: str,
 ) -> int:
     ts = _dt_iso(timestamp)
+    encrypted_url = encrypt_text(url)
+    encrypted_headers_json = encrypt_text(headers_json)
     with _connect() as conn:
         cur = conn.execute(
             "INSERT INTO events (session_id, timestamp, url, guard_action, risk_score, http_method, headers_json) "
             "VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (session_id, ts, url, guard_action, risk_score, http_method, headers_json),
+            (
+                session_id,
+                ts,
+                encrypted_url,
+                guard_action,
+                risk_score,
+                http_method,
+                encrypted_headers_json,
+            ),
         )
         return int(cur.lastrowid)
 
@@ -37,7 +49,7 @@ def event_get(event_id: int) -> dict[str, Any] | None:
             (event_id,),
         )
         row = cur.fetchone()
-        return dict(row) if row else None
+        return decrypt_row_fields(dict(row), ("url", "headers_json")) if row else None
 
 
 def _event_filter_sql(
@@ -82,7 +94,7 @@ def events_list_for_session(
     )
     with _connect() as conn:
         cur = conn.execute(sql, params)
-        return [dict(r) for r in cur.fetchall()]
+        return [decrypt_row_fields(dict(r), ("url", "headers_json")) for r in cur.fetchall()]
 
 
 def events_list_all(filters: dict[str, Any]) -> list[dict[str, Any]]:
@@ -97,5 +109,5 @@ def events_list_all(filters: dict[str, Any]) -> list[dict[str, Any]]:
     )
     with _connect() as conn:
         cur = conn.execute(sql, params)
-        return [dict(r) for r in cur.fetchall()]
+        return [decrypt_row_fields(dict(r), ("url", "headers_json")) for r in cur.fetchall()]
 
