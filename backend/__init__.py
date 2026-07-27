@@ -1,9 +1,10 @@
 from flask import Flask
 
 from .api_errors import register_api_error_handlers
+from .analysis.rules import CONTEXTUAL_RULES, DETERMINISTIC_RULES, SEMANTIC_RULES
 from .audit_logging import configure_audit_logger
 from .config import env_flag, resolve_jwt_secret
-from .storage.sqlite_store import init_schema
+from .storage.sqlite_store import init_schema, rules_seed_defaults
 
 from backend.settings import load_settings_env
 
@@ -18,6 +19,11 @@ def create_app() -> Flask:
     app.config["JWT_SECRET"] = resolve_jwt_secret()
 
     init_schema()
+    rules_seed_defaults([
+        *DETERMINISTIC_RULES,
+        *CONTEXTUAL_RULES,
+        *SEMANTIC_RULES,
+    ])
 
     from .routes import register_blueprints
 

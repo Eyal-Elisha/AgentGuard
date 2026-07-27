@@ -1,5 +1,15 @@
 # AgentGuard
 
+## macOS prerequisites
+
+AgentGuard needs Python and Node.js. With [Homebrew](https://brew.sh/) installed:
+
+```bash
+brew install python@3.13 node
+```
+
+Python 3.13 is recommended for compatibility with the pinned proxy dependencies.
+
 ## Backend layout
 
 Modular Python package under `backend/`:
@@ -16,12 +26,12 @@ Entry: `python -m backend.app` (Flask app factory in `backend/__init__.py`).
 
 From the **repository root** (where `requirements.txt` lives):
 
-1. Create a virtual environment: `python -m venv .venv`
+1. Create a virtual environment: `python3.13 -m venv .venv`
 2. Activate it:
    - **Windows (PowerShell):** `.venv\Scripts\Activate.ps1`
    - **Windows (cmd):** `.venv\Scripts\activate.bat`
    - **macOS / Linux:** `source .venv/bin/activate`
-3. Install dependencies: `pip install -r requirements.txt`
+3. Install dependencies: `python -m pip install -r requirements.txt`
 
 ## Configuration
 
@@ -46,9 +56,24 @@ python -m backend.app
 
 Flask will print the URL it is listening on (host and port come from `app.run()` in `backend/app.py`; default port is **3000** when `PORT` is unset or invalid). The health route is **`/health`** on that server.
 
+## Run the frontend
+
+In a second Terminal window, from the repository root:
+
+```bash
+cd frontend
+cp .env.example .env
+npm install
+npm run dev
+```
+
+Set `VITE_BACKEND_URL=http://127.0.0.1:3000` in `frontend/.env`. Then open
+`http://localhost:5173`.
+
 ## Run the proxy
 
-From the repository root:
+In a third Terminal window, from the repository root with the virtual
+environment activated:
 
 ```bash
 python proxy_launcher.py

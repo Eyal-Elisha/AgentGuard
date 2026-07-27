@@ -15,10 +15,10 @@ function setProxyActive(value) {
   listeners.forEach((fn) => fn());
 }
 
-export function deactivateProxy() {
+export function deactivateProxy(agentName) {
   if (!proxyActive) return;
   setProxyActive(false);
-  void callProxyControl(false).catch(() => setProxyActive(true));
+  void callProxyControl(false, agentName).catch(() => setProxyActive(true));
 }
 
 const ProxyContext = createContext(null);
@@ -36,10 +36,10 @@ export function ProxyProvider({ children }) {
 
   useEffect(() => { void (async () => { await syncPass(); })(); }, []);
 
-  const toggleProxy = useCallback(() => {
+  const toggleProxy = useCallback((agentName) => {
     const next = !getSnapshot();
     void (async () => {
-      try { await callProxyControl(next); setProxyActive(next); } catch (e) { console.error(e); if (!next) setProxyActive(true); }
+      try { await callProxyControl(next, agentName); setProxyActive(next); } catch (e) { console.error(e); if (!next) setProxyActive(true); }
     })();
   }, []);
 

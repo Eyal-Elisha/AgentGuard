@@ -32,8 +32,12 @@
   border-bottom: 1px solid var(--color-border-subtle);
 }
 
+.rules-table th:nth-child(n + 3),
+.rules-table td:nth-child(n + 3) {
+  text-align: center;
+}
+
 .rules-th-description { min-width: 12rem; }
-.rules-table th.rules-th-compute, .rules-table td.rules-cell-compute { padding-left: 2.5rem; }
 .rules-table td { font-size: 0.8rem; color: var(--color-text-body); }
 .rules-cell-code { font-weight: 700; letter-spacing: 0.04em; color: var(--color-text-session-id); }
 .rules-cell-rule-type { font-weight: 500; }
