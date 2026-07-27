@@ -326,6 +326,28 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         self.assertIsNone(session["end_time"])
         self.assertEqual(session["environment"], "test")
 
+    def test_proxy_control_start_uses_selected_agent(self):
+        with (
+            patch("backend.routes.proxy.start_proxy_process", return_value=(True, "started")),
+            patch("backend.routes.proxy.proxy_is_running", return_value=True),
+        ):
+            response = self.client.post(
+                "/api/proxy/control",
+                json={
+                    "active": True,
+                    "environment": "test",
+                    "agent_name": "MicrosoftEdge",
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        body = response.get_json()
+        self.assertEqual(body["session"]["agent"], "MicrosoftEdge")
+
+        session = store.session_get(body["session"]["session_id"])
+        self.assertIsNotNone(session)
+        self.assertEqual(session["agent_name"], "MicrosoftEdge")
+
     def test_proxy_decision_persists_contextual_rule_analysis(self):
         """Contextual RuleResults flow through to `rules_analysis` and register
         in `rules` with `rule_type='contextual'` plus the right weight."""

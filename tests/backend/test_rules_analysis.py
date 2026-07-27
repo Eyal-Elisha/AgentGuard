@@ -1,7 +1,33 @@
 from backend_api_test_base import BackendApiTestCase
+from backend import create_app
+from backend.analysis.rules import CONTEXTUAL_RULES, DETERMINISTIC_RULES, SEMANTIC_RULES
 
 
 class RulesAnalysisTestCase(BackendApiTestCase):
+    def test_builtin_rules_are_seeded_without_overwriting_enabled_state(self):
+        response = self.client.get("/rules")
+
+        self.assertEqual(response.status_code, 200)
+        rules = response.get_json()
+        expected_codes = {
+            rule.rule_id
+            for rule in (*DETERMINISTIC_RULES, *CONTEXTUAL_RULES, *SEMANTIC_RULES)
+        }
+        self.assertTrue(expected_codes.issubset({rule["rule_code"] for rule in rules}))
+
+        disabled = self.client.patch(
+            "/rules/domain_blacklist/enabled",
+            json={"is_enabled": False},
+        )
+        self.assertEqual(disabled.status_code, 200)
+
+        create_app()
+        refreshed = self.client.get("/rules").get_json()
+        domain_blacklist = next(
+            rule for rule in refreshed if rule["rule_code"] == "domain_blacklist"
+        )
+        self.assertFalse(domain_blacklist["is_enabled"])
+
     def test_rules_and_rule_analysis_endpoints(self):
         session_id = self.create_session().get_json()["session_id"]
         event_id = self.create_event(

@@ -31,7 +31,7 @@ export default function Guard() {
           <button
             type="button"
             className={`guard-power-button ${isProxyActive ? 'guard-power-button--on' : 'guard-power-button--off'}`}
-            onClick={toggleProxy}
+            onClick={() => toggleProxy(selectedAgent)}
             aria-pressed={isProxyActive}
             aria-label={isProxyActive ? 'Turn protection off' : 'Turn protection on'}
             data-tour="power"

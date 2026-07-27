@@ -52,7 +52,7 @@ export default function SessionsTable({ filteredSessions, sessions, onDeleteSess
   return (
     <>
       <div className="sessions-table-wrapper">
-        <table className="sessions-table">
+        <table className={`sessions-table${canDeleteSessions ? ' sessions-table--with-actions' : ''}`}>
           <thead>
             <tr>
               <th>AGENT NAME</th>
@@ -62,7 +62,7 @@ export default function SessionsTable({ filteredSessions, sessions, onDeleteSess
               <th className="th-centered">AVG RISK</th>
               <th className="th-centered-block">START TIME</th>
               <th className="th-centered-block">END TIME</th>
-              <th aria-label="Actions" />
+              {canDeleteSessions && <th aria-label="Actions" />}
             </tr>
           </thead>
           <tbody>
@@ -89,21 +89,23 @@ export default function SessionsTable({ filteredSessions, sessions, onDeleteSess
                   <td className={`cell-timestamp td-centered-block${isIsoEmpty(session.end_time) ? ' cell-value-empty' : ''}`}>
                     {formatDateTime(session.end_time)}
                   </td>
-                  <td className="cell-actions" onClick={(e) => e.stopPropagation()}>
-                    {canDeleteSessions && isClosed && (
+                  {canDeleteSessions && (
+                    <td className="cell-actions" onClick={(e) => e.stopPropagation()}>
+                      {isClosed && (
                       <button type="button" className="session-delete-btn" aria-label={`Delete session ${session.session_id}`} title="Delete session" onClick={(e) => handleDeleteClick(e, session)}>
                         <TrashIcon />
                       </button>
-                    )}
-                  </td>
+                      )}
+                    </td>
+                  )}
                 </tr>
               );
             })}
             {filteredSessions.length === 0 && sessions.length > 0 && (
-              <tr><td colSpan={8} className="sessions-empty-state">No sessions match your search.</td></tr>
+              <tr><td colSpan={canDeleteSessions ? 8 : 7} className="sessions-empty-state">No sessions match your search.</td></tr>
             )}
             {sessions.length === 0 && (
-              <tr><td colSpan={8} className="sessions-empty-state">No sessions yet.</td></tr>
+              <tr><td colSpan={canDeleteSessions ? 8 : 7} className="sessions-empty-state">No sessions yet.</td></tr>
             )}
           </tbody>
         </table>

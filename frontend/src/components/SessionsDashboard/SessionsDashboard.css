@@ -30,6 +30,10 @@
   gap: var(--space-2xl);
 }
 
+.sessions-dashboard-card--fit-content {
+  align-self: flex-start;
+}
+
 .sessions-dashboard-card-header {
   display: flex;
   justify-content: space-between;

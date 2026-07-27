@@ -23,14 +23,14 @@ kaitaistruct==0.11
 ldap3==2.9.1
 MarkupSafe==3.0.3
 mitmproxy==12.2.1
-mitmproxy-windows==0.12.9
+mitmproxy-windows==0.12.9; sys_platform == "win32"
 mitmproxy_rs==0.12.9
 msgpack==1.1.2
 publicsuffix2==2.20191221
 pyasn1==0.6.2
 pyasn1_modules==0.4.2
 pycparser==3.0
-pydivert==2.1.0
+pydivert==2.1.0; sys_platform == "win32"
 pylsqpack==0.3.23
 pyOpenSSL==25.3.0
 pyparsing==3.2.5
@@ -50,5 +50,3 @@ zstandard==0.25.0
 beautifulsoup4==4.14.3
 requests==2.32.5
 lxml==6.0.2
-pyarrow==24.0.0
-datasets==5.0.0

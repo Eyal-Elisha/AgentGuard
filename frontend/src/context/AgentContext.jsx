@@ -46,9 +46,10 @@ function setSelectedAgent(next) {
   const value = typeof next === 'function' ? next(selectedAgent) : next;
   if (!AGENT_OPTIONS.includes(value)) return;
   if (value === selectedAgent) return;
+  const previousAgent = selectedAgent;
   selectedAgent = value;
   writeStored(value);
-  deactivateProxy();
+  deactivateProxy(previousAgent);
   listeners.forEach((fn) => fn());
 }
 
