@@ -89,7 +89,7 @@ def init_schema() -> None:
                         timestamp TEXT NOT NULL,
                         url TEXT NOT NULL,
                         guard_action TEXT NOT NULL,
-                        risk_score REAL NOT NULL,
+                        risk_score TEXT NOT NULL,
                         http_method TEXT,
                         headers_json TEXT
                     );
@@ -109,7 +109,7 @@ def init_schema() -> None:
                         analysis_id INTEGER PRIMARY KEY AUTOINCREMENT,
                         event_id INTEGER NOT NULL REFERENCES events(event_id) ON DELETE CASCADE,
                         rule_code TEXT NOT NULL REFERENCES rules(rule_code) ON DELETE CASCADE,
-                        rule_score REAL,
+                        rule_score TEXT,
                         details TEXT,
                         hard_block INTEGER NOT NULL DEFAULT 0 CHECK (hard_block IN (0, 1))
                     );

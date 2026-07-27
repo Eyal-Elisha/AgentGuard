@@ -42,7 +42,7 @@ Configuration is loaded from `backend/.env`. Copy `backend/.env.example` to `bac
 - `FLASK_DEBUG`: `true` to run the dev server with Flask debug mode (default off when unset)
 - `PORT`: HTTP port for the Flask dev server (default **3000** when unset or invalid)
 - `DATABASE_URL`: SQLite URL; if unset, the app defaults to `backend/agentguard.db` under the package
-- `AGENTGUARD_LOG_ENCRYPTION_KEY`: Fernet key used to encrypt audit JSONL records and sensitive event/rule-analysis fields before they are stored. Required before persisting logs. Generate one with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`.
+- `AGENTGUARD_LOG_ENCRYPTION_KEY`: Fernet key used to encrypt audit JSONL records, event URLs/headers/risk scores, and rule-analysis scores/details before they are stored. Required before persisting logs. Generate one with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`.
 - `API_HOST` / `API_PORT`: used by the **mitmproxy addon** to build the URL for `POST /api/proxy/decision`. If `API_PORT` is unset, **`PORT` is used** so the proxy and Flask stay aligned.
 - `PROXY_PORT`: listen port for the local proxy (`python proxy_launcher.py`; default **8080**)
 - `AGENTGUARD_BACKEND_TIMEOUT_SECONDS`, `AGENTGUARD_BACKEND_FAILURE_MODE`: proxy → backend behavior (see `backend/.env.example`)

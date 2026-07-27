@@ -53,9 +53,34 @@ def decrypt_text(value: str | None) -> str | None:
         raise RuntimeError("Unable to decrypt stored log value with AGENTGUARD_LOG_ENCRYPTION_KEY") from exc
 
 
+def encrypt_float(value: float | int | None) -> str | None:
+    if value is None:
+        return None
+    return encrypt_text(str(float(value)))
+
+
+def decrypt_float(value: float | int | str | None) -> float | None:
+    if value is None:
+        return None
+    if isinstance(value, (float, int)):
+        return float(value)
+    decrypted = decrypt_text(value)
+    if decrypted is None:
+        return None
+    return float(decrypted)
+
+
 def decrypt_row_fields(row: dict, fields: tuple[str, ...]) -> dict:
     decrypted = dict(row)
     for field in fields:
         if field in decrypted:
             decrypted[field] = decrypt_text(decrypted[field])
+    return decrypted
+
+
+def decrypt_row_float_fields(row: dict, fields: tuple[str, ...]) -> dict:
+    decrypted = dict(row)
+    for field in fields:
+        if field in decrypted:
+            decrypted[field] = decrypt_float(decrypted[field])
     return decrypted
