@@ -17,6 +17,11 @@
 
 .events-rules-table th { padding-right: var(--space-sm); }
 
+.events-rules-table th:first-child,
+.events-rules-table td:first-child {
+  text-align: left;
+}
+
 .events-rules-code-cell {
   display: inline-flex;
   align-items: center;
