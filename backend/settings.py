@@ -6,7 +6,7 @@ import logging
 import os
 from enum import Enum
 from pathlib import Path
-from urllib.parse import urlunsplit
+from urllib.parse import urlsplit, urlunsplit
 
 from dotenv import load_dotenv
 
