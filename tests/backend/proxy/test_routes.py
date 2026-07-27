@@ -134,7 +134,7 @@ def test_proxy_decision_route_rejects_non_local_requests(proxy_test_client):
             "headers": {},
             "body": "",
         },
-        environ_overrides={"REMOTE_ADDR": "203.0.113.25"},
+        environ_overrides={"REMOTE_ADDR": "8.8.8.8"},
     )
 
     assert response.status_code == 403
