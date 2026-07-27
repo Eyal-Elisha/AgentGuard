@@ -38,6 +38,15 @@ except ImportError:  # pragma: no cover - alternate cwd
     stop_proxy_process = None  # type: ignore[assignment, misc]
 
 _LOCALHOST_ADDRS = frozenset({"127.0.0.1", "::1"})
+_TRUSTED_PRIVATE_NETWORKS = tuple(
+    ipaddress.ip_network(cidr)
+    for cidr in (
+        "10.0.0.0/8",
+        "172.16.0.0/12",
+        "192.168.0.0/16",
+        "fc00::/7",
+    )
+)
 
 
 def _is_trusted_client(remote_addr: str | None) -> bool:
@@ -50,7 +59,7 @@ def _is_trusted_client(remote_addr: str | None) -> bool:
         ip = ipaddress.ip_address(remote_addr)
     except ValueError:
         return False
-    return ip.is_private
+    return any(ip in network for network in _TRUSTED_PRIVATE_NETWORKS)
 
 
 def _require_non_empty_string(payload: dict[str, Any], field: str) -> str | None:
