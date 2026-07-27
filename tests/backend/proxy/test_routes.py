@@ -104,7 +104,7 @@ def test_proxy_decision_route_normalizes_method_and_headers(proxy_test_client):
             json={
                 "url": "https://example.com/login",
                 "method": "post",
-                "headers": {"x-retry-count": 1},
+                "headers": {"x-retry-count": "1"},
                 "body": None,
             },
         )

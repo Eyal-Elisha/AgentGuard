@@ -2,11 +2,11 @@
 
 from mitmproxy import http
 
-_ENFORCED_REQUEST_METHODS = frozenset({"GET", "POST", "PUT", "PATCH", "DELETE"})
+from backend.validation.proxy_requests import ALLOWED_PROXY_METHODS
 
 def is_enforced_request_method(flow: http.HTTPFlow) -> bool:
     """Methods that AgentGuard actively inspects in the proxy pipeline."""
-    return flow.request.method.upper() in _ENFORCED_REQUEST_METHODS
+    return flow.request.method.upper() in ALLOWED_PROXY_METHODS
 
 
 def is_action_request(flow: http.HTTPFlow) -> bool:

@@ -5,6 +5,7 @@ from .analysis.rules import CONTEXTUAL_RULES, DETERMINISTIC_RULES, SEMANTIC_RULE
 from .audit_logging import configure_audit_logger
 from .config import env_flag, resolve_jwt_secret
 from .storage.sqlite_store import init_schema, rules_seed_defaults
+from .validation.proxy_requests import MAX_PROXY_ENVELOPE_BYTES
 
 from backend.settings import load_settings_env
 
@@ -17,6 +18,7 @@ def create_app() -> Flask:
     require_auth = env_flag("REQUIRE_AUTH", default=False)
     app.config["REQUIRE_AUTH"] = require_auth
     app.config["JWT_SECRET"] = resolve_jwt_secret()
+    app.config["MAX_CONTENT_LENGTH"] = MAX_PROXY_ENVELOPE_BYTES
 
     init_schema()
     rules_seed_defaults([

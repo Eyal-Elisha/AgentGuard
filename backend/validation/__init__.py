@@ -9,12 +9,14 @@ from .rules import (
     validate_rules_analysis_payload,
 )
 from .sessions import validate_create_session, validate_update_session
+from .proxy_requests import validate_proxy_payload
 
 __all__ = [
     "parse_event_filters",
     "validate_create_session",
     "validate_event_payload",
     "validate_login_signup",
+    "validate_proxy_payload",
     "validate_rule_enabled_payload",
     "validate_rule_payload",
     "validate_rules_analysis_list_query",

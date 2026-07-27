@@ -49,6 +49,19 @@ def test_fetch_backend_decision_blocks_on_timeout():
     assert "decision service is unavailable" in decision.reason.lower()
 
 
+def test_invalid_intercepted_payload_is_blocked_without_backend_call():
+    flow = _make_flow()
+    flow.request.pretty_url = "file:///tmp/private.txt"
+
+    with patch("backend.proxy.decision_client.requests.Session") as session_cls:
+        decision = fetch_backend_decision(flow)
+
+    assert decision.decision == Decision.BLOCK
+    assert decision.source == "proxy_validation"
+    assert "absolute HTTP or HTTPS URL" in decision.reason
+    session_cls.assert_not_called()
+
+
 def test_fetch_backend_decision_allows_on_timeout_when_fail_open():
     with _settings_env(AGENTGUARD_BACKEND_FAILURE_MODE="fail_open"):
         with patch("backend.proxy.decision_client.requests.Session") as session_cls:
@@ -267,5 +280,4 @@ def test_build_enforcement_response_uses_fail_closed_status_for_backend_failure(
 
     assert response.status_code == 503
     assert response.headers["X-AgentGuard-Decision"] == "block"
-
 
