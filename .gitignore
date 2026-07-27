@@ -43,3 +43,8 @@ backend/proxy/.env
 .env
 backend/.env
 backend/agentguard.db
+
+# Offline eval pipeline outputs (scripts/ commits, but artifacts/data are local)
+runs/
+data/phreshphish_*.jsonl
+data/*_large.jsonl

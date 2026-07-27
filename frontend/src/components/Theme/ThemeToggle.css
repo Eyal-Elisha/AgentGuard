@@ -1,0 +1,32 @@
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-chip-bg);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+
+.theme-toggle:hover {
+  color: var(--color-text-primary);
+  border-color: var(--color-text-muted);
+  background: var(--color-chip-bg-hover);
+}
+
+.theme-toggle:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+}
+
+.theme-toggle--auth {
+  position: fixed;
+  top: var(--space-xl);
+  right: var(--space-xl);
+  z-index: 20;
+}

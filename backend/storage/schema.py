@@ -23,11 +23,26 @@ def _schema_exists() -> bool:
     return {str(row["name"]) for row in rows} == _REQUIRED_TABLES
 
 
+def _ensure_schema_columns() -> None:
+    """Add columns introduced after the initial tables were created."""
+    with _connect() as conn:
+        rules_analysis_columns = {
+            str(row["name"])
+            for row in conn.execute("PRAGMA table_info(rules_analysis)").fetchall()
+        }
+        if "hard_block" not in rules_analysis_columns:
+            conn.execute(
+                "ALTER TABLE rules_analysis "
+                "ADD COLUMN hard_block INTEGER NOT NULL DEFAULT 0 CHECK (hard_block IN (0, 1))"
+            )
+
+
 def init_schema() -> None:
     db_path = database_path()
     if db_path in _INITIALIZED_DATABASES:
         return
     if _schema_exists():
+        _ensure_schema_columns()
         _INITIALIZED_DATABASES.add(db_path)
         return
 
@@ -35,6 +50,7 @@ def init_schema() -> None:
         if db_path in _INITIALIZED_DATABASES:
             return
         if _schema_exists():
+            _ensure_schema_columns()
             _INITIALIZED_DATABASES.add(db_path)
             return
         with _connect() as conn:
@@ -94,7 +110,8 @@ def init_schema() -> None:
                         event_id INTEGER NOT NULL REFERENCES events(event_id) ON DELETE CASCADE,
                         rule_code TEXT NOT NULL REFERENCES rules(rule_code) ON DELETE CASCADE,
                         rule_score REAL,
-                        details TEXT
+                        details TEXT,
+                        hard_block INTEGER NOT NULL DEFAULT 0 CHECK (hard_block IN (0, 1))
                     );
                     CREATE INDEX IF NOT EXISTS idx_ra_event ON rules_analysis(event_id);
                     CREATE INDEX IF NOT EXISTS idx_ra_rule ON rules_analysis(rule_code);
@@ -102,8 +119,10 @@ def init_schema() -> None:
                 )
             except sqlite3.OperationalError:
                 if _schema_exists():
+                    _ensure_schema_columns()
                     _INITIALIZED_DATABASES.add(db_path)
                     return
                 raise
+        _ensure_schema_columns()
         _INITIALIZED_DATABASES.add(db_path)
 

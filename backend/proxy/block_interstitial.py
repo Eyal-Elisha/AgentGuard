@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import html
 import json
+from urllib.parse import urlsplit, urlunsplit
 from typing import Any, Dict, List, Optional
 
 
@@ -62,6 +63,62 @@ def _format_rule_row(rule: Dict[str, Any]) -> str:
     )
 
 
+def _https_upgrade(url: str) -> str | None:
+    try:
+        parts = urlsplit(url)
+    except ValueError:
+        return None
+    if parts.scheme.lower() != "http":
+        return None
+    return urlunsplit(("https", parts.netloc, parts.path, parts.query, parts.fragment))
+
+
+def _normalize_likely_typos(host: str) -> str:
+    table = str.maketrans({
+        "0": "o",
+        "1": "l",
+        "3": "e",
+        "5": "s",
+        "7": "t",
+        "@": "a",
+        "$": "s",
+    })
+    translated = host.translate(table)
+    collapsed: list[str] = []
+    for ch in translated:
+        if len(collapsed) >= 2 and collapsed[-1] == ch and collapsed[-2] == ch:
+            continue
+        collapsed.append(ch)
+    return "".join(collapsed)
+
+
+def _safe_alternatives(
+    *,
+    original_url: str,
+    reason: str,
+    evaluation: Optional[Dict[str, Any]],
+) -> List[str]:
+    out: List[str] = []
+    try:
+        host = (urlsplit(original_url).hostname or "").lower().strip()
+    except ValueError:
+        host = ""
+
+    https_url = _https_upgrade(original_url)
+    if https_url is not None:
+        out.append(f"Use an encrypted connection instead: {https_url}")
+
+    if host:
+        out.append(f"Look up a different trusted website that offers the same service as {host}.")
+        out.append("Search for a reputable alternative provider instead of retrying this domain.")
+        out.append("Choose a known-safe website that can accomplish the same task.")
+    else:
+        out.append("Search for a different trusted website for your task.")
+        out.append("Look up trusted alternatives that accomplish the same goal.")
+        out.append("Choose a known-safe provider that can accomplish the same task.")
+    return out[:3]
+
+
 def build_block_html(
     *,
     original_url: str,
@@ -91,6 +148,14 @@ def build_block_html(
     )
 
     triggered = _coerce_rule_results(evaluation)
+    alternatives = _safe_alternatives(
+        original_url=original_url,
+        reason=reason,
+        evaluation=evaluation,
+    )
+    alternatives_block = "<ul class=\"alts-list\">" + "".join(
+        f"<li>{html.escape(item)}</li>" for item in alternatives
+    ) + "</ul>"
     if triggered:
         rules_block = (
             "<ul class=\"rules-list\">"
@@ -110,6 +175,7 @@ def build_block_html(
         safe_url=safe_url,
         score_text=score_text,
         rules_block=rules_block,
+        alternatives_block=alternatives_block,
         js_safe_back_url=js_safe_back_url,
     ).encode("utf-8")
 
@@ -168,6 +234,8 @@ _TEMPLATE: str = """<!doctype html>
   .rule-explanation {{ font-size: 14px; color: #e6e8ed; margin-top: 6px; }}
   .reason-text {{ font-size: 15px; color: #f1d8d5; margin: 4px 0 0; line-height: 1.5; }}
   .no-rules {{ color: var(--muted); margin: 0; }}
+  .alts-list {{ margin: 0; padding-left: 18px; color: #d9deea; line-height: 1.5; }}
+  .alts-list li {{ margin: 6px 0; }}
   .section-label {{ color: var(--muted); font-size: 13px; text-transform: uppercase;
     letter-spacing: 0.06em; margin-bottom: 8px; }}
   .actions {{ display: flex; gap: 12px; margin-top: 12px; }}
@@ -202,6 +270,11 @@ _TEMPLATE: str = """<!doctype html>
     <section class="panel">
       <div class="section-label">Destination</div>
       <div class="url">{safe_url}</div>
+    </section>
+
+    <section class="panel">
+      <div class="section-label">Safe alternatives</div>
+      {alternatives_block}
     </section>
 
     <div class="actions">

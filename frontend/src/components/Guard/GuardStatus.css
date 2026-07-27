@@ -1,0 +1,52 @@
+.guard-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xl);
+  padding: var(--space-sm) var(--space-xl);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-status-surface);
+  transition: border-color 300ms ease, background-color 300ms ease;
+}
+
+.guard-status--active {
+  border-color: color-mix(in srgb, var(--color-proxy-on-end) 45%, transparent);
+  background: color-mix(in srgb, var(--color-proxy-on-end) 12%, transparent);
+}
+
+.guard-status-main { display: flex; align-items: baseline; gap: var(--space-md); }
+
+.guard-status-label {
+  font-size: 0.7rem;
+  line-height: 1;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.guard-status-value {
+  font-size: 0.95rem;
+  line-height: 1;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  transition: color 300ms ease;
+}
+
+.guard-status--active .guard-status-value { color: var(--color-proxy-on-end); }
+.guard-status-divider { width: 1px; height: 1.5rem; background: var(--color-border-subtle); }
+
+.guard-status-passive { display: flex; align-items: center; gap: var(--space-sm); }
+.guard-status-passive-label {
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  width: 5.5rem;
+  text-align: right;
+  white-space: nowrap;
+  transition: color 300ms ease;
+}
+
+.guard-status-passive-label--active { color: var(--color-proxy-on-start); }
+.guard-status-passive-toggle { width: 32px !important; height: 16px !important; }
+.guard-status-passive-toggle .proxy-knob { width: 12px !important; height: 12px !important; }

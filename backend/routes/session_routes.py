@@ -5,9 +5,9 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 
-from flask import jsonify, request
+from flask import g, jsonify, request
 
-from ..auth import get_optional_auth_payload, require_jwt
+from ..auth import get_optional_auth_payload, request_is_admin, require_admin, require_jwt
 from ..serializers import event_to_dict, session_to_dict
 from ..storage import sqlite_store as store
 from ..validation import (
@@ -38,7 +38,8 @@ def _get_session_or_404(session_id: int):
 @app_bp.route("/sessions", methods=["GET"])
 @require_jwt
 def list_sessions():
-    rows = store.sessions_list_desc()
+    user_id = None if request_is_admin() else int(getattr(g, "jwt_user_id", 0))
+    rows = store.sessions_list_desc(user_id=user_id)
     return jsonify([session_to_dict(s) for s in rows]), 200
 
 
@@ -87,7 +88,7 @@ def update_session(session_id: int):
 
 
 @app_bp.route("/sessions/<int:session_id>", methods=["DELETE"])
-@require_jwt
+@require_admin
 def delete_session(session_id: int):
     if not store.session_delete(session_id):
         return jsonify({"error": "Session not found"}), 404

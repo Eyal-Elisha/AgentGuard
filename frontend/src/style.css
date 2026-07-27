@@ -1,15 +1,8 @@
+
 @import './styles/theme.css';
 
 :root {
   --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
-
-  /* Colors - Surfaces & Opacities (Using theme tokens where possible) */
-  --bg-surface-primary: var(--color-bg-deep);
-  --bg-surface-secondary: rgba(15, 23, 42, 0.45);
-  --bg-overlay: rgba(2, 6, 23, 0.55);
-
-  /* Shadows */
-  --shadow-toast: 0 12px 30px rgba(0, 0, 0, 0.45);
 
   /* Typography Scale */
   --font-xs: 0.7rem;
@@ -20,17 +13,19 @@
   --font-2xl: 2rem;
   --font-3xl: 2.6rem;
 
-  /* Existing Root Styles */
   font-family: var(--font-sans);
   line-height: 1.5;
   font-weight: 400;
-  color-scheme: dark;
   color: var(--color-text-body);
   background-color: var(--bg-surface-primary);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+html {
+  transition: background-color 160ms ease, color 160ms ease;
 }
 
 html,
@@ -48,7 +43,13 @@ body {
 body {
   margin: 0;
   min-width: 320px;
-  background: radial-gradient(circle at top, #1f2937 0, #020617 55%);
+  background: radial-gradient(
+    circle at top,
+    var(--color-page-gradient-start) 0,
+    var(--color-page-gradient-end) 55%
+  );
+  color: var(--color-text-body);
+  transition: background-color 160ms ease, color 160ms ease;
 }
 
 #root {

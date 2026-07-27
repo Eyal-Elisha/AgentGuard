@@ -63,6 +63,8 @@ def event_to_dict(row: dict[str, Any], include_session: bool = False) -> dict:
     }
     if include_session:
         out["session_id"] = row["session_id"]
+        if "user_id" in row:
+            out["user_id"] = row["user_id"]
     return out
 
 
@@ -85,12 +87,16 @@ def analysis_to_dict(row: dict[str, Any]) -> dict:
         "rule_code": row["rule_code"],
         "rule_score": float(row["rule_score"]) if row["rule_score"] is not None else None,
         "details": row["details"],
+        "hard_block": bool(row.get("hard_block", False)),
     }
 
 
 def rule_analysis_to_dict(row: dict[str, Any]) -> dict:
     out = analysis_to_dict(row)
     out["rule_type"] = row.get("rule_type")
+    out["compute_class"] = row.get("compute_class")
     out["weight"] = float(row["weight"]) if row.get("weight") is not None else None
     out["rule_score"] = float(row["rule_score"]) if row.get("rule_score") is not None else None
+    if "is_hard_block" in row:
+        out["is_hard_block"] = bool(row["is_hard_block"])
     return out

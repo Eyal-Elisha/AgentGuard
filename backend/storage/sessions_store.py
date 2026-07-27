@@ -10,12 +10,19 @@ from typing import Any, Literal
 from .db import _connect, _dt_iso
 
 
-def sessions_list_desc() -> list[dict[str, Any]]:
+def sessions_list_desc(user_id: int | None = None) -> list[dict[str, Any]]:
     with _connect() as conn:
-        cur = conn.execute(
-            "SELECT session_id, user_id, start_time, end_time, environment, agent_name "
-            "FROM sessions ORDER BY session_id DESC"
-        )
+        if user_id is not None:
+            cur = conn.execute(
+                "SELECT session_id, user_id, start_time, end_time, environment, agent_name "
+                "FROM sessions WHERE user_id = ? ORDER BY session_id DESC",
+                (user_id,),
+            )
+        else:
+            cur = conn.execute(
+                "SELECT session_id, user_id, start_time, end_time, environment, agent_name "
+                "FROM sessions ORDER BY session_id DESC"
+            )
         return [dict(r) for r in cur.fetchall()]
 
 

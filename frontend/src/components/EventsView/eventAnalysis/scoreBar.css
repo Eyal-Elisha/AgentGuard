@@ -1,0 +1,35 @@
+.events-rules-table td.td-centered .rule-score-bar-wrap {
+  justify-content: center;
+}
+
+.rule-score-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  max-width: 7.5rem;
+  width: 100%;
+  margin-inline: auto;
+  min-width: 0;
+}
+
+.rule-score-bar-track {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-border-subtle) 60%, transparent);
+  overflow: hidden;
+}
+
+.rule-score-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 250ms ease;
+}
+
+.rule-score-bar-label {
+  font-size: var(--font-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-body);
+  white-space: nowrap;
+  min-width: 2.5rem;
+}

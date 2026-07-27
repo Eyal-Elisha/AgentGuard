@@ -45,3 +45,20 @@ def user_get(user_id: int) -> dict[str, Any] | None:
         row = cur.fetchone()
         return dict(row) if row else None
 
+
+def users_list_all() -> list[dict[str, Any]]:
+    with _connect() as conn:
+        cur = conn.execute(
+            "SELECT user_id, username, is_admin FROM users ORDER BY user_id ASC"
+        )
+        return [dict(r) for r in cur.fetchall()]
+
+
+def user_set_admin(user_id: int, is_admin: bool) -> bool:
+    with _connect() as conn:
+        cur = conn.execute(
+            "UPDATE users SET is_admin = ? WHERE user_id = ?",
+            (1 if is_admin else 0, user_id),
+        )
+        return cur.rowcount > 0
+

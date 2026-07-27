@@ -58,10 +58,12 @@ def _ambiguous_features(
 
     Triggers (no hard-block):
       - brand_domain_mismatch  (weight 0.15): "PayPal" in title on non-paypal.com
-      - sensitive_fields        (weight 0.20): password input
+      - sensitive_fields        (weight 0.10): password input
       - external_form_action    (weight 0.10): form posts to a different host
+      - unexpected_redirect     (weight 0.10): meta-refresh to an external host
+        during a sensitive interaction
 
-    Weighted score ≈ 0.45 / 1.55 ≈ 0.29, safely inside the ambiguous zone.
+    Weighted score ≈ 0.45 / 1.50 ≈ 0.30, safely inside the ambiguous zone.
     """
     return ExtractedFeatures(
         url=url,
@@ -69,6 +71,11 @@ def _ambiguous_features(
         scheme="https",
         headers={"content-type": "text/html; charset=utf-8"},
         is_html=True,
+        raw_body=(
+            '<html><head>'
+            '<meta http-equiv="refresh" content="0; url=https://redirect-collector.io/next">'
+            '</head><body>PayPal verify account password</body></html>'
+        ),
         dom=DomFeatures(
             page_title="PayPal – Verify Your Account",
             all_text_content="PayPal verify account password",

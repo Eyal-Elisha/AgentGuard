@@ -100,6 +100,7 @@ def create_rules_analysis():
         data["rule_code"],
         data["rule_score"],
         data["details"],
+        data["hard_block"],
     )
     return jsonify({"message": "Rule analysis created successfully", "analysis_id": aid}), 201
 

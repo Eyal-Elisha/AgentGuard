@@ -20,6 +20,7 @@ from backend.analysis.rules import (
     RuleResult,
     RuleType,
     SessionContext,
+    is_rule_enabled,
 )
 from backend.analysis.stages.stage_a.contextual_rules import CONTEXTUAL_RULE_FN
 from backend.analysis.stages.stage_a.deterministic_rules import RULE_FN, rule_custom_blacklist
@@ -39,7 +40,7 @@ def _run_contextual_rules(
     """
     results: List[RuleResult] = []
     for rule_def in CONTEXTUAL_RULES:
-        if not _is_rule_enabled(rule_def.rule_id, enabled_rules):
+        if not is_rule_enabled(rule_def.rule_id, enabled_rules):
             continue
         rule_fn = CONTEXTUAL_RULE_FN.get(rule_def.rule_id)
         if rule_fn is None:
@@ -56,12 +57,6 @@ def _run_contextual_rules(
             triggered=triggered,
         ))
     return results
-
-
-def _is_rule_enabled(rule_id: str, enabled_rules: Optional[Mapping[str, bool]]) -> bool:
-    if enabled_rules is None:
-        return True
-    return enabled_rules.get(rule_id, True)
 
 
 def _aggregate(results: List[RuleResult]) -> float:
@@ -112,7 +107,7 @@ class StageAEvaluator:
 
         # ── Step 1: Deterministic rules ──────────────────────────────────────
         for i, rule_def in enumerate(DETERMINISTIC_RULES):
-            if not _is_rule_enabled(rule_def.rule_id, enabled_rules):
+            if not is_rule_enabled(rule_def.rule_id, enabled_rules):
                 continue
 
             if rule_def.rule_id == "custom_blacklist":

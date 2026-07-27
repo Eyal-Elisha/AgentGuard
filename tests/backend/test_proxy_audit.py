@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import sqlite3
 import tempfile
 import unittest
 from datetime import datetime, timezone
@@ -11,7 +12,7 @@ from unittest.mock import patch
 
 from backend import create_app
 from backend.analysis.rules import Decision, EvaluationResult, RuleResult, RuleType
-from backend.proxy.audit import ensure_proxy_session_started
+from backend.proxy.audit import ensure_proxy_session_started, normalize_proxy_agent_name
 from backend.storage import sqlite_store as store
 
 
@@ -124,7 +125,7 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         body = response.get_json()
         audit = body["audit"]
         self.assertEqual(body["decision"], "warn")
-        self.assertEqual(audit["agent"], "browserOS")
+        self.assertEqual(audit["agent"], "BrowserOS")
         self.assertEqual(audit["environment"], "test")
         self.assertEqual(audit["decision"], "warn")
         self.assertEqual(audit["risk_score"], 0.42)
@@ -132,7 +133,7 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
 
         session = store.session_get(audit["session_id"])
         self.assertIsNotNone(session)
-        self.assertEqual(session["agent_name"], "browserOS")
+        self.assertEqual(session["agent_name"], "BrowserOS")
         self.assertEqual(session["environment"], "test")
 
         event = store.event_get(audit["event_id"])
@@ -145,6 +146,10 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         analyses = store.rule_analysis_list_for_event(audit["event_id"])
         self.assertEqual(len(analyses), 2)
         self.assertEqual({item["rule_code"] for item in analyses}, {"sensitive_fields", "custom_blacklist"})
+        sensitive_analysis = next(item for item in analyses if item["rule_code"] == "sensitive_fields")
+        blacklist_analysis = next(item for item in analyses if item["rule_code"] == "custom_blacklist")
+        self.assertEqual(sensitive_analysis["hard_block"], 0)
+        self.assertEqual(blacklist_analysis["hard_block"], 1)
         self.assertIsNotNone(store.rule_get("sensitive_fields"))
         self.assertIsNotNone(store.rule_get("custom_blacklist"))
 
@@ -155,7 +160,7 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         self.assertEqual(log_entry["session_id"], audit["session_id"])
         self.assertEqual(log_entry["event_id"], audit["event_id"])
         self.assertEqual(log_entry["timestamp"], "2026-03-29T22:30:00Z")
-        self.assertEqual(log_entry["agent"], "browserOS")
+        self.assertEqual(log_entry["agent"], "BrowserOS")
         self.assertEqual(log_entry["url"], "https://example.com/login")
         self.assertEqual(log_entry["risk_score"], 0.42)
         self.assertEqual(log_entry["decision"], "warn")
@@ -180,7 +185,7 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
     def test_proxy_start_creates_browseros_session_used_by_decisions(self):
         started = ensure_proxy_session_started(environment="test")
         self.assertTrue(started["created"])
-        self.assertEqual(started["agent"], "browserOS")
+        self.assertEqual(started["agent"], "BrowserOS")
 
         with patch("backend.routes.proxy.evaluate_http_payload", return_value=_make_result(Decision.ALLOW)):
             response = self.client.post("/api/proxy/decision", json=self._payload(timestamp="2026-03-29T22:32:00Z"))
@@ -188,7 +193,7 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         audit = response.get_json()["audit"]
         self.assertEqual(audit["session_id"], started["session_id"])
-        self.assertEqual(audit["agent"], "browserOS")
+        self.assertEqual(audit["agent"], "BrowserOS")
 
     def test_proxy_start_rotates_to_new_session_id(self):
         first = ensure_proxy_session_started(environment="test")
@@ -230,11 +235,11 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
 
         started = ensure_proxy_session_started(environment="test")
 
-        self.assertEqual(started["agent"], "browserOS")
+        self.assertEqual(started["agent"], "BrowserOS")
         self.assertEqual(started["environment"], "test")
         stored = store.session_get(started["session_id"])
         self.assertIsNotNone(stored)
-        self.assertEqual(stored["agent_name"], "browserOS")
+        self.assertEqual(stored["agent_name"], "BrowserOS")
         log_lines = Path(self.log_path).read_text(encoding="utf-8").splitlines()
         self.assertEqual(len(log_lines), 1)
         log_entry = json.loads(log_lines[0])
@@ -250,6 +255,20 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
             response.get_json(),
             {"error": "Provided session_id does not reference an existing session"},
         )
+
+    def test_proxy_decision_database_errors_return_503_and_log(self):
+        with (
+            patch(
+                "backend.routes.proxy.store.session_get",
+                side_effect=sqlite3.OperationalError("database is locked"),
+            ),
+            self.assertLogs("agentguard.api", level="ERROR") as logs,
+        ):
+            response = self.client.post("/api/proxy/decision", json=self._payload(session_id=1))
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.get_json(), {"error": "Database temporarily unavailable"})
+        self.assertTrue(any("database is locked" in message for message in logs.output))
 
     def test_proxy_decision_requires_active_session(self):
         with patch("backend.routes.proxy.evaluate_http_payload", return_value=_make_result(Decision.ALLOW)):
@@ -298,7 +317,7 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         body = response.get_json()
         self.assertEqual(body["active"], True)
         self.assertEqual(body["message"], "started")
-        self.assertEqual(body["session"]["agent"], "browserOS")
+        self.assertEqual(body["session"]["agent"], "BrowserOS")
         self.assertEqual(body["session"]["environment"], "test")
         self.assertTrue(body["session"]["created"])
 
@@ -306,6 +325,28 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         self.assertIsNotNone(session)
         self.assertIsNone(session["end_time"])
         self.assertEqual(session["environment"], "test")
+
+    def test_proxy_control_start_uses_selected_agent(self):
+        with (
+            patch("backend.routes.proxy.start_proxy_process", return_value=(True, "started")),
+            patch("backend.routes.proxy.proxy_is_running", return_value=True),
+        ):
+            response = self.client.post(
+                "/api/proxy/control",
+                json={
+                    "active": True,
+                    "environment": "test",
+                    "agent_name": "MicrosoftEdge",
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        body = response.get_json()
+        self.assertEqual(body["session"]["agent"], "MicrosoftEdge")
+
+        session = store.session_get(body["session"]["session_id"])
+        self.assertIsNotNone(session)
+        self.assertEqual(session["agent_name"], "MicrosoftEdge")
 
     def test_proxy_decision_persists_contextual_rule_analysis(self):
         """Contextual RuleResults flow through to `rules_analysis` and register
@@ -333,6 +374,7 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
             if item["rule_code"] == "previously_warned_domain_in_session"
         )
         self.assertEqual(contextual_row["rule_score"], 0.4)
+        self.assertEqual(contextual_row["hard_block"], 0)
         self.assertIn("evil.com", contextual_row["details"])
 
         registered = store.rule_get("previously_warned_domain_in_session")
@@ -368,6 +410,23 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         closed = json.loads(log_lines[1])
         self.assertEqual(closed["event"], "proxy_session_closed")
         self.assertEqual(closed["reason"], "proxy_stopped")
+
+
+class NormalizeProxyAgentNameTestCase(unittest.TestCase):
+    def test_legacy_gemini_maps_to_microsoft_edge(self):
+        self.assertEqual(normalize_proxy_agent_name("Gemini"), "MicrosoftEdge")
+
+    def test_canonical_names_are_unchanged(self):
+        self.assertEqual(normalize_proxy_agent_name("MicrosoftEdge"), "MicrosoftEdge")
+        self.assertEqual(normalize_proxy_agent_name("BrowserOS"), "BrowserOS")
+
+    def test_canonical_names_match_case_insensitively(self):
+        self.assertEqual(normalize_proxy_agent_name("microsoftedge"), "MicrosoftEdge")
+        self.assertEqual(normalize_proxy_agent_name("browseros"), "BrowserOS")
+
+    def test_default_agent_when_missing(self):
+        self.assertEqual(normalize_proxy_agent_name(None), "BrowserOS")
+        self.assertEqual(normalize_proxy_agent_name(""), "BrowserOS")
 
 
 if __name__ == "__main__":

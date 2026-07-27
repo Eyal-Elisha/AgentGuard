@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -112,3 +113,5 @@ def test_blacklisted_subresource_is_blocked_locally_without_backend_call():
     assert flow.response is not None
     assert flow.response.status_code == 403
     assert flow.metadata["agentguard_enforcement"]["source"] == "proxy_custom_blacklist"
+
+

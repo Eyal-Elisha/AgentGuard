@@ -1,0 +1,63 @@
+@import './GuardControls.css';
+@import './GuardStatus.css';
+@import './GuardEndpoints.css';
+
+.guard-page {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  padding: var(--space-main-y) var(--space-header-x) 3rem;
+}
+
+.guard-card {
+  width: 100%;
+  max-width: 40rem;
+  background: radial-gradient(circle at top left, var(--color-bg-card-gradient-start) 0, var(--color-bg-elevated) 55%);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-border-subtle);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-3xl) var(--space-2xl) var(--space-2xl);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: var(--space-xl);
+}
+
+.guard-heading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.guard-title {
+  margin: 0;
+  font-size: 1.85rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--color-text-primary);
+}
+
+.guard-tagline {
+  margin: 0;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.guard-agent-row {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  padding-top: var(--space-sm);
+}
+
+@media (max-height: 760px) {
+  .guard-card {
+    justify-content: flex-start;
+  }
+}

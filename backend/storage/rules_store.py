@@ -9,6 +9,29 @@ from typing import Any
 from .db import _connect
 
 
+def rules_seed_defaults(rule_definitions: list[Any]) -> None:
+    """Insert missing built-in rules without overwriting dashboard settings."""
+    rows = [
+        (
+            rule.rule_id,
+            rule.weight,
+            rule.rule_type.value,
+            rule.compute_class.value,
+            1,
+            1 if rule.hard_block else 0,
+            rule.description,
+        )
+        for rule in rule_definitions
+    ]
+    with _connect() as conn:
+        conn.executemany(
+            "INSERT OR IGNORE INTO rules "
+            "(rule_code, weight, rule_type, compute_class, is_enabled, is_hard_block, description) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            rows,
+        )
+
+
 def rules_list_asc() -> list[dict[str, Any]]:
     with _connect() as conn:
         cur = conn.execute(
@@ -61,4 +84,3 @@ def rule_set_enabled(rule_code: str, is_enabled: bool) -> bool:
             (1 if is_enabled else 0, rule_code),
         )
         return cur.rowcount > 0
-

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from flask import jsonify, request
+from flask import g, jsonify, request
 
-from ..auth import require_jwt
+from ..auth import request_is_admin, require_jwt
 from ..serializers import event_to_dict
 from ..storage import sqlite_store as store
 from ..validation import parse_event_filters
@@ -17,6 +17,8 @@ def list_all_events():
     filters, err = parse_event_filters(request.args)
     if err:
         return jsonify({"error": err}), 400
+    if not request_is_admin() and getattr(g, "jwt_user_id", None) is not None:
+        filters["user_id"] = int(g.jwt_user_id)
     rows = store.events_list_all(filters)
     return jsonify([event_to_dict(e, include_session=True) for e in rows]), 200
 

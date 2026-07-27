@@ -1,3 +1,6 @@
+import { getToken } from '../../api/authToken.js';
+import { normalizeAgentName } from '../../constants/agentOptions.js';
+
 /** Shown when a table cell has no value (user id, timestamps). */
 export const EMPTY_CELL_DISPLAY = '–';
 
@@ -20,14 +23,20 @@ export function getApiBase() {
 export async function fetchWithBase(path, options = {}) {
   const base = getApiBase();
   if (!base) throw new Error('API base URL not configured');
-  return fetch(`${base}${path}`, options);
+  
+  const token = getToken();
+  const headers = { ...options.headers };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  return fetch(`${base}${path}`, { ...options, headers });
 }
 
 /** Loads per-session aggregates from the backend. */
 export async function fetchSessionEventStats(baseUrl, sessionId, headers) {
-  const url = `${baseUrl}/sessions/${Number(sessionId)}/events/stats`;
   try {
-    const response = await fetch(url, headers ? { headers } : undefined);
+    const response = await fetchWithBase(`/sessions/${Number(sessionId)}/events/stats`, headers ? { headers } : undefined);
     if (!response.ok) return null;
     const data = await response.json();
     const avg = data?.average_risk_score;
@@ -46,7 +55,7 @@ export function normalizeSession(sessionData) {
   
   return {
     session_id: String(sessionData.session_id),
-    agent_name: sessionData.agent_name ?? '',
+    agent_name: normalizeAgentName(sessionData.agent_name ?? ''),
     user_id,
     average_risk_score: risk,
     start_time: sessionData.start_time,
@@ -60,9 +69,15 @@ export function isIsoEmpty(iso) {
   return Number.isNaN(d.getTime());
 }
 
-export function formatIsoLocal(iso) {
+export function formatDateTime(iso) {
   if (isIsoEmpty(iso)) return EMPTY_CELL_DISPLAY;
-  return new Date(iso).toLocaleString();
+  const d = new Date(iso);
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = String(d.getFullYear() % 100).padStart(2, '0');
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  return `${day}.${month}.${year} at ${hours}:${minutes}`;
 }
 
 /** Read error message from response body or status */

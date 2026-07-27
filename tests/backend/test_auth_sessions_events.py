@@ -1,4 +1,11 @@
-from backend.auth import decode_token, hash_password
+import os
+import tempfile
+import unittest
+from datetime import datetime, timezone
+from pathlib import Path
+
+from backend import create_app
+from backend.auth import decode_token, hash_password, issue_token
 from backend.storage import sqlite_store as store
 from backend.storage.sqlite_store import UsernameTakenError
 
@@ -120,6 +127,57 @@ class AuthSessionsEventsTestCase(BackendApiTestCase):
         self.assertEqual(body["block"], 0)
         self.assertAlmostEqual(body["average_risk_score"], 0.525)
 
+    def test_historical_events_can_be_queried_by_user_and_risk(self):
+        alice_id = store.user_create("alice-events", hash_password("alice-pass"), False)
+        bob_id = store.user_create("bob-events", hash_password("bob-pass"), False)
+        timestamp = datetime(2026, 3, 25, 12, 0, tzinfo=timezone.utc)
+        alice_session_id = store.session_create(alice_id, timestamp, "test", "agent-a")
+        bob_session_id = store.session_create(bob_id, timestamp, "test", "agent-b")
+
+        alice_event_id = store.event_create(
+            alice_session_id,
+            timestamp,
+            "https://example.test/alice-high",
+            "Warn",
+            0.82,
+            "GET",
+            "{}",
+        )
+        store.event_create(
+            alice_session_id,
+            timestamp,
+            "https://example.test/alice-low",
+            "Allow",
+            0.15,
+            "GET",
+            "{}",
+        )
+        store.event_create(
+            bob_session_id,
+            timestamp,
+            "https://example.test/bob-high",
+            "Block",
+            0.95,
+            "POST",
+            "{}",
+        )
+
+        response = self.client.get(
+            "/events",
+            query_string={"user_id": str(alice_id), "min_risk_score": "0.7"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        body = response.get_json()
+        self.assertEqual(len(body), 1)
+        self.assertEqual(body[0]["event_id"], alice_event_id)
+        self.assertEqual(body[0]["session_id"], alice_session_id)
+        self.assertEqual(body[0]["user_id"], alice_id)
+
+        invalid_user = self.client.get("/events", query_string={"user_id": "not-an-id"})
+        self.assertEqual(invalid_user.status_code, 400)
+        self.assertEqual(invalid_user.get_json()["error"], "Invalid user_id")
+
     def test_second_close_returns_409(self):
         session_id = self.create_session().get_json()["session_id"]
         first = self.client.post(f"/sessions/{session_id}/close")
@@ -156,3 +214,62 @@ class AuthSessionsEventsTestCase(BackendApiTestCase):
         out_of_bounds_risk = self.create_event(session_id=session_id, risk_score=1.5)
         self.assertEqual(out_of_bounds_risk.status_code, 400)
         self.assertEqual(out_of_bounds_risk.get_json()["error"], "Invalid payload: risk_score")
+
+
+class SessionDeleteAuthorizationTestCase(unittest.TestCase):
+    """DELETE /sessions/:id requires admin when REQUIRE_AUTH is enabled."""
+
+    def setUp(self) -> None:
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.db_path = os.path.join(self.temp_dir.name, "test.db")
+        self._old_env = {
+            "DATABASE_URL": os.environ.get("DATABASE_URL"),
+            "JWT_SECRET": os.environ.get("JWT_SECRET"),
+            "REQUIRE_AUTH": os.environ.get("REQUIRE_AUTH"),
+        }
+        db_url_path = Path(self.db_path).resolve().as_posix()
+        os.environ["DATABASE_URL"] = f"sqlite:///{db_url_path}"
+        os.environ["JWT_SECRET"] = "test-secret"
+        os.environ["REQUIRE_AUTH"] = "true"
+
+        self.app = create_app()
+        self.client = self.app.test_client()
+
+        store.user_create("bob", hash_password("bob-pass"), is_admin=False)
+        store.user_create("admin", hash_password("admin-pass"), is_admin=True)
+
+        with self.app.app_context():
+            self.bob_token = issue_token(1, "bob", False)
+            self.admin_token = issue_token(2, "admin", True)
+            self.session_id = store.session_create(
+                1,
+                datetime(2026, 3, 25, 12, 0, tzinfo=timezone.utc),
+                "test",
+                "agent-1",
+            )
+
+    def tearDown(self) -> None:
+        for key, value in self._old_env.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+        self.temp_dir.cleanup()
+
+    def test_non_admin_cannot_delete_session(self):
+        response = self.client.delete(
+            f"/sessions/{self.session_id}",
+            headers={"Authorization": f"Bearer {self.bob_token}"},
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.get_json()["error"], "Forbidden")
+        self.assertIsNotNone(store.session_get(self.session_id))
+
+    def test_admin_can_delete_any_session(self):
+        response = self.client.delete(
+            f"/sessions/{self.session_id}",
+            headers={"Authorization": f"Bearer {self.admin_token}"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["message"], "Session deleted successfully")
+        self.assertIsNone(store.session_get(self.session_id))

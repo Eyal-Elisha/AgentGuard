@@ -9,6 +9,8 @@ from backend.analysis.rules import (
     CONTEXTUAL_RULES,
     DETERMINISTIC_RULES,
     RULE_WEIGHTS,
+    SEMANTIC_RULES,
+    CODE_DISABLED_RULES,
     ComputeClass,
     Decision,
     EvaluationResult,
@@ -19,10 +21,15 @@ from backend.storage import sqlite_store as store
 
 _logger = logging.getLogger("agentguard.audit")
 _RULE_DEFINITIONS = {
-    rule.rule_id: rule for rule in (*DETERMINISTIC_RULES, *CONTEXTUAL_RULES)
+    rule.rule_id: rule for rule in (*DETERMINISTIC_RULES, *CONTEXTUAL_RULES, *SEMANTIC_RULES)
 }
-_DEFAULT_PROXY_AGENT_NAME = "browserOS"
+_DEFAULT_PROXY_AGENT_NAME = "BrowserOS"
 _DEFAULT_PROXY_ENVIRONMENT = "prod"
+_CANONICAL_AGENT_NAMES = ("MicrosoftEdge", "BrowserOS")
+# Renamed agents only — keep in sync with LEGACY_AGENT_KEYS in frontend/src/constants/agentOptions.js
+_LEGACY_AGENT_ALIASES = {
+    "gemini": "MicrosoftEdge",
+}
 
 
 def _iso_z(dt: datetime) -> str:
@@ -50,9 +57,21 @@ def _clean_agent_name(value: str) -> str:
     return cleaned[:20]
 
 
+def _to_canonical_agent_name(cleaned: str) -> str:
+    legacy = _LEGACY_AGENT_ALIASES.get(cleaned.lower())
+    if legacy:
+        return legacy
+    lower = cleaned.lower()
+    for name in _CANONICAL_AGENT_NAMES:
+        if name.lower() == lower:
+            return name
+    return cleaned
+
+
 def normalize_proxy_agent_name(explicit_agent_name: str | None) -> str:
     if isinstance(explicit_agent_name, str) and explicit_agent_name.strip():
-        return _clean_agent_name(explicit_agent_name)
+        cleaned = _clean_agent_name(explicit_agent_name)
+        return _to_canonical_agent_name(cleaned)
     return _DEFAULT_PROXY_AGENT_NAME
 
 
@@ -80,7 +99,7 @@ def _ensure_rule_registered(rule_result) -> None:
         weight=RULE_WEIGHTS.get(rule_result.rule_id, 0.0),
         rule_type=rule_result.rule_type.value if isinstance(rule_result.rule_type, RuleType) else str(rule_result.rule_type),
         compute_class=compute_class,
-        is_enabled=True,
+        is_enabled=rule_result.rule_id not in CODE_DISABLED_RULES,
         is_hard_block=rule_result.hard_block,
         description=description[:255] if description else None,
     )
@@ -132,6 +151,7 @@ def ensure_proxy_session_started(
     timestamp: datetime | None = None,
     environment: str = _DEFAULT_PROXY_ENVIRONMENT,
     agent_name: str = _DEFAULT_PROXY_AGENT_NAME,
+    user_id: int | None = None,
 ) -> dict[str, Any]:
     _ensure_storage_ready()
 
@@ -154,7 +174,7 @@ def ensure_proxy_session_started(
         )
 
     session_id = store.session_create(
-        user_id=None,
+        user_id=user_id,
         start_time=started_at,
         environment=environment,
         agent_name=resolved_agent_name,
@@ -265,6 +285,7 @@ def record_proxy_decision(
             rule_code=rule_result.rule_id,
             rule_score=rule_result.score,
             details=rule_result.explanation,
+            hard_block=rule_result.hard_block,
         )
         persisted_rules += 1
         if rule_result.triggered:
