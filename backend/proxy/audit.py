@@ -10,6 +10,7 @@ from backend.analysis.rules import (
     DETERMINISTIC_RULES,
     RULE_WEIGHTS,
     SEMANTIC_RULES,
+    CODE_DISABLED_RULES,
     ComputeClass,
     Decision,
     EvaluationResult,
@@ -98,7 +99,7 @@ def _ensure_rule_registered(rule_result) -> None:
         weight=RULE_WEIGHTS.get(rule_result.rule_id, 0.0),
         rule_type=rule_result.rule_type.value if isinstance(rule_result.rule_type, RuleType) else str(rule_result.rule_type),
         compute_class=compute_class,
-        is_enabled=True,
+        is_enabled=rule_result.rule_id not in CODE_DISABLED_RULES,
         is_hard_block=rule_result.hard_block,
         description=description[:255] if description else None,
     )

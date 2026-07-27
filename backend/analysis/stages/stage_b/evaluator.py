@@ -17,17 +17,12 @@ from backend.analysis.rules import (
     SEMANTIC_RULES,
     RuleResult,
     RuleType,
+    is_rule_enabled,
 )
 from backend.analysis.stages.stage_b.sanitization import extract_semantic_text
 from backend.analysis.stages.stage_b.semantic_rules import SEMANTIC_RULE_FN
 
 _logger = logging.getLogger(__name__)
-
-
-def _is_rule_enabled(rule_id: str, enabled_rules: Optional[Mapping[str, bool]]) -> bool:
-    if enabled_rules is None:
-        return True
-    return enabled_rules.get(rule_id, True)
 
 
 class StageBEvaluator:
@@ -42,7 +37,7 @@ class StageBEvaluator:
 
         results: List[RuleResult] = []
         for rule_def in SEMANTIC_RULES:
-            if not _is_rule_enabled(rule_def.rule_id, enabled_rules):
+            if not is_rule_enabled(rule_def.rule_id, enabled_rules):
                 continue
             rule_fn = SEMANTIC_RULE_FN.get(rule_def.rule_id)
             if rule_fn is None:
