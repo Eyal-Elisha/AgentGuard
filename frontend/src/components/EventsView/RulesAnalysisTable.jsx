@@ -82,8 +82,8 @@ export default function RulesAnalysisTable({ rows }) {
               <tr key={row.analysis_id} className="sessions-row">
                 <td>
                   <span className="events-rules-code-cell">
-                    <span className="events-rules-code">{row.rule_code}</span>
                     {hasDetails && <RuleDetailsInfo details={detailsText} />}
+                    <span className="events-rules-code">{row.rule_code}</span>
                   </span>
                 </td>
                 <td className="td-centered">{row.weight != null ? row.weight : '–'}</td>
