@@ -104,10 +104,11 @@ class SessionContext:
 # ---------------------------------------------------------------------------
 
 # Calibrated on a domain-disjoint PhreshPhish dev split (15k rows) via
-# scripts/calibrate_thresholds.py, then confirmed on a held-out test split:
-#   BLOCK 0.18 -> block precision ~0.89 (auto-block only when confident)
-#   WARN  0.10 -> warn-or-block recall ~0.76 at precision ~0.69
-HIGH_RISK_THRESHOLD: float = 0.18   # Score at/above this -> BLOCK
+# scripts/calibrate_thresholds.py, then confirmed on a held-out test split.
+# Retuned after retraining phishing_language on HTML lifted the block recall:
+#   BLOCK 0.16 -> block precision ~0.90 at recall ~0.61 (was 0.28)
+#   WARN  0.10 -> warn-or-block recall ~0.79 at precision ~0.83
+HIGH_RISK_THRESHOLD: float = 0.16   # Score at/above this -> BLOCK
 WARN_THRESHOLD: float = 0.10        # Score at/above this (and below HIGH) -> WARN
 AMBIGUOUS_LOW: float = 0.15         # Deterministic score below this -> skip contextual rules
 # Stage B (semantic) gate. Decoupled from WARN_THRESHOLD so the expensive
@@ -159,10 +160,10 @@ RULE_WEIGHTS: Dict[str, float] = {
     "redirect_to_sensitive_action":            0.20,
     "previously_warned_domain_in_session":     0.20,
     # Semantic rules (Stage B — TF-IDF + Logistic Regression, with heuristic fallback)
-    # Down-weighted from 0.30: the classifier was trained on email/SMS text and
-    # is near-random on webpage HTML (lift ~1.5×, fires almost equally on phish
-    # and benign). Retrain on the HTML corpus to justify a higher weight.
-    "phishing_language":                       0.15,
+    # Retrained on domain-disjoint PhreshPhish webpage HTML (via
+    # scripts/build_semantic_trainset.py): now high-precision on pages
+    # (lift ~23×, fires ~695 phish / 44 benign), so restored to full weight.
+    "phishing_language":                       0.30,
     "prompt_injection":                        0.30,
 }
 

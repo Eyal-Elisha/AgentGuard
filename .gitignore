@@ -49,4 +49,7 @@ backend/agentguard.db
 runs/
 data/*.jsonl
 data/phreshphish/
+data/semantic_train/
 !data/smoke.jsonl
+# Local model backups (the tracked .pkl carries the real artifact + git history)
+*.pkl.bak
