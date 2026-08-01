@@ -103,8 +103,12 @@ class SessionContext:
 # Scoring thresholds (to be calibrated during model evaluation phase)
 # ---------------------------------------------------------------------------
 
-HIGH_RISK_THRESHOLD: float = 0.19   # Score above this -> BLOCK
-WARN_THRESHOLD: float = 0.15        # Score above this (and below HIGH) -> WARN
+# Calibrated on a domain-disjoint PhreshPhish dev split (15k rows) via
+# scripts/calibrate_thresholds.py, then confirmed on a held-out test split:
+#   BLOCK 0.18 -> block precision ~0.89 (auto-block only when confident)
+#   WARN  0.10 -> warn-or-block recall ~0.76 at precision ~0.69
+HIGH_RISK_THRESHOLD: float = 0.18   # Score at/above this -> BLOCK
+WARN_THRESHOLD: float = 0.10        # Score at/above this (and below HIGH) -> WARN
 AMBIGUOUS_LOW: float = 0.15         # Deterministic score below this -> skip contextual rules
 # Stage B (semantic) gate. Decoupled from WARN_THRESHOLD so the expensive
 # classifier still runs on weak-but-non-zero pages that the weighted average
@@ -140,11 +144,14 @@ RULE_WEIGHTS: Dict[str, float] = {
     "brand_domain_mismatch":  0.15,
     "unexpected_redirect":    0.10,
     "external_form_action":   0.10,
-    "typosquatting":          0.25,
+    # Down-weighted and de-hard-blocked: the old edit-distance logic fired on
+    # more benign than phishing pages (negative lift) and auto-blocked legit
+    # sites. Tightened in helpers.is_typosquat; kept as a soft signal.
+    "typosquatting":          0.15,
     "ip_based_url":           0.05,
-    # Weak standalone signal (high-abuse TLD); meant to stack with brand/host
-    # signals rather than fire alone.
-    "suspicious_tld":         0.05,
+    # Strong signal on PhreshPhish (lift ~75× on the eval slice): phishing pages
+    # cluster on free/high-abuse TLDs. Up-weighted from 0.05 accordingly.
+    "suspicious_tld":         0.20,
     "custom_blacklist":       0.25,
     # Contextual rules (calibration knobs — tune after observing real traffic)
     "sensitive_action_frequency_spike":        0.20,
@@ -152,7 +159,10 @@ RULE_WEIGHTS: Dict[str, float] = {
     "redirect_to_sensitive_action":            0.20,
     "previously_warned_domain_in_session":     0.20,
     # Semantic rules (Stage B — TF-IDF + Logistic Regression, with heuristic fallback)
-    "phishing_language":                       0.30,
+    # Down-weighted from 0.30: the classifier was trained on email/SMS text and
+    # is near-random on webpage HTML (lift ~1.5×, fires almost equally on phish
+    # and benign). Retrain on the HTML corpus to justify a higher weight.
+    "phishing_language":                       0.15,
     "prompt_injection":                        0.30,
 }
 
@@ -239,11 +249,13 @@ DETERMINISTIC_RULES: List[RuleDefinition] = [
         RuleType.DETERMINISTIC, ComputeClass.CHEAP,
         RULE_WEIGHTS["external_form_action"], hard_block=False,
     ),
+    # hard_block removed: the rule fired on more benign than phishing pages, so
+    # auto-blocking on it blocked legitimate sites. Now a soft weighted signal.
     RuleDefinition(
         "typosquatting",
         "Typosquatting Domain Detection",
         RuleType.DETERMINISTIC, ComputeClass.CHEAP,
-        RULE_WEIGHTS["typosquatting"], hard_block=True,
+        RULE_WEIGHTS["typosquatting"], hard_block=False,
     ),
     RuleDefinition(
         "ip_based_url",

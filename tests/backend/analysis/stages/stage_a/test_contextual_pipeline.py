@@ -22,7 +22,7 @@ from unittest.mock import patch
 
 import pytest
 
-from backend.analysis.rules import Decision, PriorEvent, SessionContext
+from backend.analysis.rules import AMBIGUOUS_LOW, Decision, PriorEvent, SessionContext
 from backend.analysis.stages.stage_a import StageAEvaluator
 from backend.feature_extraction.feature_extractor import (
     DomFeatures,
@@ -109,8 +109,10 @@ class TestAmbiguousBaseline:
             result = StageAEvaluator().evaluate(_ambiguous_features())
 
         assert not result.hard_block_triggered
-        assert 0.25 <= result.risk_score < 0.70, (
-            f"Expected deterministic score in [0.25, 0.70], got {result.risk_score}"
+        # The fixture only needs to land in the ambiguous zone that triggers
+        # contextual rules: at/above AMBIGUOUS_LOW and below a hard block.
+        assert AMBIGUOUS_LOW <= result.risk_score < 0.70, (
+            f"Expected deterministic score in [{AMBIGUOUS_LOW}, 0.70), got {result.risk_score}"
         )
 
     def test_no_session_contextual_rules_all_skip(self):

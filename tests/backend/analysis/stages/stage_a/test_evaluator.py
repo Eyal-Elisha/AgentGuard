@@ -126,12 +126,18 @@ class TestStageADecisions:
         assert result.decision == Decision.BLOCK
         assert result.hard_block_triggered
 
-    def test_typosquat_is_hard_blocked(self):
+    def test_typosquat_is_detected_as_soft_signal(self):
+        """paypa1.com (a confusable of paypal) is still flagged by the
+        typosquatting rule, but as a soft weighted signal — it no longer hard
+        blocks. The old hard block fired on more benign than phishing pages, so
+        auto-blocking on it blocked legitimate sites."""
         features = make_features("https://paypa1.com/login", HTML_PASSWORD_FORM)
         with patch(_BLACKLIST_MOCK, return_value=(False, "not listed")):
             result = StageAEvaluator().evaluate(features)
-        assert result.decision == Decision.BLOCK
-        assert result.hard_block_triggered
+        assert not result.hard_block_triggered
+        typo = next((r for r in result.rule_results if r.rule_id == "typosquatting"), None)
+        assert typo is not None and typo.triggered and typo.score == 1.0
+        assert result.risk_score > 0.0
 
     def test_brand_mismatch_with_sensitive_fields_raises_score(self):
         """Brand mismatch + sensitive fields should produce a non-zero risk score."""

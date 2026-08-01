@@ -44,7 +44,9 @@ backend/proxy/.env
 backend/.env
 backend/agentguard.db
 
-# Offline eval pipeline outputs (scripts/ commits, but artifacts/data are local)
+# Offline eval pipeline outputs (scripts/ commits, but artifacts/data are local).
+# Each row carries full page HTML, so these run multiple GB — never commit them.
 runs/
-data/phreshphish_*.jsonl
-data/*_large.jsonl
+data/*.jsonl
+data/phreshphish/
+!data/smoke.jsonl
