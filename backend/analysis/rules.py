@@ -105,14 +105,13 @@ class SessionContext:
 
 # Calibrated on a domain-disjoint PhreshPhish dev split (15k rows) via
 # scripts/calibrate_thresholds.py, then confirmed on a held-out test split.
-# Retuned after retraining BOTH semantic classifiers on webpage HTML. The
-# prompt_injection retrain (webpage-benign negatives) cut its benign
-# false-fires ~90%, raising precision headroom and shifting the score
-# distribution down, so the cutoffs drop accordingly:
-#   BLOCK 0.12 -> block precision ~0.94 at recall ~0.57
-#   WARN  0.05 -> warn-or-block precision ~0.84 at recall ~0.86
+# Retuned across the retrains (both semantic classifiers on HTML) and the two
+# coverage rules; the added always-executed rules dilute the weighted-average
+# denominator, so the absolute cutoffs sit lower than a naive reading suggests:
+#   BLOCK 0.12 -> block precision ~0.95 at recall ~0.49 (dev)
+#   WARN  0.04 -> warn-or-block precision ~0.77 at recall ~0.87 (test)
 HIGH_RISK_THRESHOLD: float = 0.12   # Score at/above this -> BLOCK
-WARN_THRESHOLD: float = 0.05        # Score at/above this (and below HIGH) -> WARN
+WARN_THRESHOLD: float = 0.04        # Score at/above this (and below HIGH) -> WARN
 AMBIGUOUS_LOW: float = 0.15         # Deterministic score below this -> skip contextual rules
 # Stage B (semantic) gate. Decoupled from WARN_THRESHOLD so the expensive
 # classifier still runs on weak-but-non-zero pages that the weighted average
@@ -160,6 +159,12 @@ RULE_WEIGHTS: Dict[str, float] = {
     # Strong signal on PhreshPhish (lift ~75× on the eval slice): phishing pages
     # cluster on free/high-abuse TLDs. Up-weighted from 0.05 accordingly.
     "suspicious_tld":         0.20,
+    # Coverage rules for phishing pages no reputation/brand rule catches (added
+    # after ~9% of phish were found scoring near-zero). Both clean on the eval
+    # slice: non_standard_port 88 phish / 0 benign; algorithmic_domain 417
+    # phish / 13 benign (~46x lift).
+    "non_standard_port":      0.20,
+    "algorithmic_domain":     0.20,
     "custom_blacklist":       0.25,
     # Contextual rules (calibration knobs — tune after observing real traffic)
     "sensitive_action_frequency_spike":        0.20,
@@ -276,6 +281,18 @@ DETERMINISTIC_RULES: List[RuleDefinition] = [
         "High-Abuse Top-Level Domain",
         RuleType.DETERMINISTIC, ComputeClass.CHEAP,
         RULE_WEIGHTS["suspicious_tld"], hard_block=False,
+    ),
+    RuleDefinition(
+        "non_standard_port",
+        "Non-Standard Port",
+        RuleType.DETERMINISTIC, ComputeClass.CHEAP,
+        RULE_WEIGHTS["non_standard_port"], hard_block=False,
+    ),
+    RuleDefinition(
+        "algorithmic_domain",
+        "Algorithmically-Generated Domain",
+        RuleType.DETERMINISTIC, ComputeClass.CHEAP,
+        RULE_WEIGHTS["algorithmic_domain"], hard_block=False,
     ),
     RuleDefinition(
         "custom_blacklist",
