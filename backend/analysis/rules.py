@@ -105,11 +105,14 @@ class SessionContext:
 
 # Calibrated on a domain-disjoint PhreshPhish dev split (15k rows) via
 # scripts/calibrate_thresholds.py, then confirmed on a held-out test split.
-# Retuned after retraining phishing_language on HTML lifted the block recall:
-#   BLOCK 0.16 -> block precision ~0.90 at recall ~0.61 (was 0.28)
-#   WARN  0.10 -> warn-or-block recall ~0.79 at precision ~0.83
-HIGH_RISK_THRESHOLD: float = 0.16   # Score at/above this -> BLOCK
-WARN_THRESHOLD: float = 0.10        # Score at/above this (and below HIGH) -> WARN
+# Retuned after retraining BOTH semantic classifiers on webpage HTML. The
+# prompt_injection retrain (webpage-benign negatives) cut its benign
+# false-fires ~90%, raising precision headroom and shifting the score
+# distribution down, so the cutoffs drop accordingly:
+#   BLOCK 0.12 -> block precision ~0.94 at recall ~0.57
+#   WARN  0.05 -> warn-or-block precision ~0.84 at recall ~0.86
+HIGH_RISK_THRESHOLD: float = 0.12   # Score at/above this -> BLOCK
+WARN_THRESHOLD: float = 0.05        # Score at/above this (and below HIGH) -> WARN
 AMBIGUOUS_LOW: float = 0.15         # Deterministic score below this -> skip contextual rules
 # Stage B (semantic) gate. Decoupled from WARN_THRESHOLD so the expensive
 # classifier still runs on weak-but-non-zero pages that the weighted average
@@ -142,7 +145,11 @@ RULE_WEIGHTS: Dict[str, float] = {
     # Down-weighted: on webpage HTML this fired on more benign than phishing
     # pages (negative lift), so a high weight mostly pushed benign pages up.
     "sensitive_fields":       0.10,
-    "brand_domain_mismatch":  0.15,
+    # Excellent as a confirming signal (fires ~403 phish / 5 benign when stacked
+    # with other rules) but a coin flip on its own (~417 phish / 410 benign as
+    # the sole trigger). Down-weighted so it cannot push a page over the warn
+    # line by itself, while still boosting pages where other signals agree.
+    "brand_domain_mismatch":  0.08,
     "unexpected_redirect":    0.10,
     "external_form_action":   0.10,
     # Down-weighted and de-hard-blocked: the old edit-distance logic fired on

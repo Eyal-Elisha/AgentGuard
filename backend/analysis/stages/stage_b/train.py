@@ -194,6 +194,26 @@ def _load_prompt_injection_datasets() -> Tuple[List[str], List[int]]:
         labels.append(0)
         benign_added += 1
 
+    # Extra benign — real webpage text. The Dolly/injection corpora contain no
+    # webpage HTML, so the classifier treats ordinary page text as out-of-domain
+    # and over-fires on it (the dominant false-positive source in phishing eval).
+    # Point AGENTGUARD_PI_WEB_BENIGN_CSV at a CSV with a `text` column of benign
+    # page text (e.g. data/semantic_train/benign.csv) to fold it into the
+    # negative class. Capped at ~2x the positive count so it strengthens the
+    # web-text signal without swamping the injection features.
+    import os
+    web_csv = os.environ.get("AGENTGUARD_PI_WEB_BENIGN_CSV")
+    if web_csv:
+        import pandas as pd
+        cap = max(pos_count * 2, 2000)
+        df = pd.read_csv(web_csv)
+        if "text" not in df.columns:
+            raise ValueError(f"{web_csv} must have a 'text' column")
+        web = [str(t) for t in df["text"].tolist()[:cap] if isinstance(t, str) and t.strip()]
+        texts.extend(web)
+        labels.extend([0] * len(web))
+        _logger.info("added %d webpage-benign negatives from %s", len(web), web_csv)
+
     _logger.info("prompt-injection dataset loaded: %d rows (pos=%d, neg=%d)",
                  len(texts), pos_count, len(texts) - pos_count)
     return texts, labels
