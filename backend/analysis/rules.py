@@ -231,11 +231,16 @@ DETERMINISTIC_RULES: List[RuleDefinition] = [
         RuleType.DETERMINISTIC, ComputeClass.CHEAP,
         RULE_WEIGHTS["domain_blacklist"], hard_block=True,
     ),
+    # hard_block removed: auto-blocking every HTTP page created an irreducible
+    # ~1% false-positive floor (benign HTTP pages blocked regardless of score),
+    # which caps precision at realistic (~1%) phishing base rates. Now a strong
+    # soft signal — credential-over-HTTP still blocks via the aggregate because
+    # brand/form rules stack on top of it.
     RuleDefinition(
         "unencrypted_connection",
         "Unencrypted or Invalid Secure Connection",
         RuleType.DETERMINISTIC, ComputeClass.CHEAP,
-        RULE_WEIGHTS["unencrypted_connection"], hard_block=True,
+        RULE_WEIGHTS["unencrypted_connection"], hard_block=False,
     ),
     # Disabled in CODE_DISABLED_RULES — negative lift on webpage HTML until recalibrated.
     RuleDefinition(
