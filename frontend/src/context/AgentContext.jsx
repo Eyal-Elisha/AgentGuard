@@ -5,7 +5,7 @@ import {
   useMemo,
   useSyncExternalStore,
 } from 'react';
-import { AGENT_OPTIONS } from '../constants/agentOptions.js';
+import { AGENT_OPTIONS, resolveStoredAgent } from '../constants/agentOptions.js';
 import { deactivateProxy } from './ProxyContext.jsx';
 
 const STORAGE_KEY = 'agentguard-selected-agent';
@@ -14,7 +14,7 @@ function readStored() {
   if (typeof window === 'undefined') return AGENT_OPTIONS[0];
   try {
     const v = window.localStorage.getItem(STORAGE_KEY);
-    if (v != null && AGENT_OPTIONS.includes(v)) return v;
+    return resolveStoredAgent(v);
   } catch {
     /* ignore */
   }
@@ -46,9 +46,10 @@ function setSelectedAgent(next) {
   const value = typeof next === 'function' ? next(selectedAgent) : next;
   if (!AGENT_OPTIONS.includes(value)) return;
   if (value === selectedAgent) return;
+  const previousAgent = selectedAgent;
   selectedAgent = value;
   writeStored(value);
-  deactivateProxy();
+  deactivateProxy(previousAgent);
   listeners.forEach((fn) => fn());
 }
 

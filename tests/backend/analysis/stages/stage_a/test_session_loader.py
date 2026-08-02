@@ -25,7 +25,7 @@ class SessionLoaderTestCase(unittest.TestCase):
             user_id=None,
             start_time=datetime(2026, 5, 17, 9, 0, 0, tzinfo=timezone.utc),
             environment="test",
-            agent_name="browserOS",
+            agent_name="BrowserOS",
         )
 
     def tearDown(self) -> None:

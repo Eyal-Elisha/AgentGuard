@@ -1,0 +1,82 @@
+.guard-power-block {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-xl) 0;
+}
+
+/* Wrapper sized to the button so the loading label can float above it without
+   pushing the button off-centre. */
+.guard-power-button-wrap {
+  position: relative;
+  display: flex;
+}
+
+.guard-power-pending {
+  position: absolute;
+  bottom: calc(100% + var(--space-sm));
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.guard-power-pending--start { color: var(--color-proxy-on-end); animation: guard-power-pulse 1.1s ease-in-out infinite; }
+.guard-power-pending--stop { color: var(--color-risk-high); animation: guard-power-pulse 1.1s ease-in-out infinite; }
+
+.guard-power-button {
+  position: relative;
+  width: 7.5rem;
+  height: 7.5rem;
+  border-radius: 50%;
+  border: 3px solid var(--color-border-subtle);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 220ms ease, box-shadow 220ms ease, border-color 220ms ease, transform 160ms ease;
+}
+
+/* Spinning ring + icon pulse while starting (green) / stopping (red) */
+.guard-power-button--start, .guard-power-button--stop { cursor: progress; }
+.guard-power-button--start::after,
+.guard-power-button--stop::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  animation: guard-power-spin 0.9s linear infinite;
+}
+.guard-power-button--start::after { border-top-color: var(--color-proxy-on-end); }
+.guard-power-button--stop::after { border-top-color: var(--color-risk-high); }
+.guard-power-button--start .guard-power-icon,
+.guard-power-button--stop .guard-power-icon { animation: guard-power-pulse 1.1s ease-in-out infinite; }
+@keyframes guard-power-spin { to { transform: rotate(360deg); } }
+@keyframes guard-power-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+.guard-power-button:hover { transform: scale(1.03); }
+.guard-power-button:active { transform: scale(0.98); }
+.guard-power-button:focus-visible { outline: 2px solid var(--color-border-focus); outline-offset: 4px; }
+
+.guard-power-button--off {
+  background: linear-gradient(145deg, var(--color-bg-elevated) 0%, var(--color-proxy-off) 100%);
+  box-shadow: var(--shadow-card);
+}
+
+.guard-power-button--on {
+  background: linear-gradient(145deg, var(--color-proxy-on-start) 0%, var(--color-proxy-on-end) 100%);
+  border-color: color-mix(in srgb, var(--color-proxy-on-end) 65%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-proxy-on-end) 35%, transparent), 0 0 32px color-mix(in srgb, var(--color-proxy-on-end) 35%, transparent), var(--shadow-dropdown);
+}
+
+.guard-power-icon {
+  width: 3rem;
+  height: 3rem;
+  color: var(--color-text-primary);
+  filter: drop-shadow(0 2px 6px color-mix(in srgb, var(--color-bg-deep) 35%, transparent));
+}
+
+.guard-power-button--off .guard-power-icon { opacity: 0.92; }
+.guard-power-button--on .guard-power-icon { color: #f0fdf4; }

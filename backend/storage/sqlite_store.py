@@ -4,7 +4,14 @@ from __future__ import annotations
 
 from .db import database_path
 from .schema import init_schema
-from .users_store import UsernameTakenError, user_get_by_username, user_create, user_get, users_list_all
+from .users_store import (
+    UsernameTakenError,
+    user_get_by_username,
+    user_create,
+    user_get,
+    users_list_all,
+    user_set_admin,
+)
 from .sessions_store import (
     session_try_close,
     session_create,
@@ -21,7 +28,13 @@ from .events_store import (
     event_get,
     event_create,
 )
-from .rules_store import rules_list_asc, rule_get, rule_create, rule_set_enabled
+from .rules_store import (
+    rules_list_asc,
+    rules_seed_defaults,
+    rule_get,
+    rule_create,
+    rule_set_enabled,
+)
 from .rules_analysis_store import (
     rule_analysis_list_for_event,
     rule_analysis_list_for_event_with_rule_meta,
@@ -39,6 +52,7 @@ __all__ = [
     "user_get_by_username",
     "user_create",
     "users_list_all",
+    "user_set_admin",
     # Sessions
     "sessions_list_desc",
     "session_get",
@@ -55,6 +69,7 @@ __all__ = [
     "event_create",
     # Rules
     "rules_list_asc",
+    "rules_seed_defaults",
     "rule_get",
     "rule_create",
     "rule_set_enabled",

@@ -97,4 +97,6 @@ def rule_analysis_to_dict(row: dict[str, Any]) -> dict:
     out["compute_class"] = row.get("compute_class")
     out["weight"] = float(row["weight"]) if row.get("weight") is not None else None
     out["rule_score"] = float(row["rule_score"]) if row.get("rule_score") is not None else None
+    if "is_hard_block" in row:
+        out["is_hard_block"] = bool(row["is_hard_block"])
     return out

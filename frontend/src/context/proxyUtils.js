@@ -5,7 +5,7 @@ function getApiBase() {
   return raw ? String(raw).trim().replace(/\/$/, '') : null;
 }
 
-export async function callProxyControl(active) {
+export async function callProxyControl(active, agentName) {
   const base = getApiBase();
   if (!base) throw new Error('VITE_API_BASE_URL is not configured');
   
@@ -16,7 +16,7 @@ export async function callProxyControl(active) {
   const res = await fetch(`${base}/api/proxy/control`, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ active }),
+    body: JSON.stringify({ active, agent_name: agentName }),
   });
   let data = {};
   try { data = await res.json(); } catch (_) { /* ignore */ }

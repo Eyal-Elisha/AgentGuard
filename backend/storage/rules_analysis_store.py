@@ -24,7 +24,7 @@ def rule_analysis_list_for_event_with_rule_meta(event_id: int) -> list[dict[str,
     with _connect() as conn:
         cur = conn.execute(
             "SELECT a.analysis_id, a.event_id, a.rule_code, a.rule_score, a.details, "
-            "a.hard_block, r.rule_type, r.weight, r.compute_class "
+            "a.hard_block, r.rule_type, r.weight, r.compute_class, r.is_hard_block "
             "FROM rules_analysis a LEFT JOIN rules r ON a.rule_code = r.rule_code "
             "WHERE a.event_id = ? ORDER BY a.analysis_id ASC",
             (event_id,),
@@ -64,7 +64,7 @@ def rule_analysis_list_for_rule_with_rule_meta(rule_code: str, limit: int) -> li
     with _connect() as conn:
         cur = conn.execute(
             "SELECT a.analysis_id, a.event_id, a.rule_code, a.rule_score, a.details, "
-            "a.hard_block, r.rule_type, r.weight, r.compute_class "
+            "a.hard_block, r.rule_type, r.weight, r.compute_class, r.is_hard_block "
             "FROM rules_analysis a LEFT JOIN rules r ON a.rule_code = r.rule_code "
             "WHERE a.rule_code = ? ORDER BY a.analysis_id DESC LIMIT ?",
             (rule_code, limit),

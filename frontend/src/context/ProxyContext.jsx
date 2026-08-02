@@ -15,10 +15,10 @@ function setProxyActive(value) {
   listeners.forEach((fn) => fn());
 }
 
-export function deactivateProxy() {
+export function deactivateProxy(agentName) {
   if (!proxyActive) return;
   setProxyActive(false);
-  void callProxyControl(false).catch(() => setProxyActive(true));
+  void callProxyControl(false, agentName).catch(() => setProxyActive(true));
 }
 
 const ProxyContext = createContext(null);
@@ -39,12 +39,12 @@ export function ProxyProvider({ children }) {
 
   useEffect(() => { void (async () => { await syncPass(); })(); }, []);
 
-  const toggleProxy = useCallback(() => {
+  const toggleProxy = useCallback((agentName) => {
     const next = !getSnapshot();
     setProxyPendingAction(next ? 'start' : 'stop');
     const startedAt = Date.now();
     void (async () => {
-      try { await callProxyControl(next); setProxyActive(next); }
+      try { await callProxyControl(next, agentName); setProxyActive(next); }
       catch (e) { console.error(e); if (!next) setProxyActive(true); }
       finally {
         // The control call returns in ~0.5s but the proxy keeps warming up;

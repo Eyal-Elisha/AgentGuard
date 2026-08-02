@@ -1,5 +1,7 @@
 .admin-dashboard-page {
   padding: var(--space-xl);
+  max-width: var(--max-content-width);
+  margin: 0 auto;
 }
 
 .admin-header {
@@ -60,9 +62,64 @@
   margin: 0 0 var(--space-md);
 }
 
+.admin-section-title--spaced {
+  margin-top: var(--space-2xl);
+}
+
 .admin-table-wrap {
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-lg);
   overflow-x: auto;
   background: var(--bg-surface-primary);
 }
+
+.admin-users-row {
+  background: var(--color-bg-row);
+  border-top: 1px solid var(--color-border-row);
+  cursor: default;
+}
+.admin-users-row:first-of-type { border-top-color: transparent; }
+.admin-users-table tbody tr.admin-users-row:hover { background: var(--color-bg-row); cursor: default; }
+
+.admin-role-badge {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.admin-role-badge--admin { background: rgba(56, 189, 248, 0.18); color: #7dd3fc; }
+.admin-role-badge--user { background: rgba(156, 163, 175, 0.18); color: var(--color-text-muted); }
+
+.admin-users-table { width: 100%; table-layout: fixed; }
+.admin-users-table th:nth-child(1),
+.admin-users-table td:nth-child(1) { width: 22%; }
+.admin-users-table th:nth-child(2),
+.admin-users-table td:nth-child(2) { width: 28%; }
+.admin-users-table th:nth-child(3),
+.admin-users-table td:nth-child(3) { width: 22%; }
+.admin-users-table th:nth-child(4),
+.admin-users-table td:nth-child(4) { width: 28%; }
+
+.admin-actions-cell { text-align: right; }
+
+.admin-promote-btn {
+  background: transparent;
+  border: 1px solid var(--color-border-subtle);
+  color: var(--color-text-primary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.3rem 0.65rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
+}
+.admin-promote-btn:hover:not(:disabled) {
+  border-color: var(--color-border-focus);
+  color: var(--color-border-focus);
+  background: rgba(56, 189, 248, 0.1);
+}
+.admin-promote-btn:disabled { opacity: 0.5; cursor: not-allowed; }

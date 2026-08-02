@@ -1,22 +1,36 @@
 .sessions-table-wrapper {
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border-subtle);
-  background: linear-gradient(to bottom, rgba(15, 23, 42, 0.9), var(--color-bg-table-gradient-end));
+  background: linear-gradient(to bottom, var(--color-bg-table-gradient-start), var(--color-bg-table-gradient-end));
   overflow: hidden;
 }
 
 .sessions-table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   font-family: var(--font-sans);
   font-size: 0.85rem;
 }
 
+.sessions-table th:nth-child(1) { width: 17%; }
+.sessions-table th:nth-child(2) { width: 10%; }
+.sessions-table th:nth-child(3) { width: 11%; }
+.sessions-table th:nth-child(4) { width: 9%; }
+.sessions-table th:nth-child(5) { width: 11%; }
+.sessions-table th:nth-child(6) { width: 21%; }
+.sessions-table th:nth-child(7) { width: 21%; }
+
+.sessions-table--with-actions th:nth-child(1) { width: 16%; }
+.sessions-table--with-actions th:nth-child(6),
+.sessions-table--with-actions th:nth-child(7) { width: 18%; }
+.sessions-table--with-actions th:nth-child(8) { width: 7%; }
+
 .sessions-table thead { background: var(--color-bg-thead); }
 
 .sessions-table th, .sessions-table td {
   padding: var(--space-md) 1.1rem;
-  text-align: left;
+  text-align: center;
   white-space: nowrap;
 }
 
@@ -34,9 +48,16 @@
   text-align: left;
 }
 
-.sessions-table th.th-risk-center, .sessions-table td.td-risk-center { text-align: center; }
+.sessions-table th.th-centered,
+.sessions-table td.td-centered {
+  text-align: center;
+}
 
-.cell-risk-inner { display: inline-block; text-align: left; width: 5ch; }
+.sessions-table th.th-centered-block,
+.sessions-table td.td-centered-block {
+  padding-left: 1.1rem;
+  text-align: center;
+}
 
 .sessions-row {
   background: var(--color-bg-row);
@@ -48,10 +69,11 @@
 
 .sessions-table td { font-size: 0.8rem; color: var(--color-text-body); }
 .cell-agent-name { font-weight: 500; }
+.cell-agent-name .agent-display { justify-content: center; }
 .cell-session-id { letter-spacing: 0.04em; color: var(--color-text-session-id); }
 .cell-user-id { color: var(--color-text-body); }
 .sessions-table td.cell-timestamp { font-weight: 400; font-variant-numeric: tabular-nums; }
-.cell-risk { font-weight: 600; }
+.cell-risk { font-weight: 600; font-variant-numeric: tabular-nums; }
 
 .sessions-table td.cell-risk--high { color: var(--color-risk-high); }
 .sessions-table td.cell-risk--medium { color: var(--color-risk-medium); }

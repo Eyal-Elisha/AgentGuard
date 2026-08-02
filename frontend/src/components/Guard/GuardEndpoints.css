@@ -1,0 +1,36 @@
+.guard-endpoints {
+  margin: var(--space-md) 0 0;
+  width: 100%;
+  max-width: 22rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  text-align: left;
+  padding: var(--space-md) var(--space-lg);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-status-surface-soft);
+}
+
+.guard-endpoint-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-xl);
+  padding: var(--space-xs) 0;
+}
+
+.guard-endpoints dt {
+  margin: 0;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.guard-endpoints dd {
+  margin: 0;
+  font-family: ui-monospace, 'Cascadia Code', 'Segoe UI Mono', monospace;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}

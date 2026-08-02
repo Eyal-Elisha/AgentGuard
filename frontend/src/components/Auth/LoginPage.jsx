@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import ShieldIcon from '../SessionsDashboard/ShieldIcon.jsx';
+import ThemeToggle from '../Theme/ThemeToggle.jsx';
 import './LoginPage.css';
 
 export default function LoginPage() {
@@ -33,6 +34,7 @@ export default function LoginPage() {
 
   return (
     <div className="login-page">
+      <ThemeToggle className="theme-toggle--auth" />
       <div className="login-card">
         <div className="login-header">
           <ShieldIcon />

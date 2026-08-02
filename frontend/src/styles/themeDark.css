@@ -1,0 +1,58 @@
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --color-bg-deep: #020617;
+  --color-bg-elevated: #0f172a;
+  --color-bg-card-gradient-start: #111827;
+  --color-bg-row: rgba(15, 23, 42, 0.9);
+  --color-bg-row-hover: rgba(31, 41, 55, 0.95);
+  --color-bg-thead: rgba(15, 23, 42, 0.98);
+  --color-bg-table-gradient-end: rgba(15, 23, 42, 0.98);
+  --color-bg-table-gradient-start: rgba(15, 23, 42, 0.9);
+  --color-chip-bg: rgba(15, 23, 42, 0.45);
+  --color-chip-bg-hover: rgba(30, 41, 59, 0.7);
+  --color-input-bg: rgba(15, 23, 42, 0.85);
+  --color-panel-fill: rgba(15, 23, 42, 0.98);
+  --color-panel-fill-mid: rgba(30, 41, 59, 0.98);
+  --color-status-surface: rgba(15, 23, 42, 0.65);
+  --color-status-surface-soft: rgba(15, 23, 42, 0.35);
+
+  --color-page-gradient-start: #1f2937;
+  --color-page-gradient-end: #020617;
+
+  --color-text-primary: #f9fafb;
+  --color-text-body: #e5e7eb;
+  --color-text-muted: #9ca3af;
+  --color-text-label: #6b7280;
+  --color-text-placeholder: #6b7280;
+  --color-text-session-id: #cbd5f5;
+
+  --color-border-subtle: rgba(55, 65, 81, 0.9);
+  --color-border-header: rgba(55, 65, 81, 0.8);
+  --color-border-row: rgba(31, 41, 55, 0.9);
+  --shadow-dropdown: 0 10px 25px rgba(0, 0, 0, 0.4);
+  --shadow-card:
+    0 22px 45px rgba(15, 23, 42, 0.9),
+    0 0 0 1px rgba(15, 23, 42, 0.9);
+
+  --color-nav-hover: rgba(55, 65, 81, 0.4);
+  --color-nav-active-bg: rgba(55, 65, 81, 0.6);
+  --color-option-active: rgba(59, 130, 246, 0.25);
+  --color-option-active-text: #93c5fd;
+  --color-proxy-off: #374151;
+
+  --color-error-border: rgba(220, 38, 38, 0.45);
+  --color-error-bg: rgba(127, 29, 29, 0.25);
+  --color-error-text: #fecaca;
+
+  --color-brand: #38bdf8;
+  --color-brand-hover: #0ea5e9;
+  --color-brand-rgb: 56, 189, 248;
+
+  --bg-surface-primary: var(--color-bg-deep);
+  --bg-surface-secondary: rgba(15, 23, 42, 0.45);
+  --bg-overlay: rgba(2, 6, 23, 0.55);
+  --bg-overlay-strong: rgba(2, 6, 23, 0.62);
+  --shadow-toast: 0 12px 30px rgba(0, 0, 0, 0.45);
+}

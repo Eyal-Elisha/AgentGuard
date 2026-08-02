@@ -1,65 +1,96 @@
+import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import ShieldIcon from '../SessionsDashboard/ShieldIcon.jsx';
-import NavbarAgentToolbar from './NavbarAgentToolbar.jsx';
-import NavbarProxyControl from '../Proxy/NavbarProxyControl.jsx';
+import HelpIcon from '../Help/HelpIcon.jsx';
+import HelpDrawer from '../Help/HelpDrawer.jsx';
+import ThemeToggle from '../Theme/ThemeToggle.jsx';
+import { TourProvider } from '../../onboarding/TourProvider.jsx';
+import TourOverlay from '../../onboarding/TourOverlay.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import './AppLayout.css';
 
+const HELP_PANEL_ID = 'app-help-panel';
+
 export default function AppLayout() {
   const { currentUser, logout } = useAuth();
+  const [helpOpen, setHelpOpen] = useState(false);
 
   return (
-    <div className="app-layout agentguard-theme">
-      <header className="app-header">
-        <div className="app-header-left" style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
-          <NavLink to="/" className="app-brand" end>
-            <ShieldIcon />
-            <span>AgentGuard</span>
-          </NavLink>
-          {currentUser && (
-            <div className="app-user-info" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
-                Hi, <strong style={{ color: 'var(--color-text-primary)' }}>{currentUser.username}</strong>
-              </span>
-              <button 
-                onClick={logout}
-                style={{ background: 'transparent', border: '1px solid var(--color-border-subtle)', borderRadius: '4px', padding: '0.2rem 0.5rem', color: 'var(--color-text-body)', cursor: 'pointer', fontSize: '0.75rem' }}
-              >
-                Logout
-              </button>
-            </div>
-          )}
-        </div>
-        
-        <div className="nav-separator" aria-hidden="true" />
-        
-        <nav className="app-nav" aria-label="Main">
-          <NavLink to="/" className={({ isActive }) => `nav-tab${isActive ? ' nav-tab--active' : ''}`} end>
-            Home
-          </NavLink>
-          <NavLink to="/sessions" className={({ isActive }) => `nav-tab${isActive ? ' nav-tab--active' : ''}`}>
-            Sessions
-          </NavLink>
-          <NavLink to="/rules" className={({ isActive }) => `nav-tab${isActive ? ' nav-tab--active' : ''}`}>
-            Rules
-          </NavLink>
-          {currentUser?.isAdmin && (
-            <NavLink to="/admin" className={({ isActive }) => `nav-tab${isActive ? ' nav-tab--active' : ''}`}>
-              Admin
+    <TourProvider>
+      <div className="app-layout agentguard-theme">
+        <header className="app-header">
+          <div className="app-header-left">
+            <NavLink to="/" className="app-brand" end>
+              <ShieldIcon />
+              <span>AgentGuard</span>
             </NavLink>
-          )}
-        </nav>
-        
-        <div className="nav-separator" aria-hidden="true" />
+            <button
+              type="button"
+              className="app-help-btn"
+              aria-label="Help"
+              title="Help"
+              aria-expanded={helpOpen}
+              aria-controls={HELP_PANEL_ID}
+              aria-haspopup="dialog"
+              onClick={() => setHelpOpen(true)}
+            >
+              <HelpIcon />
+              <span className="app-help-btn-label">Help</span>
+            </button>
+          </div>
 
-        <div className="app-header-right">
-          <NavbarAgentToolbar />
-          <NavbarProxyControl />
+          <nav className="app-nav" aria-label="Main">
+            <NavLink
+              to="/"
+              className={({ isActive }) => `nav-tab${isActive ? ' nav-tab--active' : ''}`}
+              end
+              data-tour="nav-guard"
+            >
+              Guard
+            </NavLink>
+            <NavLink
+              to="/sessions"
+              className={({ isActive }) => `nav-tab${isActive ? ' nav-tab--active' : ''}`}
+              data-tour="nav-sessions"
+            >
+              Sessions
+            </NavLink>
+            <NavLink
+              to="/rules"
+              className={({ isActive }) => `nav-tab${isActive ? ' nav-tab--active' : ''}`}
+              data-tour="nav-rules"
+            >
+              Rules
+            </NavLink>
+            {currentUser?.isAdmin && (
+              <NavLink to="/admin" className={({ isActive }) => `nav-tab${isActive ? ' nav-tab--active' : ''}`}>
+                Admin
+              </NavLink>
+            )}
+          </nav>
+
+          <div className="app-header-right">
+            <ThemeToggle />
+            {currentUser && (
+              <div className="app-user-info">
+                <span className="app-user-greeting">
+                  Hi, <strong>{currentUser.username}</strong>
+                </span>
+                <button type="button" onClick={logout} className="nav-logout-btn">
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
+        </header>
+
+        <div className="app-main">
+          <Outlet />
         </div>
-      </header>
-      <div className="app-main">
-        <Outlet />
+
+        <HelpDrawer id={HELP_PANEL_ID} open={helpOpen} onClose={() => setHelpOpen(false)} />
+        <TourOverlay />
       </div>
-    </div>
+    </TourProvider>
   );
 }

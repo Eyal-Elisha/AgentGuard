@@ -1,6 +1,6 @@
 @import './EventsHeader.css';
 @import './EventTimeline.css';
-@import './EventAnalysis.css';
+@import './eventAnalysis/index.css';
 @import './EventsViewLayout.css';
 
 .events-view-main {

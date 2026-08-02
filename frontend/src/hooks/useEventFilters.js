@@ -8,7 +8,7 @@ const ACTION_OPTIONS = ['All', 'Block', 'Warn', 'Allow'];
  */
 export function useEventFilters(events) {
   const [filterAction, setFilterAction] = useState('All');
-  const [sortOrder, setSortOrder] = useState('desc'); // newest first
+  const [sortOrder, setSortOrder] = useState('asc'); // oldest first
 
   const filteredEvents = useMemo(() => {
     let result = filterAction === 'All'
