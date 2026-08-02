@@ -5,12 +5,14 @@ from __future__ import annotations
 import ipaddress
 import re
 import warnings
-from typing import List
+from functools import lru_cache
+from typing import List, Tuple
 
 from publicsuffix2 import get_public_suffix, get_sld
 
 from backend.feature_extraction.feature_extractor import ExtractedFeatures
 from backend.analysis.stages.stage_a.data import (
+    BRAND_DOMAINS,
     CHAR_CONFUSABLES,
     MULTI_CHAR_SUBS,
     SENSITIVE_INPUT_TYPES,
@@ -82,6 +84,36 @@ def get_sld_label(host: str) -> str:
         if registrable.endswith(suffix_dot):
             return registrable[: -len(suffix_dot)]
     return registrable.split(".")[0]
+
+
+@lru_cache(maxsize=1)
+def official_sld_labels() -> frozenset[str]:
+    """The registrable label of every official brand domain.
+
+    Legitimate brands are one or two edits apart often enough (spotify and
+    shopify, discover and discord) that the typosquatting rule has to know
+    which labels are real before it starts measuring distance.
+    """
+    return frozenset(
+        get_sld_label(official)
+        for domains in BRAND_DOMAINS.values()
+        for official in domains
+    )
+
+
+@lru_cache(maxsize=1)
+def brand_token_patterns() -> Tuple[Tuple[str, Tuple[str, ...], "re.Pattern[str]"], ...]:
+    """Per-brand `(brand, official domains, matcher)`, for brands of 3+ letters.
+
+    The matcher requires the brand to be flanked by non-letters, so
+    'paypal-login', 'secure.amazon' and 'amazon1' match while 'pineapple' does
+    not accidentally match apple, nor 'discovery' discover.
+    """
+    return tuple(
+        (brand, tuple(official), re.compile(r"(?<![a-z])" + re.escape(brand) + r"(?![a-z])"))
+        for brand, official in BRAND_DOMAINS.items()
+        if len(brand) >= 3
+    )
 
 
 def normalize_confusables(domain: str) -> str:

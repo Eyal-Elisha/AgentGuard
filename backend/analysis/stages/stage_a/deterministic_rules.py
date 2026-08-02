@@ -1,22 +1,30 @@
-"""Deterministic rule implementations for Stage A (Rules 1–9)."""
+"""The ten deterministic rules of Stage A — one function per rule.
+
+Each takes the extracted page features and returns `(score, explanation)`,
+where the score is 1.0 when the rule fires and 0.0 when it does not. The
+explanation is stored with the analysis and shown on the interstitial, so it
+names the specific thing that was found.
+
+Reference data lives in `data.py` and the shared predicates in `helpers.py`.
+"""
 
 from __future__ import annotations
 
-import re
-from functools import lru_cache
-from typing import Dict, Tuple
+from typing import Callable, Dict, Tuple
 from urllib.parse import urlparse
 
-from backend.custom_blacklist import custom_blacklist_entry_matches, custom_blacklist_matches
+from backend.custom_blacklist import custom_blacklist_matches
 from backend.feature_extraction.feature_extractor import ExtractedFeatures
 from backend.analysis.stages.stage_a.blacklist import blacklist_cache
 from backend.analysis.stages.stage_a.data import (
     BRAND_DOMAINS,
     HIGH_ABUSE_TLDS,
+    REDIRECT_PATTERNS,
     SENSITIVE_INPUT_TYPES,
     SENSITIVE_NAME_RE,
 )
 from backend.analysis.stages.stage_a.helpers import (
+    brand_token_patterns,
     domain_matches,
     get_sld_label,
     has_sensitive_inputs,
@@ -24,22 +32,9 @@ from backend.analysis.stages.stage_a.helpers import (
     is_loopback_host,
     is_typosquat,
     normalize_confusables,
+    official_sld_labels,
     strip_www,
 )
-
-
-@lru_cache(maxsize=1)
-def _official_sld_labels() -> frozenset[str]:
-    """Every registrable SLD label listed as an official brand domain.
-
-    Used so legitimate domains (e.g. spotify vs shopify) are not flagged as mutual
-    typosquats — Levenshtein cannot tell them from real attacks.
-    """
-    labels: set[str] = set()
-    for domains in BRAND_DOMAINS.values():
-        for official in domains:
-            labels.add(get_sld_label(official))
-    return frozenset(labels)
 
 
 def rule_domain_blacklist(features: ExtractedFeatures) -> Tuple[float, str]:
@@ -70,27 +65,6 @@ def rule_sensitive_fields(features: ExtractedFeatures) -> Tuple[float, str]:
     return 0.0, "No sensitive input fields detected"
 
 
-@lru_cache(maxsize=1)
-def _brand_token_patterns() -> Tuple[Tuple[str, Tuple[str, ...], "re.Pattern[str]"], ...]:
-    """Compile a word-boundary matcher per brand (length >= 3).
-
-    The brand must be flanked by non-letters (separators, digits, or string
-    edges) so 'paypal-login', 'secure.amazon', and 'amazon1' match while
-    dictionary collisions like 'pineapple' (→apple) or 'discovery' (→discover)
-    do not.
-    """
-    patterns = []
-    for brand, official in BRAND_DOMAINS.items():
-        if len(brand) < 3:
-            continue
-        patterns.append((
-            brand,
-            tuple(official),
-            re.compile(r"(?<![a-z])" + re.escape(brand) + r"(?![a-z])"),
-        ))
-    return tuple(patterns)
-
-
 def rule_brand_domain_mismatch(features: ExtractedFeatures) -> Tuple[float, str]:
     """Rule 4 — Brand Domain Mismatch.
 
@@ -115,7 +89,7 @@ def rule_brand_domain_mismatch(features: ExtractedFeatures) -> Tuple[float, str]
                 f"but is hosted on non-official domain '{host}'"
             )
 
-    for brand, official_domains, pattern in _brand_token_patterns():
+    for brand, official_domains, pattern in brand_token_patterns():
         if domain_matches(host, official_domains):
             continue
         if pattern.search(host):
@@ -130,22 +104,6 @@ def rule_brand_domain_mismatch(features: ExtractedFeatures) -> Tuple[float, str]
             )
 
     return 0.0, "No brand-domain mismatch detected"
-
-
-
-# Patterns that extract a redirect target URL from various redirect vectors
-_REDIRECT_PATTERNS = [
-    # <meta http-equiv="refresh" content="0; url=...">
-    (re.compile(r'http-equiv=["\']refresh["\'][^>]*content=["\'][^"\']*url\s*=\s*([^"\'>\s;]+)', re.IGNORECASE), "meta-refresh"),
-    (re.compile(r'content=["\'][^"\']*url\s*=\s*([^"\'>\s;]+)[^"\']*["\'][^>]*http-equiv=["\']refresh["\']', re.IGNORECASE), "meta-refresh"),
-    # JS: window.location = "..." / window.location.href = "..." / location.replace("...") / location.assign("...")
-    (re.compile(r'(?:window\.)?location(?:\.href)?\s*=\s*["\']([^"\']+)["\']', re.IGNORECASE), "JS location assignment"),
-    (re.compile(r'location\.(?:replace|assign)\s*\(\s*["\']([^"\']+)["\']', re.IGNORECASE), "JS location redirect"),
-    # <body onload="window.location=..."> or similar event attributes
-    (re.compile(r'on(?:load|DOMContentLoaded)\s*=\s*["\'][^"\']*(?:window\.)?location\s*=\s*["\']?([^"\'>\s]+)', re.IGNORECASE), "onload redirect"),
-    # <img onerror="window.location=...">
-    (re.compile(r'onerror\s*=\s*["\'][^"\']*(?:window\.)?location\s*=\s*["\']?([^"\'>\s]+)', re.IGNORECASE), "onerror redirect"),
-]
 
 
 def rule_unexpected_redirect(features: ExtractedFeatures) -> Tuple[float, str]:
@@ -163,7 +121,7 @@ def rule_unexpected_redirect(features: ExtractedFeatures) -> Tuple[float, str]:
 
     page_host = strip_www(features.host)
 
-    for pattern, vector in _REDIRECT_PATTERNS:
+    for pattern, vector in REDIRECT_PATTERNS:
         for match in pattern.finditer(body):
             target = match.group(1).strip()
             redirect_host = urlparse(target).hostname or ""
@@ -219,7 +177,7 @@ def rule_typosquatting(features: ExtractedFeatures) -> Tuple[float, str]:
     # must still be caught by the confusable / edit-distance logic below.
     if (
         original_label == normalized_label
-        and normalized_label in _official_sld_labels()
+        and normalized_label in official_sld_labels()
     ):
         return 0.0, "Domain label is a known official brand (not a typosquat of another brand)"
 
@@ -261,12 +219,6 @@ def rule_suspicious_tld(features: ExtractedFeatures) -> Tuple[float, str]:
     return 0.0, "Top-level domain is not in the high-abuse list"
 
 
-def _host_matches_blacklist_entry(host_stripped: str, entry_host: str) -> bool:
-    return bool(entry_host) and (
-        host_stripped == entry_host or host_stripped.endswith("." + entry_host)
-    )
-
-
 def rule_custom_blacklist(
     features: ExtractedFeatures,
     custom_blacklist: frozenset,
@@ -280,7 +232,7 @@ def rule_custom_blacklist(
 
 
 # Dispatch map — rule_id → function (rule_custom_blacklist handled separately)
-RULE_FN: Dict[str, callable] = {
+RULE_FN: Dict[str, Callable[[ExtractedFeatures], Tuple[float, str]]] = {
     "domain_blacklist":       rule_domain_blacklist,
     "unencrypted_connection": rule_unencrypted_connection,
     "sensitive_fields":       rule_sensitive_fields,
