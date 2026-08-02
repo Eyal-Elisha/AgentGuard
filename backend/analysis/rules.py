@@ -113,6 +113,21 @@ class SessionContext:
 HIGH_RISK_THRESHOLD: float = 0.12   # Score at/above this -> BLOCK
 WARN_THRESHOLD: float = 0.04        # Score at/above this (and below HIGH) -> WARN
 AMBIGUOUS_LOW: float = 0.15         # Deterministic score below this -> skip contextual rules
+
+# Thresholds for the trained meta-classifier path (analysis.meta_classifier).
+# Its score is a learned phishing probability, but the model was trained on a
+# 50/50 set, so the scale is centered high (an all-signals-zero page scores
+# ~0.59). The score is therefore a RANKING, not a calibrated real-world
+# probability — cutoffs sit high accordingly. Set from the held-out fresh set
+# for a sub-1% benign false-positive budget:
+#   WARN  0.95 -> recall ~0.42 at FPR ~0.38%
+#   BLOCK 0.98 -> recall ~0.21 at FPR ~0.07%, precision ~0.74 at a 1% base rate
+# Set conservatively: PhreshPhish benign under-represents pages that merely
+# mention a brand (news/blogs/reviews), which can score near the warn line, so
+# real-world benign-warn rate may run higher than the measured 0.38% until
+# validated on live traffic.
+META_HIGH_RISK_THRESHOLD: float = 0.98   # Meta prob at/above this -> BLOCK
+META_WARN_THRESHOLD: float = 0.95        # Meta prob at/above this -> WARN
 # Stage B (semantic) gate. Decoupled from WARN_THRESHOLD so the expensive
 # classifier still runs on weak-but-non-zero pages that the weighted average
 # keeps below the warn line — otherwise a single soft signal never reaches a
