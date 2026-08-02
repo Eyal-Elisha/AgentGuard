@@ -47,7 +47,6 @@ export default function EventAnalysis({ selectedEvent, ruleAnalysisRows }) {
             <tr>
               <th>RULE CODE</th>
               <th>RULE TYPE</th>
-              <th>WEIGHT</th>
               <th>RULE SCORE</th>
               <th>DETAILS</th>
             </tr>
@@ -57,13 +56,12 @@ export default function EventAnalysis({ selectedEvent, ruleAnalysisRows }) {
               <tr key={row.analysis_id} className="sessions-row">
                 <td>{row.rule_code}</td>
                 <td>{row.rule_type || '–'}</td>
-                <td>{row.weight != null ? row.weight : '–'}</td>
                 <td><RuleScoreBar score={row.rule_score} /></td>
                 <td>{row.details}</td>
               </tr>
             ))}
             {ruleAnalysisRows.length === 0 && (
-              <tr><td colSpan={5} className="sessions-empty-state">No analysis for this event yet.</td></tr>
+              <tr><td colSpan={4} className="sessions-empty-state">No analysis for this event yet.</td></tr>
             )}
           </tbody>
         </table>

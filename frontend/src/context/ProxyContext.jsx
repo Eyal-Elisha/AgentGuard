@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useSyncExternalStore } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { subscribe as subPass, getSnapshot as getPassSnap, syncFromServer as syncPass, toggle as togglePassAsync } from './passiveMode.js';
 import { callProxyControl, fetchProxyStatus } from './proxyUtils.js';
 
@@ -26,6 +26,7 @@ const ProxyContext = createContext(null);
 export function ProxyProvider({ children }) {
   const isProxyActive = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
   const isPassiveMode = useSyncExternalStore(subPass, getPassSnap, getPassSnap);
+  const [isProxyPending, setIsProxyPending] = useState(false);
 
   useEffect(() => {
     void (async () => {
@@ -38,14 +39,17 @@ export function ProxyProvider({ children }) {
 
   const toggleProxy = useCallback(() => {
     const next = !getSnapshot();
+    setIsProxyPending(true);
     void (async () => {
-      try { await callProxyControl(next); setProxyActive(next); } catch (e) { console.error(e); if (!next) setProxyActive(true); }
+      try { await callProxyControl(next); setProxyActive(next); }
+      catch (e) { console.error(e); if (!next) setProxyActive(true); }
+      finally { setIsProxyPending(false); }
     })();
   }, []);
 
   const value = useMemo(() => ({
-    isProxyActive, setProxyActive, toggleProxy, isPassiveMode, togglePassiveMode: togglePassAsync,
-  }), [isProxyActive, toggleProxy, isPassiveMode]);
+    isProxyActive, setProxyActive, toggleProxy, isProxyPending, isPassiveMode, togglePassiveMode: togglePassAsync,
+  }), [isProxyActive, toggleProxy, isProxyPending, isPassiveMode]);
 
   return <ProxyContext.Provider value={value}>{children}</ProxyContext.Provider>;
 }
