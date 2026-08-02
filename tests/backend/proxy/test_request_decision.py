@@ -7,11 +7,8 @@ from unittest.mock import Mock, patch
 import requests
 
 from backend.analysis.rules import Decision
-from backend.proxy.request_decision import (
-    BackendDecision,
-    build_enforcement_response,
-    fetch_backend_decision,
-)
+from backend.proxy.enforcement import BackendDecision, build_enforcement_response
+from backend.proxy.request_decision import fetch_backend_decision
 
 
 def _make_flow():

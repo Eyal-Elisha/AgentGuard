@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 from backend.analysis.rules import Decision
 from backend.proxy.addon import handle_request, handle_response
-from backend.proxy.request_decision import BackendDecision
+from backend.proxy.enforcement import BackendDecision
 from backend.proxy.warn_bypass import (
     BYPASS_QUERY_PARAM,
     clear_continue_anyway_for_host,

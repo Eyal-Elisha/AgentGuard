@@ -14,11 +14,11 @@ from __future__ import annotations
 
 from mitmproxy import http
 
-from backend.proxy.decision_client import fetch_backend_decision as _fetch_backend_decision
+from backend.proxy.decision_client import post_decision
 from backend.proxy.enforcement import BackendDecision
 from backend.proxy.utils import build_response_payload
 
 
 def fetch_backend_response_decision(flow: http.HTTPFlow) -> BackendDecision:
     """Build a response-side payload and forward it to the backend."""
-    return _fetch_backend_decision(build_response_payload(flow))
+    return post_decision(build_response_payload(flow))
