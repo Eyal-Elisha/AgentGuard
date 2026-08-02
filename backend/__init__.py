@@ -1,7 +1,7 @@
 from flask import Flask
 
 from .api_errors import register_api_error_handlers
-from .analysis.rules import CONTEXTUAL_RULES, DETERMINISTIC_RULES, SEMANTIC_RULES
+from .analysis.rules import ALL_RULES
 from .audit_logging import configure_audit_logger
 from .config import env_flag, resolve_jwt_secret
 from .storage.sqlite_store import init_schema, rules_seed_defaults
@@ -21,11 +21,7 @@ def create_app() -> Flask:
     app.config["MAX_CONTENT_LENGTH"] = MAX_PROXY_ENVELOPE_BYTES
 
     init_schema()
-    rules_seed_defaults([
-        *DETERMINISTIC_RULES,
-        *CONTEXTUAL_RULES,
-        *SEMANTIC_RULES,
-    ])
+    rules_seed_defaults(ALL_RULES)
 
     from .routes import register_blueprints
 

@@ -6,11 +6,9 @@ from datetime import datetime, timezone
 from typing import Any
 
 from backend.analysis.rules import (
-    CONTEXTUAL_RULES,
-    DETERMINISTIC_RULES,
-    RULE_WEIGHTS,
-    SEMANTIC_RULES,
     CODE_DISABLED_RULES,
+    RULE_WEIGHTS,
+    RULES_BY_ID,
     ComputeClass,
     Decision,
     EvaluationResult,
@@ -20,9 +18,6 @@ from backend.audit_logging import configure_audit_logger
 from backend.storage import sqlite_store as store
 
 _logger = logging.getLogger("agentguard.audit")
-_RULE_DEFINITIONS = {
-    rule.rule_id: rule for rule in (*DETERMINISTIC_RULES, *CONTEXTUAL_RULES, *SEMANTIC_RULES)
-}
 _DEFAULT_PROXY_AGENT_NAME = "BrowserOS"
 _DEFAULT_PROXY_ENVIRONMENT = "prod"
 _CANONICAL_AGENT_NAMES = ("MicrosoftEdge", "BrowserOS")
@@ -83,7 +78,7 @@ def _ensure_rule_registered(rule_result) -> None:
     if store.rule_get(rule_result.rule_id):
         return
 
-    rule_definition = _RULE_DEFINITIONS.get(rule_result.rule_id)
+    rule_definition = RULES_BY_ID.get(rule_result.rule_id)
     description = rule_definition.description if rule_definition is not None else rule_result.explanation
     compute_class = (
         rule_definition.compute_class.value
