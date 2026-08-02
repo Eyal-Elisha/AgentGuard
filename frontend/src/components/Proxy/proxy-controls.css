@@ -98,8 +98,13 @@
   to { transform: rotate(360deg); }
 }
 
-.navbar-proxy-control__title--pending {
+.navbar-proxy-control__title--start {
   color: var(--color-proxy-on-end);
+  animation: proxy-pulse 1s ease-in-out infinite;
+}
+
+.navbar-proxy-control__title--stop {
+  color: var(--color-risk-high);
   animation: proxy-pulse 1s ease-in-out infinite;
 }
 

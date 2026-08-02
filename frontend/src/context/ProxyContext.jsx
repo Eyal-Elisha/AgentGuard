@@ -26,7 +26,9 @@ const ProxyContext = createContext(null);
 export function ProxyProvider({ children }) {
   const isProxyActive = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
   const isPassiveMode = useSyncExternalStore(subPass, getPassSnap, getPassSnap);
-  const [isProxyPending, setIsProxyPending] = useState(false);
+  // null when idle; 'start' or 'stop' captured at click time so the label stays
+  // correct even after isProxyActive flips mid-request.
+  const [proxyPendingAction, setProxyPendingAction] = useState(null);
 
   useEffect(() => {
     void (async () => {
@@ -39,7 +41,7 @@ export function ProxyProvider({ children }) {
 
   const toggleProxy = useCallback(() => {
     const next = !getSnapshot();
-    setIsProxyPending(true);
+    setProxyPendingAction(next ? 'start' : 'stop');
     const startedAt = Date.now();
     void (async () => {
       try { await callProxyControl(next); setProxyActive(next); }
@@ -49,14 +51,17 @@ export function ProxyProvider({ children }) {
         // hold the loading state for a minimum so the feedback is always visible.
         const remaining = 800 - (Date.now() - startedAt);
         if (remaining > 0) await new Promise((r) => setTimeout(r, remaining));
-        setIsProxyPending(false);
+        setProxyPendingAction(null);
       }
     })();
   }, []);
 
   const value = useMemo(() => ({
-    isProxyActive, setProxyActive, toggleProxy, isProxyPending, isPassiveMode, togglePassiveMode: togglePassAsync,
-  }), [isProxyActive, toggleProxy, isProxyPending, isPassiveMode]);
+    isProxyActive, setProxyActive, toggleProxy,
+    isProxyPending: proxyPendingAction !== null,
+    proxyPendingAction,
+    isPassiveMode, togglePassiveMode: togglePassAsync,
+  }), [isProxyActive, toggleProxy, proxyPendingAction, isPassiveMode]);
 
   return <ProxyContext.Provider value={value}>{children}</ProxyContext.Provider>;
 }

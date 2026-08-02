@@ -3,16 +3,18 @@ import ProxyToggleButton from './ProxyToggleButton.jsx';
 import './proxy-controls.css';
 
 export default function NavbarProxyControl() {
-  const { isProxyActive, toggleProxy, isProxyPending } = useProxy();
+  const { isProxyActive, toggleProxy, isProxyPending, proxyPendingAction } = useProxy();
 
-  const title = isProxyPending
-    ? (isProxyActive ? 'Stopping…' : 'Starting…')
-    : (isProxyActive ? 'Proxy Active' : 'Activate Proxy');
+  const title = proxyPendingAction === 'start'
+    ? 'Starting…'
+    : proxyPendingAction === 'stop'
+      ? 'Stopping…'
+      : (isProxyActive ? 'Proxy Active' : 'Activate Proxy');
 
   return (
     <div className="navbar-proxy-control">
       <span
-        className={`navbar-proxy-control__title ${isProxyActive ? 'navbar-proxy-control__title--active' : ''} ${isProxyPending ? 'navbar-proxy-control__title--pending' : ''}`}
+        className={`navbar-proxy-control__title ${isProxyActive ? 'navbar-proxy-control__title--active' : ''} ${proxyPendingAction ? `navbar-proxy-control__title--${proxyPendingAction}` : ''}`}
       >
         {title}
       </span>

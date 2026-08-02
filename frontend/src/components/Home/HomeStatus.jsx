@@ -10,13 +10,13 @@ export default function HomeStatus({ isProxyActive, isPassiveMode, togglePassive
       {isProxyActive && <div className="home-status-divider" />}
       {isProxyActive && (
         <div className="home-status-passive">
-          <span className={`home-status-passive-label ${isPassiveMode ? 'home-status-passive-label--active' : ''}`}>
+          <span className={`home-status-passive-label ${!isPassiveMode ? 'home-status-passive-label--active' : ''}`}>
             {isPassiveMode ? 'Passive' : 'Enforcing'}
           </span>
           <ProxyToggleButton
-            isActive={isPassiveMode}
+            isActive={!isPassiveMode}
             onToggle={togglePassiveMode}
-            ariaLabel={isPassiveMode ? 'Disable passive mode' : 'Enable passive mode'}
+            ariaLabel={isPassiveMode ? 'Switch to enforcing mode' : 'Switch to passive mode'}
             className="home-status-passive-toggle"
           />
         </div>
