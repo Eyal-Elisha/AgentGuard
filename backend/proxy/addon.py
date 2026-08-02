@@ -5,6 +5,7 @@ from mitmproxy import http
 from backend.analysis.rules import Decision
 from backend.custom_blacklist import custom_blacklist_matches
 from backend.proxy.enforcement import (
+    BACKEND_FAILURE_SOURCES,
     build_block_response,
     build_enforcement_response,
     build_warn_body,
@@ -80,12 +81,6 @@ def _make_block_response(flow: http.HTTPFlow, decision):
 # Used as a fallback when the backend is temporarily unreachable so that a
 # passive-mode session doesn't suddenly start blocking all traffic.
 _cached_passive_mode: bool = False
-
-_BACKEND_FAILURE_SOURCES = frozenset({
-    "backend_unreachable",
-    "backend_timeout",
-    "backend_error",
-})
 
 
 def _maybe_redeem_bypass_token(flow: http.HTTPFlow) -> bool:
@@ -191,7 +186,7 @@ def handle_request(flow: http.HTTPFlow) -> None:
 
     # When the backend is unreachable and the session was in passive mode,
     # pass the request through silently instead of failing closed.
-    if decision.source in _BACKEND_FAILURE_SOURCES and _cached_passive_mode:
+    if decision.source in BACKEND_FAILURE_SOURCES and _cached_passive_mode:
         return
 
     flow.metadata["agentguard_forwarded_to_backend"] = True
