@@ -71,11 +71,7 @@ def get_dashboard_url() -> str:
 
 
 def _link_host(api_host: str) -> str:
-    """Loopback in any spelling becomes `localhost`.
-
-    The interstitial link should match the URL the user actually has open, and
-    that is almost never `0.0.0.0`.
-    """
+    """Loopback in any spelling becomes `localhost` — the form users have open."""
     if (api_host or "").lower().strip() in _LOOPBACK_HOSTNAMES:
         return "localhost"
     return api_host or "localhost"

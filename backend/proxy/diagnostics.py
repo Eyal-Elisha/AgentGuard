@@ -14,10 +14,9 @@ ADDON_VERSION = "addon@continue-anyway-ui-suppress-v1"
 def diag(message: str) -> None:
     """Write one diagnostic line, forced to ASCII.
 
-    On Windows mitmweb's stdout defaults to cp1252, where printing a character
-    outside that codepage raises UnicodeEncodeError. That once aborted
-    `handle_request` mid-flight and stopped the bypass redirect from being
-    sent, so the encoding is not left to chance.
+    mitmweb's stdout is cp1252 on Windows, and a character outside it raises
+    UnicodeEncodeError — which once aborted `handle_request` mid-flight and
+    swallowed the bypass redirect.
     """
     safe = message.encode("ascii", errors="replace").decode("ascii")
     print(f"[AgentGuard] {safe}", flush=True)
