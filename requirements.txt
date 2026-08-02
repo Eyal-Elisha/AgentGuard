@@ -50,3 +50,7 @@ zstandard==0.25.0
 beautifulsoup4==4.14.3
 requests==2.32.5
 lxml==6.0.2
+# Runtime ML: required to unpickle the Stage B semantic classifiers and the
+# meta-classifier. Without it the engine silently falls back to keyword
+# heuristics + the weighted average. Pulls numpy/scipy/joblib transitively.
+scikit-learn==1.9.0
