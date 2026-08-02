@@ -56,8 +56,8 @@ def rule_sensitive_action_frequency_spike(
     if t0 is None or not session.prior_events:
         return None, "Skipped - no browsing history yet in this session"
 
-    n_max = int(config.get("max_events", config.get("Nmax", 5)))
-    t_ms = int(config.get("window_ms", config.get("T_ms", 60_000)))
+    n_max = int(config.get("max_events", 5))
+    t_ms = int(config.get("window_ms", 60_000))
     window_seconds = max(1, t_ms // 1000)
     window_start = t0 - timedelta(milliseconds=t_ms)
 
@@ -89,7 +89,7 @@ def rule_repeated_sensitive_action_after_warning(
 
     Skipped (None) when there is no prior warning to anchor against.
     """
-    n_max = int(config.get("max_events", config.get("Nmax", 5)))
+    n_max = int(config.get("max_events", 5))
     t_warn = _first_flagged_timestamp(session)
     if t_warn is None:
         return None, "Skipped - AgentGuard hasn't warned you yet in this session"
@@ -130,7 +130,7 @@ def rule_redirect_to_sensitive_action(
     if t0 is None or not session.prior_events:
         return None, "Skipped - no browsing history to form a redirect chain"
 
-    n_max = int(config.get("max_events", config.get("Nmax", 5)))
+    n_max = int(config.get("max_events", 5))
     window_ms = int(config.get("redirect_window_ms", 2_000))
     window = timedelta(milliseconds=window_ms)
 
@@ -186,7 +186,7 @@ def rule_previously_warned_domain_in_session(
     Skipped (None) when the session has no flagged events to define
     a "warned-domain set".
     """
-    n_max = int(config.get("max_events", config.get("Nmax", 5)))
+    n_max = int(config.get("max_events", 5))
     if not session.prior_events:
         return None, "Skipped - no browsing history yet in this session"
 
