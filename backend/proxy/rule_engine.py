@@ -38,6 +38,28 @@ _stage_a = StageAEvaluator(custom_blacklist=_CUSTOM_BLACKLIST)
 _stage_b = StageBEvaluator()
 
 
+def _warm_up() -> None:
+    """Pre-load the Stage B classifiers and meta-classifier at import time so the
+    first real request does not pay the cold model-load cost — which on the
+    single-threaded dev server can exceed the proxy's decision timeout and trip
+    the fail-closed block. Never raises: warmup must not break startup. Avoids
+    Stage A on purpose (its blacklist rule may hit the network)."""
+    try:
+        features = _extractor.extract(
+            url="https://warmup.invalid/",
+            method="GET",
+            headers={"Content-Type": "text/html"},
+            body=b"<html><body>warmup text to load the semantic models</body></html>",
+        )
+        combined = _stage_b.evaluate(features, enabled_rules={})
+        meta_classifier.score(combined)
+    except Exception:  # pragma: no cover - warmup is best-effort
+        pass
+
+
+_warm_up()
+
+
 def _rule_enablement_map() -> dict[str, bool]:
     try:
         rows = store.rules_list_asc()
