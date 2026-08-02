@@ -1,3 +1,9 @@
+"""The predicates behind `should_forward` — one question per module.
+
+Each answers a single yes/no about a flow. `filter_requests.py` is what
+composes them into the order the addon actually applies.
+"""
+
 from .browser_filter import is_browser_user_agent
 from .noise_filter import is_noise
 from .action_filter import is_action_request

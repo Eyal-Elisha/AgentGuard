@@ -8,7 +8,7 @@ from typing import Optional
 from backend.custom_blacklist import custom_blacklist_file_path, load_custom_blacklist_file
 from backend.analysis.rules import EvaluationResult
 from backend.analysis.stages.stage_a import StageAEvaluator
-from backend.analysis.stages.stage_a.evaluator import _aggregate, _make_decision
+from backend.analysis.scoring import aggregate_risk_score, decide
 from backend.analysis.stages.stage_a.session_loader import build_context
 from backend.analysis.stages.stage_b import StageBEvaluator
 from backend.feature_extraction.feature_extractor import FeatureExtractor
@@ -72,10 +72,10 @@ def evaluate_http_payload(
 
     semantic_results = _stage_b.evaluate(features, enabled_rules=enablement)
     combined = stage_a_result.rule_results + semantic_results
-    final_score = _aggregate(combined)
+    final_score = aggregate_risk_score(combined)
 
     return EvaluationResult(
-        decision=_make_decision(final_score),
+        decision=decide(final_score),
         risk_score=round(final_score, 4),
         rule_results=combined,
         hard_block_triggered=False,
