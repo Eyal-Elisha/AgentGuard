@@ -29,6 +29,25 @@ _loaded = False
 _model = None
 _features: List[str] = []
 
+# Map the model's raw score onto an intuitive 0-1 risk scale where the WARN and
+# BLOCK cutoffs land at round, human-readable values (0.5 and 0.8). The model's
+# own operating points — raw 0.80 (warn) and 0.93 (block), chosen for the false-
+# positive budget — are the anchors, so this is a MONOTONIC display transform:
+# it does not change any decision, only makes the number read like a traffic
+# light (green < 0.5, yellow 0.5-0.8, red > 0.8).
+_WARN_RAW = 0.80
+_BLOCK_RAW = 0.93
+
+
+def _to_risk(raw: float) -> float:
+    if raw <= 0.0:
+        return 0.0
+    if raw <= _WARN_RAW:
+        return round(0.5 * raw / _WARN_RAW, 4)
+    if raw <= _BLOCK_RAW:
+        return round(0.5 + 0.3 * (raw - _WARN_RAW) / (_BLOCK_RAW - _WARN_RAW), 4)
+    return round(0.8 + 0.2 * (raw - _BLOCK_RAW) / (1.0 - _BLOCK_RAW), 4)
+
 
 def _load() -> None:
     global _loaded, _model, _features
@@ -67,4 +86,4 @@ def score(rule_results: List[RuleResult]) -> Optional[float]:
     if not any(row):
         return 0.0
     prob = _model.predict_proba([row])[0][1]
-    return float(prob)
+    return _to_risk(float(prob))
