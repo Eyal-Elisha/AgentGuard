@@ -60,6 +60,11 @@ def score(rule_results: List[RuleResult]) -> Optional[float]:
         return None
     by_id = {r.rule_id: (float(r.score) if r.score is not None else 0.0)
              for r in rule_results}
-    vector = [[by_id.get(name, 0.0) for name in _features]]
-    prob = _model.predict_proba(vector)[0][1]
+    row = [by_id.get(name, 0.0) for name in _features]
+    # No rule produced any signal -> no evidence -> zero risk. Short-circuit so
+    # the reported score matches the (all-zero) rules table instead of the
+    # model's small non-zero baseline.
+    if not any(row):
+        return 0.0
+    prob = _model.predict_proba([row])[0][1]
     return float(prob)
