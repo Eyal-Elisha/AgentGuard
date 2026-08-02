@@ -1,4 +1,22 @@
-# Offline evaluation pipeline
+# Offline tooling
+
+Everything here runs outside the request path — nothing in `backend/` imports
+any of it. Three scripts form the evaluation pipeline; a fourth trains the
+Stage B classifiers.
+
+## Training the semantic classifiers
+
+`train_semantic_models.py` produces the pickled TF-IDF + logistic regression
+pipelines in `backend/analysis/stages/stage_b/data/`. Needs `scikit-learn`,
+`datasets` and `pandas`, none of which are in `requirements.txt` — Stage B
+falls back to keyword heuristics when the artifacts are absent, so the backend
+runs without them.
+
+```bash
+python scripts/train_semantic_models.py --all
+```
+
+# Evaluation pipeline
 
 Three scripts that together let you measure how AgentGuard's full rule engine
 (Stage A deterministic + contextual + Stage B semantic classifier) performs on

@@ -17,7 +17,8 @@ heuristic in [`../heuristics.py`](../heuristics.py).
 To regenerate the artifacts, run:
 
 ```bash
-python -m backend.analysis.stages.stage_b.train --all
+python scripts/train_semantic_models.py --all
 ```
 
-See [`../train.py`](../train.py) for dataset sources and CLI flags.
+See [`scripts/train_semantic_models.py`](../../../../../scripts/train_semantic_models.py)
+for dataset sources and CLI flags.

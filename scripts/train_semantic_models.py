@@ -1,6 +1,7 @@
 """Train TF-IDF + Logistic Regression classifiers for Stage B semantic rules.
 
-This script materializes the pickle artifacts in `stage_b/data/` consumed by
+This script materializes the pickle artifacts in
+`backend/analysis/stages/stage_b/data/` consumed by
 `SemanticClassifier`. Each artifact is a scikit-learn `Pipeline` whose final
 step is a binary `LogisticRegression(classes_=[0, 1])`.
 
@@ -21,9 +22,9 @@ Dependencies (install before running): `scikit-learn`, `datasets`, `pandas`.
 
 CLI:
 
-    python -m backend.analysis.stages.stage_b.train --all
-    python -m backend.analysis.stages.stage_b.train --rule phishing_language
-    python -m backend.analysis.stages.stage_b.train --rule prompt_injection \\
+    python scripts/train_semantic_models.py --all
+    python scripts/train_semantic_models.py --rule phishing_language
+    python scripts/train_semantic_models.py --rule prompt_injection \\
         --benign-csv path/to/benign.csv --malicious-csv path/to/malicious.csv
 
 When `--benign-csv` and `--malicious-csv` are passed, the script reads them
@@ -42,7 +43,8 @@ from typing import Iterable, List, Tuple
 
 _logger = logging.getLogger(__name__)
 
-_MODEL_DIR = Path(__file__).resolve().parent / "data"
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+_MODEL_DIR = _REPO_ROOT / "backend" / "analysis" / "stages" / "stage_b" / "data"
 _MIN_PER_CLASS = 50  # refuse to train if either class has fewer samples than this
 
 

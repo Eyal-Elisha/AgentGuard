@@ -3,7 +3,8 @@
 These are used when no trained sklearn artifact is present for a rule's
 `model_id`. They produce a probability-like score in [0, 1] derived from a
 small bag of high-precision phrases, so the pipeline yields useful signal
-out-of-the-box before the operator runs `train.py`.
+out-of-the-box before the operator runs
+scripts/train_semantic_models.py.
 
 Each entry is a list of (regex, weight) tuples. Total weight is squashed into
 [0, 1] via a logistic-like saturation so the output remains comparable to the

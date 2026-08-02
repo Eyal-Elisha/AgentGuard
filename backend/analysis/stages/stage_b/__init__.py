@@ -2,7 +2,8 @@
 
 Runs only when Stage A flags `stage_b_required` (ambiguous deterministic +
 contextual score). Uses TF-IDF + Logistic Regression classifiers — see
-`SemanticClassifier` and the `train.py` script for model lifecycle.
+`SemanticClassifier`, and scripts/train_semantic_models.py for how the
+artifacts in `data/` are produced.
 """
 
 from backend.analysis.stages.stage_b.evaluator import StageBEvaluator

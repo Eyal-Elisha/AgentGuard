@@ -5,7 +5,8 @@ artifact under `stage_b/data/<model_id>.pkl`. If the artifact exists *and*
 scikit-learn is importable, we deserialize it and use `predict_proba`.
 
 If either is missing we fall back to `heuristics.heuristic_score`, which keeps
-the pipeline useful before the operator runs `train.py`.
+the pipeline useful before the operator runs
+scripts/train_semantic_models.py.
 
 The pickle is expected to contain a scikit-learn `Pipeline` whose final step is
 a binary `LogisticRegression`. The positive class label must be `1` (malicious).

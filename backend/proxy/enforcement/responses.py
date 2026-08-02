@@ -39,6 +39,22 @@ _WARN_HTML_HEADERS = {
 }
 
 
+def is_get_navigation(flow: http.HTTPFlow) -> bool:
+    """Whether the browser would render an HTML body for this request."""
+    return flow.request.method.upper() == "GET"
+
+
+def block_response_for(flow: http.HTTPFlow, decision: BackendDecision) -> http.Response:
+    """The right shape of Block for this flow.
+
+    A GET navigation gets the interstitial. An XHR or sub-resource cannot
+    render one, so it gets the plain 403 instead.
+    """
+    if is_get_navigation(flow):
+        return build_block_response(original_url=flow.request.pretty_url, decision=decision)
+    return build_enforcement_response(decision)
+
+
 def build_enforcement_response(decision: BackendDecision) -> http.Response:
     """The plain-text refusal: 403 for a real block, 503 when the backend failed."""
     blocked_by_a_rule = (

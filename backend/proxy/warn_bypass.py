@@ -55,6 +55,19 @@ def _normalize_netloc(netloc: str, scheme: str) -> str:
     return lower
 
 
+def strip_query_param(url: str, param: str) -> str:
+    """Return `url` with every occurrence of query parameter `param` removed."""
+    parts = urlsplit(url)
+    pairs = [
+        (key, value)
+        for key, value in parse_qsl(parts.query, keep_blank_values=True)
+        if key != param
+    ]
+    return urlunsplit(
+        (parts.scheme, parts.netloc, parts.path, urlencode(pairs, doseq=True), parts.fragment)
+    )
+
+
 def _normalize_url(url: str) -> str:
     """Canonical form for comparing continue URL vs incoming request URL."""
     parts = urlsplit(url.strip())
