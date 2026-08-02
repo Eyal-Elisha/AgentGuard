@@ -153,7 +153,7 @@ also goes to the encrypted append-only journal.
 | `routes/` | HTTP API; `guards.py` holds the local-client guard |
 | `validation/` | one module per request family; nothing else validates input |
 | `storage/` | SQLite; `schema.py` owns the DDL, one store module per table |
-| `config.py` / `settings.py` | Flask app config / shared proxy and backend settings |
+| `settings/` | every setting, from one `backend/.env`: `env`, `network`, `runtime`, `credentials` |
 | `auth.py`, `log_encryption.py`, `audit_logging.py` | Argon2 + JWT, Fernet at rest, the audit logger |
 
 ## Data model

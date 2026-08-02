@@ -3,11 +3,10 @@ from flask import Flask
 from .api_errors import register_api_error_handlers
 from .analysis.rules import ALL_RULES
 from .audit_logging import configure_audit_logger
-from .config import env_flag, resolve_jwt_secret
 from .storage.sqlite_store import init_schema, rules_seed_defaults
 from .validation.proxy_requests import MAX_PROXY_ENVELOPE_BYTES
 
-from backend.settings import load_settings_env
+from .settings import env_flag, load_settings_env, resolve_jwt_secret
 
 
 def create_app() -> Flask:
