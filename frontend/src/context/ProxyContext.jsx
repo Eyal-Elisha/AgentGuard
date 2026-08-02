@@ -40,10 +40,17 @@ export function ProxyProvider({ children }) {
   const toggleProxy = useCallback(() => {
     const next = !getSnapshot();
     setIsProxyPending(true);
+    const startedAt = Date.now();
     void (async () => {
       try { await callProxyControl(next); setProxyActive(next); }
       catch (e) { console.error(e); if (!next) setProxyActive(true); }
-      finally { setIsProxyPending(false); }
+      finally {
+        // The control call returns in ~0.5s but the proxy keeps warming up;
+        // hold the loading state for a minimum so the feedback is always visible.
+        const remaining = 800 - (Date.now() - startedAt);
+        if (remaining > 0) await new Promise((r) => setTimeout(r, remaining));
+        setIsProxyPending(false);
+      }
     })();
   }, []);
 

@@ -5,6 +5,7 @@
 }
 
 .home-power-button {
+  position: relative;
   width: 7.5rem;
   height: 7.5rem;
   border-radius: 50%;
@@ -14,6 +15,30 @@
   align-items: center;
   justify-content: center;
   transition: background-color 220ms ease, box-shadow 220ms ease, border-color 220ms ease, transform 160ms ease;
+}
+
+/* Loading ring + pulse while the proxy is starting/stopping */
+.home-power-button--pending { cursor: progress; }
+.home-power-button--pending::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  border-top-color: var(--color-proxy-on-end);
+  animation: home-power-spin 0.9s linear infinite;
+}
+.home-power-button--pending .home-power-icon { animation: home-power-pulse 1.1s ease-in-out infinite; }
+@keyframes home-power-spin { to { transform: rotate(360deg); } }
+@keyframes home-power-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+.home-power-pending {
+  text-align: center;
+  margin-top: var(--space-md);
+  color: var(--color-proxy-on-end);
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  animation: home-power-pulse 1.1s ease-in-out infinite;
 }
 
 .home-power-button:hover { transform: scale(1.03); }

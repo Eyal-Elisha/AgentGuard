@@ -10,7 +10,7 @@ const host = import.meta.env.VITE_PROXY_HOST?.trim() || '127.0.0.1';
 const port = import.meta.env.VITE_PROXY_PORT?.trim() || '8080';
 
 export default function Home() {
-  const { isProxyActive, toggleProxy, isPassiveMode, togglePassiveMode } = useProxy();
+  const { isProxyActive, toggleProxy, isProxyPending, isPassiveMode, togglePassiveMode } = useProxy();
   const { selectedAgent, setSelectedAgent } = useAgent();
   const [agentDropdownOpen, setAgentDropdownOpen] = useState(false);
 
@@ -29,11 +29,16 @@ export default function Home() {
         </div>
         <div className="home-power-block">
           <button
-            type="button" className={`home-power-button ${isProxyActive ? 'home-power-button--on' : 'home-power-button--off'}`}
+            type="button"
+            className={`home-power-button ${isProxyActive ? 'home-power-button--on' : 'home-power-button--off'} ${isProxyPending ? 'home-power-button--pending' : ''}`}
             onClick={toggleProxy} aria-pressed={isProxyActive}
+            disabled={isProxyPending} aria-busy={isProxyPending}
           >
             <PowerIcon className="home-power-icon" />
           </button>
+          {isProxyPending && (
+            <p className="home-power-pending">{isProxyActive ? 'Stopping…' : 'Starting…'}</p>
+          )}
         </div>
         <HomeStatus isProxyActive={isProxyActive} isPassiveMode={isPassiveMode} togglePassiveMode={togglePassiveMode} />
         <dl className="home-endpoints">

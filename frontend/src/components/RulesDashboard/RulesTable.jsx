@@ -11,7 +11,6 @@ export default function RulesTable({ filteredRules, rules, onToggleEnabled, pend
               <th className="rules-th-description">DESCRIPTION</th>
               <th>RULE TYPE</th>
               <th className="rules-th-compute">COMPUTE CLASS</th>
-              <th>WEIGHT</th>
               <th>HARD BLOCK</th>
               <th>ENABLED</th>
             </tr>
@@ -27,12 +26,12 @@ export default function RulesTable({ filteredRules, rules, onToggleEnabled, pend
             ))}
             {rules.length > 0 && filteredRules.length === 0 && (
               <tr className="rules-empty-row">
-                <td colSpan={7} className="rules-empty-state">No rules match your search or filters.</td>
+                <td colSpan={6} className="rules-empty-state">No rules match your search or filters.</td>
               </tr>
             )}
             {rules.length === 0 && (
               <tr className="rules-empty-row">
-                <td colSpan={7} className="rules-empty-state">No rules configured yet.</td>
+                <td colSpan={6} className="rules-empty-state">No rules configured yet.</td>
               </tr>
             )}
           </tbody>
