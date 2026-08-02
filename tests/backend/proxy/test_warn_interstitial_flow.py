@@ -10,8 +10,7 @@ from backend.proxy.warn_bypass import (
     BYPASS_QUERY_PARAM,
     clear_continue_anyway_for_host,
     mint_bypass_token,
-    register_clean_pass,
-    revoke_clean_pass,
+    open_subresource_window,
 )
 
 
@@ -126,9 +125,9 @@ def test_bypass_token_in_url_redirects_to_clean_url_and_registers_continue():
     assert "example.com/login" in location
 
     # Short subresource window so assets can load without interstitial loops.
-    from backend.proxy.warn_bypass import has_clean_pass
+    from backend.proxy.warn_bypass import subresource_window_active
 
-    assert has_clean_pass("example.com") is True
+    assert subresource_window_active("example.com") is True
 
 
 def test_bypass_token_registers_normalized_destination_url_for_continue():
@@ -191,7 +190,7 @@ def test_continue_anyway_suppresses_document_once_but_still_calls_backend():
 
 def test_continue_anyway_suppresses_subresource_get_during_window():
     clear_continue_anyway_for_host("example.com")
-    register_clean_pass("example.com")
+    open_subresource_window("example.com")
 
     flow = _make_get_flow(
         url="https://example.com/assets/app.js",
@@ -212,9 +211,9 @@ def test_continue_anyway_suppresses_subresource_get_during_window():
 
 def test_clean_pass_is_scoped_to_one_host():
     """A clean-pass for host A must not bypass requests to host B."""
-    revoke_clean_pass("example.com")
-    revoke_clean_pass("attacker.example")
-    register_clean_pass("example.com")
+    clear_continue_anyway_for_host("example.com")
+    clear_continue_anyway_for_host("attacker.example")
+    open_subresource_window("example.com")
 
     flow = _make_get_flow(url="https://attacker.example/")
     flow.request.host = "attacker.example"
@@ -230,7 +229,7 @@ def test_clean_pass_is_scoped_to_one_host():
 
 
 def test_stale_bypass_token_in_url_is_stripped_and_falls_through():
-    revoke_clean_pass("example.com")
+    clear_continue_anyway_for_host("example.com")
     flow = _make_get_flow(query_items={BYPASS_QUERY_PARAM: "not-a-real-token"})
 
     with patch("backend.proxy.addon.should_forward", return_value=True), patch(
@@ -246,7 +245,7 @@ def test_stale_bypass_token_in_url_is_stripped_and_falls_through():
 
 
 def test_post_warn_does_not_show_interstitial():
-    revoke_clean_pass("example.com")
+    clear_continue_anyway_for_host("example.com")
     flow = _make_get_flow()
     flow.request.method = "POST"
     flow.request.content = b"foo=bar"
@@ -262,7 +261,7 @@ def test_post_warn_does_not_show_interstitial():
 
 def test_passive_mode_suppresses_warn_interstitial():
     """When the backend is in passive mode, WARN must NOT render the interstitial."""
-    revoke_clean_pass("example.com")
+    clear_continue_anyway_for_host("example.com")
     flow = _make_get_flow()
     with patch("backend.proxy.addon.should_forward", return_value=True), patch(
         "backend.proxy.addon.should_log_request", return_value=False
@@ -276,7 +275,7 @@ def test_passive_mode_suppresses_warn_interstitial():
 
 
 def test_response_warn_replaces_body_with_interstitial():
-    revoke_clean_pass("example.com")
+    clear_continue_anyway_for_host("example.com")
     flow = _make_get_flow()
     flow.response = SimpleNamespace(
         status_code=200,
@@ -305,7 +304,7 @@ def test_response_warn_replaces_body_with_interstitial():
 
 def test_response_passive_mode_does_not_replace_body():
     """Passive mode must leave the real response body alone, even on WARN."""
-    revoke_clean_pass("example.com")
+    clear_continue_anyway_for_host("example.com")
     flow = _make_get_flow()
     original_body = b"<html>real page</html>"
     flow.response = SimpleNamespace(
