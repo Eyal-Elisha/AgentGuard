@@ -34,8 +34,6 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 
 BYPASS_QUERY_PARAM: str = "_agentguard_bypass"
-# Kept for backwards compatibility with code that still references it; unused.
-BYPASS_COOKIE_NAME: str = "_agentguard_bypass"
 
 DEFAULT_TOKEN_TTL_SECONDS: float = 5 * 60.0
 # After "Continue anyway", subresource requests on this host skip the warn

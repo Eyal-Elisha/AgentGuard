@@ -73,31 +73,7 @@ def _https_upgrade(url: str) -> str | None:
     return urlunsplit(("https", parts.netloc, parts.path, parts.query, parts.fragment))
 
 
-def _normalize_likely_typos(host: str) -> str:
-    table = str.maketrans({
-        "0": "o",
-        "1": "l",
-        "3": "e",
-        "5": "s",
-        "7": "t",
-        "@": "a",
-        "$": "s",
-    })
-    translated = host.translate(table)
-    collapsed: list[str] = []
-    for ch in translated:
-        if len(collapsed) >= 2 and collapsed[-1] == ch and collapsed[-2] == ch:
-            continue
-        collapsed.append(ch)
-    return "".join(collapsed)
-
-
-def _safe_alternatives(
-    *,
-    original_url: str,
-    reason: str,
-    evaluation: Optional[Dict[str, Any]],
-) -> List[str]:
+def _safe_alternatives(original_url: str) -> List[str]:
     out: List[str] = []
     try:
         host = (urlsplit(original_url).hostname or "").lower().strip()
@@ -148,11 +124,7 @@ def build_block_html(
     )
 
     triggered = _coerce_rule_results(evaluation)
-    alternatives = _safe_alternatives(
-        original_url=original_url,
-        reason=reason,
-        evaluation=evaluation,
-    )
+    alternatives = _safe_alternatives(original_url)
     alternatives_block = "<ul class=\"alts-list\">" + "".join(
         f"<li>{html.escape(item)}</li>" for item in alternatives
     ) + "</ul>"

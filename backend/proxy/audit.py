@@ -75,10 +75,6 @@ def normalize_proxy_agent_name(explicit_agent_name: str | None) -> str:
     return _DEFAULT_PROXY_AGENT_NAME
 
 
-def _resolve_agent_name(explicit_agent_name: str | None) -> str:
-    return normalize_proxy_agent_name(explicit_agent_name)
-
-
 def _guard_action(decision: Decision) -> str:
     return decision.value.title()
 
@@ -141,11 +137,6 @@ def resolve_proxy_session_id(
     raise ValueError("No active proxy session is available")
 
 
-# Backwards-compatible alias for any internal caller still referencing the
-# private name.
-_resolve_session_id = resolve_proxy_session_id
-
-
 def ensure_proxy_session_started(
     *,
     timestamp: datetime | None = None,
@@ -156,7 +147,7 @@ def ensure_proxy_session_started(
     _ensure_storage_ready()
 
     started_at = timestamp or datetime.now(timezone.utc)
-    resolved_agent_name = _resolve_agent_name(agent_name)
+    resolved_agent_name = normalize_proxy_agent_name(agent_name)
     existing_session = store.session_get_latest_open_by_agent(resolved_agent_name, environment)
     replaced_session_id: int | None = None
     if existing_session is not None:
@@ -210,7 +201,7 @@ def close_proxy_session(
     _ensure_storage_ready()
 
     ended_at = timestamp or datetime.now(timezone.utc)
-    resolved_agent_name = _resolve_agent_name(agent_name)
+    resolved_agent_name = normalize_proxy_agent_name(agent_name)
     existing_session = store.session_get_latest_open_by_agent(resolved_agent_name, environment)
     if existing_session is None:
         return {
@@ -258,8 +249,8 @@ def record_proxy_decision(
     agent_name: str | None = None,
     session_id: int | None = None,
 ) -> dict[str, Any]:
-    resolved_agent_name = _resolve_agent_name(agent_name)
-    resolved_session_id = _resolve_session_id(
+    resolved_agent_name = normalize_proxy_agent_name(agent_name)
+    resolved_session_id = resolve_proxy_session_id(
         session_id=session_id,
         timestamp=timestamp,
         environment=environment,
