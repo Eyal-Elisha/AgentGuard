@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import datetime
 import json
-from typing import Any, Dict, Optional
+import os
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
-from mitmproxy import http
+if TYPE_CHECKING:
+    from mitmproxy import http
 
 from backend.analysis.rules import EvaluationResult, RuleResult
 
@@ -24,6 +26,21 @@ def safe_get_text(message):
         return f"<{len(message.content)} bytes binary>"
 
 
+def _proxy_agent_name(flow) -> str | None:
+    header_agent = (
+        flow.request.headers.get("x-agentguard-agent")
+        or flow.request.headers.get("x-agent-name")
+    )
+    if isinstance(header_agent, str) and header_agent.strip():
+        return header_agent.strip()
+    configured_agent = os.environ.get("AGENTGUARD_PROXY_AGENT_NAME", "").strip()
+    return configured_agent or None
+
+
+def _proxy_environment() -> str:
+    return os.environ.get("AGENTGUARD_PROXY_ENVIRONMENT", "").strip() or "prod"
+
+
 def build_request_data(flow):
     data = {
         "timestamp": _utc_timestamp(),
@@ -31,12 +48,12 @@ def build_request_data(flow):
         "method": flow.request.method,
         "url": flow.request.pretty_url,
         "host": flow.request.host,
-        "environment": "prod",
+        "environment": _proxy_environment(),
         "headers": dict(flow.request.headers),
         "body": safe_get_text(flow.request),
     }
-    agent_name = flow.request.headers.get("x-agentguard-agent") or flow.request.headers.get("x-agent-name")
-    if isinstance(agent_name, str) and agent_name.strip():
+    agent_name = _proxy_agent_name(flow)
+    if agent_name is not None:
         data["agent_name"] = agent_name
     return data
 
@@ -55,12 +72,12 @@ def build_response_payload(flow):
         "method": flow.request.method,
         "url": flow.request.pretty_url,
         "host": flow.request.host,
-        "environment": "prod",
+        "environment": _proxy_environment(),
         "headers": headers,
         "body": safe_get_text(flow.response) if flow.response else "",
     }
-    agent_name = flow.request.headers.get("x-agentguard-agent") or flow.request.headers.get("x-agent-name")
-    if isinstance(agent_name, str) and agent_name.strip():
+    agent_name = _proxy_agent_name(flow)
+    if agent_name is not None:
         data["agent_name"] = agent_name
     return data
 

@@ -20,6 +20,7 @@ from backend.proxy.rule_engine import evaluate_http_payload
 from backend.proxy.utils import evaluation_result_to_dict
 from backend.settings import get_passive_mode, set_passive_mode
 from backend.storage import sqlite_store as store
+from backend.validation import validate_proxy_payload
 from backend.validation.common import ALLOWED_ENVIRONMENTS, parse_iso_datetime, parse_positive_int
 
 from . import api_bp
@@ -51,19 +52,6 @@ def _is_trusted_client(remote_addr: str | None) -> bool:
     except ValueError:
         return False
     return ip.is_private
-
-
-def _require_non_empty_string(payload: dict[str, Any], field: str) -> str | None:
-    value = payload.get(field)
-    if not isinstance(value, str) or not value.strip():
-        return None
-    return value.strip()
-
-
-def _normalize_headers(value: Any) -> dict[str, str] | None:
-    if not isinstance(value, dict):
-        return None
-    return {str(key): str(item) for key, item in value.items()}
 
 
 def _optional_clean_string(payload: dict[str, Any], field: str) -> str | None:
@@ -136,26 +124,15 @@ def proxy_decision():
     if not _is_trusted_client(request.remote_addr):
         return jsonify({"error": "This endpoint is only available from a trusted local network client"}), 403
 
-    payload = request.get_json(silent=True)
-    if not isinstance(payload, dict):
-        return jsonify({"error": "JSON request body is required"}), 400
-
-    required_fields = ("url", "method", "headers", "body")
-    missing_fields = [field for field in required_fields if field not in payload]
-    if missing_fields:
-        return jsonify({"error": f"Missing required fields: {', '.join(missing_fields)}"}), 400
-
-    url = _require_non_empty_string(payload, "url")
-    if url is None:
-        return jsonify({"error": "'url' must be a non-empty string"}), 400
-
-    method = _require_non_empty_string(payload, "method")
-    if method is None:
-        return jsonify({"error": "'method' must be a non-empty string"}), 400
-
-    headers = _normalize_headers(payload["headers"])
-    if headers is None:
-        return jsonify({"error": "'headers' must be an object"}), 400
+    payload, validation_error, validation_status = validate_proxy_payload(
+        request.get_json(silent=True)
+    )
+    if validation_error:
+        return jsonify({"error": validation_error}), validation_status
+    assert payload is not None
+    url = payload["url"]
+    method = payload["method"]
+    headers = payload["headers"]
 
     timestamp = _payload_timestamp(payload)
     if timestamp is None:
@@ -175,13 +152,7 @@ def proxy_decision():
         return jsonify({"error": "'agent_name' must be a non-empty string when provided"}), 400
     agent_name_was_provided = payload.get("agent_name") is not None
 
-    body = payload["body"]
-    if isinstance(body, str):
-        body = body.encode("utf-8", errors="replace")
-    elif body is None:
-        body = b""
-    elif not isinstance(body, bytes):
-        body = str(body).encode("utf-8", errors="replace")
+    body = payload["body"].encode("utf-8", errors="replace")
 
     try:
         if session_id is not None:
@@ -279,7 +250,10 @@ def proxy_control():
     user_id = _proxy_control_user_id()
 
     if active:
-        ok, message = start_proxy_process()
+        ok, message = start_proxy_process(
+            agent_name=agent_name,
+            environment=environment,
+        )
         session = None
         if ok and message != "already_running":
             session = ensure_proxy_session_started(environment=environment, agent_name=agent_name, user_id=user_id)

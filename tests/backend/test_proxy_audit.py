@@ -10,10 +10,18 @@ from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
 
+from cryptography.fernet import Fernet
+
 from backend import create_app
 from backend.analysis.rules import Decision, EvaluationResult, RuleResult, RuleType
+from backend.log_encryption import ENCRYPTED_VALUE_PREFIX, decrypt_text
 from backend.proxy.audit import ensure_proxy_session_started, normalize_proxy_agent_name
 from backend.storage import sqlite_store as store
+from backend.validation.proxy_requests import (
+    MAX_BODY_BYTES,
+    MAX_PROXY_ENVELOPE_BYTES,
+    validate_proxy_payload,
+)
 
 
 def _make_result(decision: Decision) -> EvaluationResult:
@@ -81,12 +89,14 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
             "JWT_SECRET": os.environ.get("JWT_SECRET"),
             "REQUIRE_AUTH": os.environ.get("REQUIRE_AUTH"),
             "AGENTGUARD_AUDIT_LOG_PATH": os.environ.get("AGENTGUARD_AUDIT_LOG_PATH"),
+            "AGENTGUARD_LOG_ENCRYPTION_KEY": os.environ.get("AGENTGUARD_LOG_ENCRYPTION_KEY"),
         }
         db_url_path = Path(self.db_path).resolve().as_posix()
         os.environ["DATABASE_URL"] = f"sqlite:///{db_url_path}"
         os.environ["JWT_SECRET"] = "test-secret"
         os.environ["REQUIRE_AUTH"] = "false"
         os.environ["AGENTGUARD_AUDIT_LOG_PATH"] = self.log_path
+        os.environ["AGENTGUARD_LOG_ENCRYPTION_KEY"] = Fernet.generate_key().decode("utf-8")
 
         self.app = create_app()
         self.client = self.app.test_client()
@@ -102,6 +112,12 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
             else:
                 os.environ[key] = value
         self.temp_dir.cleanup()
+
+    def _audit_log_records(self) -> list[dict]:
+        return [
+            json.loads(decrypt_text(line))
+            for line in Path(self.log_path).read_text(encoding="utf-8").splitlines()
+        ]
 
     def _payload(self, **overrides):
         payload = {
@@ -142,6 +158,7 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         self.assertEqual(event["guard_action"], "Warn")
         self.assertEqual(event["http_method"], "POST")
         self.assertEqual(event["url"], "https://example.com/login")
+        self.assertEqual(event["risk_score"], 0.42)
 
         analyses = store.rule_analysis_list_for_event(audit["event_id"])
         self.assertEqual(len(analyses), 2)
@@ -149,14 +166,40 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         sensitive_analysis = next(item for item in analyses if item["rule_code"] == "sensitive_fields")
         blacklist_analysis = next(item for item in analyses if item["rule_code"] == "custom_blacklist")
         self.assertEqual(sensitive_analysis["hard_block"], 0)
+        self.assertEqual(sensitive_analysis["rule_score"], 1.0)
         self.assertEqual(blacklist_analysis["hard_block"], 1)
+        self.assertEqual(blacklist_analysis["rule_score"], 0.0)
         self.assertIsNotNone(store.rule_get("sensitive_fields"))
         self.assertIsNotNone(store.rule_get("custom_blacklist"))
 
-        log_lines = Path(self.log_path).read_text(encoding="utf-8").splitlines()
-        self.assertEqual(len(log_lines), 2)
-        self.assertEqual(json.loads(log_lines[0])["event"], "proxy_session_started")
-        log_entry = json.loads(log_lines[1])
+        conn = sqlite3.connect(self.db_path)
+        try:
+            raw_event = conn.execute(
+                "SELECT url, risk_score, headers_json FROM events WHERE event_id = ?",
+                (audit["event_id"],),
+            ).fetchone()
+            raw_analyses = conn.execute(
+                "SELECT rule_score, details FROM rules_analysis WHERE event_id = ?",
+                (audit["event_id"],),
+            ).fetchall()
+        finally:
+            conn.close()
+        self.assertTrue(raw_event[0].startswith(ENCRYPTED_VALUE_PREFIX))
+        self.assertTrue(raw_event[1].startswith(ENCRYPTED_VALUE_PREFIX))
+        self.assertTrue(raw_event[2].startswith(ENCRYPTED_VALUE_PREFIX))
+        self.assertNotIn("https://example.com/login", raw_event[0])
+        self.assertNotIn("0.42", raw_event[1])
+        self.assertTrue(all(row[0].startswith(ENCRYPTED_VALUE_PREFIX) for row in raw_analyses))
+        self.assertTrue(all(row[1].startswith(ENCRYPTED_VALUE_PREFIX) for row in raw_analyses))
+        self.assertTrue(all("Sensitive fields present on page" not in row[1] for row in raw_analyses))
+
+        raw_log_lines = Path(self.log_path).read_text(encoding="utf-8").splitlines()
+        self.assertEqual(len(raw_log_lines), 2)
+        self.assertTrue(all(line.startswith(ENCRYPTED_VALUE_PREFIX) for line in raw_log_lines))
+        self.assertNotIn("https://example.com/login", "\n".join(raw_log_lines))
+        log_records = self._audit_log_records()
+        self.assertEqual(log_records[0]["event"], "proxy_session_started")
+        log_entry = log_records[1]
         self.assertEqual(log_entry["session_id"], audit["session_id"])
         self.assertEqual(log_entry["event_id"], audit["event_id"])
         self.assertEqual(log_entry["timestamp"], "2026-03-29T22:30:00Z")
@@ -211,11 +254,11 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         self.assertIsNotNone(first_session["end_time"])
         self.assertIsNone(second_session["end_time"])
 
-        log_lines = Path(self.log_path).read_text(encoding="utf-8").splitlines()
-        self.assertEqual(len(log_lines), 3)
-        first_started = json.loads(log_lines[0])
-        closed = json.loads(log_lines[1])
-        second_started = json.loads(log_lines[2])
+        log_records = self._audit_log_records()
+        self.assertEqual(len(log_records), 3)
+        first_started = log_records[0]
+        closed = log_records[1]
+        second_started = log_records[2]
         self.assertEqual(first_started["event"], "proxy_session_started")
         self.assertEqual(closed["event"], "proxy_session_closed")
         self.assertEqual(closed["session_id"], first["session_id"])
@@ -240,9 +283,9 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         stored = store.session_get(started["session_id"])
         self.assertIsNotNone(stored)
         self.assertEqual(stored["agent_name"], "BrowserOS")
-        log_lines = Path(self.log_path).read_text(encoding="utf-8").splitlines()
-        self.assertEqual(len(log_lines), 1)
-        log_entry = json.loads(log_lines[0])
+        log_records = self._audit_log_records()
+        self.assertEqual(len(log_records), 1)
+        log_entry = log_records[0]
         self.assertEqual(log_entry["event"], "proxy_session_started")
         self.assertEqual(log_entry["session_id"], started["session_id"])
 
@@ -276,6 +319,56 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.get_json(), {"error": "No active proxy session is available"})
+
+    def test_proxy_decision_rejects_invalid_structures_before_evaluation(self):
+        invalid_payloads = (
+            self._payload(url="/relative"),
+            self._payload(url="ftp://example.com/file"),
+            self._payload(url="https://user:pass@example.com/"),
+            self._payload(method="TRACE"),
+            self._payload(headers={"x-count": 1}),
+            self._payload(headers={"x-test": "ok\r\nInjected: yes"}),
+            self._payload(body={"nested": "object"}),
+            self._payload(type="UNKNOWN"),
+            self._payload(host="other.example"),
+        )
+
+        with patch("backend.routes.proxy.evaluate_http_payload") as evaluate:
+            for payload in invalid_payloads:
+                with self.subTest(payload=payload):
+                    response = self.client.post("/api/proxy/decision", json=payload)
+                    self.assertEqual(response.status_code, 400)
+
+        evaluate.assert_not_called()
+        self.assertEqual(store.events_list_all({}), [])
+
+    def test_proxy_decision_rejects_oversized_body(self):
+        response = self.client.post(
+            "/api/proxy/decision",
+            json=self._payload(body="x" * (MAX_BODY_BYTES + 1)),
+        )
+
+        self.assertEqual(response.status_code, 413)
+        self.assertIn("size limit", response.get_json()["error"])
+
+    def test_proxy_decision_rejects_oversized_json_envelope(self):
+        response = self.client.post(
+            "/api/proxy/decision",
+            data=b"{" + b"x" * MAX_PROXY_ENVELOPE_BYTES + b"}",
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 413)
+        self.assertIn("capacity limit", response.get_json()["error"].lower())
+
+    def test_proxy_payload_accepts_body_at_exact_limit(self):
+        payload, error, status = validate_proxy_payload(
+            self._payload(body="x" * MAX_BODY_BYTES)
+        )
+
+        self.assertIsNone(error)
+        self.assertEqual(status, 200)
+        self.assertEqual(len(payload["body"]), MAX_BODY_BYTES)
 
     def test_proxy_decision_rejects_mismatched_session_environment(self):
         started = ensure_proxy_session_started(environment="test")
@@ -328,7 +421,7 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
 
     def test_proxy_control_start_uses_selected_agent(self):
         with (
-            patch("backend.routes.proxy.start_proxy_process", return_value=(True, "started")),
+            patch("backend.routes.proxy.start_proxy_process", return_value=(True, "started")) as start_proxy,
             patch("backend.routes.proxy.proxy_is_running", return_value=True),
         ):
             response = self.client.post(
@@ -343,6 +436,10 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         body = response.get_json()
         self.assertEqual(body["session"]["agent"], "MicrosoftEdge")
+        start_proxy.assert_called_once_with(
+            agent_name="MicrosoftEdge",
+            environment="test",
+        )
 
         session = store.session_get(body["session"]["session_id"])
         self.assertIsNotNone(session)
@@ -404,10 +501,10 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         self.assertIsNotNone(session)
         self.assertIsNotNone(session["end_time"])
 
-        log_lines = Path(self.log_path).read_text(encoding="utf-8").splitlines()
-        self.assertEqual(len(log_lines), 2)
-        self.assertEqual(json.loads(log_lines[0])["event"], "proxy_session_started")
-        closed = json.loads(log_lines[1])
+        log_records = self._audit_log_records()
+        self.assertEqual(len(log_records), 2)
+        self.assertEqual(log_records[0]["event"], "proxy_session_started")
+        closed = log_records[1]
         self.assertEqual(closed["event"], "proxy_session_closed")
         self.assertEqual(closed["reason"], "proxy_stopped")
 
