@@ -143,12 +143,13 @@ also goes to the encrypted append-only journal.
 | `analysis/rules/` | `models` (types), `tuning` (every calibrated number), `catalog` (the 16 rules) |
 | `analysis/scoring.py` | weighted-average aggregation, score → decision |
 | `analysis/stages/stage_a/` | deterministic and contextual rules, their data and helpers |
-| `analysis/stages/stage_b/` | semantic classifiers, text sanitization, heuristic fallback, training |
+| `analysis/stages/stage_b/` | semantic classifiers, text sanitization, heuristic fallback |
 | `feature_extraction/` | HTML → `ExtractedFeatures` |
 | `proxy/` | the mitmproxy addon and everything it calls |
 | `proxy/filters/` | one yes/no question per module, composed by `filter_requests.py` |
 | `proxy/enforcement/` | `decision` (the verdict), `reasons` (the text), `responses` (the HTTP) |
 | `proxy/interstitials/` | the Warn and Block pages, their shared evidence rendering and theme |
+| `proxy/warn_bypass/` | `tokens` (one-shot links) and `continue_profile` (what redeeming one allows) |
 | `proxy/audit/` | `journal`, `agents`, `sessions`, `decisions` |
 | `routes/` | HTTP API; `guards.py` holds the local-client guard |
 | `validation/` | one module per request family; nothing else validates input |

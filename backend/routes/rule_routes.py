@@ -5,7 +5,7 @@ from __future__ import annotations
 from flask import jsonify, request
 
 from ..auth import require_jwt
-from ..serializers import analysis_to_dict, rule_analysis_to_dict, rule_to_dict
+from ..serializers import rule_analysis_to_dict, rule_to_dict
 from ..storage import sqlite_store as store
 from ..validation import (
     validate_rule_enabled_payload,
