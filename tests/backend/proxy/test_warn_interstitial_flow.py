@@ -31,15 +31,21 @@ class FakeQuery:
 
 
 def _make_get_flow(*, url="https://example.com/login", query_items=None, headers=None):
+    merged = {}
     if query_items:
-        from urllib.parse import urlencode, urlsplit, urlunsplit
+        from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
+        # Merge into whatever the URL already carries. Replacing it would drop
+        # the caller's own params, which is exactly what these tests check is
+        # preserved when the bypass token is stripped back off.
         parts = urlsplit(url)
+        merged = dict(parse_qsl(parts.query, keep_blank_values=True))
+        merged.update(query_items)
         url = urlunsplit((
             parts.scheme,
             parts.netloc,
             parts.path,
-            urlencode(query_items),
+            urlencode(merged),
             parts.fragment,
         ))
 
@@ -53,7 +59,7 @@ def _make_get_flow(*, url="https://example.com/login", query_items=None, headers
         pretty_url=url,
         headers=hdrs,
         content=b"",
-        query=FakeQuery(query_items or {}),
+        query=FakeQuery(merged or query_items or {}),
         get_text=lambda: "",
     )
     return SimpleNamespace(request=request_obj, response=None, metadata={})
@@ -164,7 +170,7 @@ def test_continue_anyway_suppresses_document_once_but_still_calls_backend():
     flow = _make_get_flow(url="https://example.com/login")
     calls = {"n": 0}
 
-    def _decision():
+    def _decision(_flow):
         calls["n"] += 1
         return _warn_decision()
 
