@@ -1,12 +1,5 @@
-"""Every setting AgentGuard reads, in one place.
-
-The backend and the proxy addon run as separate processes but share one
-`backend/.env`, so both go through here rather than reading os.environ.
-
-  env          loading .env, and the primitives the rest are built on
-  network      hosts, ports and the URLs derived from them
-  runtime      proxy timeout, failure mode, passive mode, audit log path
-  credentials  the JWT secret and the log encryption key
+"""Every setting AgentGuard reads, from the one backend/.env the backend and the
+proxy share. Split into env, network, runtime and credentials.
 """
 
 from .credentials import get_log_encryption_key, resolve_jwt_secret

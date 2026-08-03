@@ -1,9 +1,6 @@
-"""The twelve deterministic rules of Stage A, one function per rule.
-
-Each takes the extracted page features and returns (score, explanation).
-Score is 1.0 when the rule fires, 0.0 when it does not. The explanation is
-stored with the analysis and shown on the interstitial, so it names what was
-actually found. Reference data is in data.py, shared predicates in helpers.py.
+"""The twelve deterministic rules of Stage A, one function per rule, each
+returning (score, explanation). Reference data is in data.py, shared predicates
+in helpers.py.
 """
 
 from __future__ import annotations
@@ -165,14 +162,9 @@ def rule_external_form_action(features: ExtractedFeatures) -> Tuple[float, str]:
 def rule_typosquatting(features: ExtractedFeatures) -> Tuple[float, str]:
     """Rule 7 — Typosquatting Domain Detection.
 
-    Not a hard block any more. Even after is_typosquat was tightened it fires
-    on more benign than phishing pages, so it only contributes weight.
-
-    Detects two attack patterns:
-      1. Confusable/homoglyph — normalized label matches official but original doesn't
-         (e.g. paypa1.com, pаypal.com with Cyrillic а)
-      2. Edit-distance typosquat — see ``is_typosquat`` (not raw ≤2 edits on short strings)
-         (e.g. payal.com, papyal.com)
+    Not a hard block any more; it fires on more benign than phishing pages.
+    Catches two patterns: confusables where normalizing the label matches an
+    official brand (paypa1.com), and single-edit typos (papyal.com).
     """
     host = strip_www(features.host)
     if is_ip(host):

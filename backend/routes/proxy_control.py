@@ -1,9 +1,6 @@
-"""Starting, stopping and observing the local proxy from the dashboard.
-
-These routes drive the same mitmweb process `python proxy_launcher.py` would,
-and keep the proxy session in step with it: starting the proxy opens a session,
-stopping it closes one. Passive mode is the third control: the pipeline still
-evaluates and records everything, but the proxy stops enforcing.
+"""Start, stop and observe the local proxy from the dashboard. Starting opens a
+proxy session and stopping closes one; passive mode keeps evaluating but stops
+enforcing.
 """
 
 from __future__ import annotations

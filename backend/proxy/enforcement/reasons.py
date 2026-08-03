@@ -1,7 +1,5 @@
-"""The human-readable text that explains an enforcement outcome.
-
-These surface in the 403/503 body, the interstitials and the proxy log, so
-they are kept together and free of any dependency on the other two modules.
+"""The text explaining an enforcement outcome. Kept on its own because it surfaces
+in the 403/503 body, the interstitials and the proxy log.
 """
 
 from __future__ import annotations

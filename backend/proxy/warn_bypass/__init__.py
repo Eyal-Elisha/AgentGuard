@@ -1,13 +1,6 @@
-"""Letting the user past a Warn without putting them in a redirect loop.
-
-Cookies are unreliable in an HTTPS-via-MITM setup, so the flow is entirely
-server-side, in two halves:
-
-  tokens            "Continue anyway" points at `url?_agentguard_bypass=<tok>`;
-                    the proxy consumes the token and 302s to the clean URL.
-  continue_profile  what redeeming one then allows through.
-
-Evaluation is unaffected — only the warning UI is suppressed.
+"""Letting the user past a Warn without a redirect loop, entirely server-side
+since cookies are unreliable under MITM. `tokens` mints and consumes them,
+`continue_profile` holds what redeeming one allows.
 """
 
 from .continue_profile import (

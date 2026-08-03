@@ -1,7 +1,5 @@
-"""Rendering of the "why we flagged this" evidence shared by both interstitials.
-
-Both pages present the same triggered rule results, so the row markup, score
-formatting and JS-string escaping live here rather than in either page.
+"""The triggered-rule rows both interstitials show. Shared so the markup, score
+formatting and JS escaping live in one place.
 """
 
 from __future__ import annotations

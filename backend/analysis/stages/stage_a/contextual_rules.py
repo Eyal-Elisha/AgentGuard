@@ -1,15 +1,6 @@
-"""Contextual rule implementations for Stage A.
-
-Each rule reads recent session activity (`SessionContext`) and returns a score
-plus a short explanation for the user. If the rule does not apply (e.g. no
-prior history yet), it returns `score=None` so aggregation ignores it. If it
-applies but nothing suspicious was found, the score is `0.0`.
-
-Scores rise with how strong the pattern is and are capped at 1.0 using each
-rule's `max_events` setting in `CONTEXTUAL_RULE_CONFIG`.
-
-A prior "warning" for these rules means AgentGuard already marked an earlier
-request as Warn or Block for that session (`guard_action` in `{Warn, Block}`).
+"""The contextual rules, which score a request against the session's recent
+activity. A rule returns None when it does not apply, so aggregation skips it
+instead of counting a zero.
 """
 
 from __future__ import annotations

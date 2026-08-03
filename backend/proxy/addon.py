@@ -1,16 +1,7 @@
-"""What AgentGuard does to each intercepted flow.
-
-`handle_request` runs before the request reaches the origin, in this order:
-
-  1. a custom-blacklist hit too low-signal to audit is blocked here and now
-  2. anything the filter chain rejects is left alone entirely
-  3. outbound LLM prompts get the fallback instruction appended
-  4. a valid bypass token redirects to the clean URL and returns
-  5. the backend decides, and Block or Warn is enforced
-
-`handle_response` re-evaluates once the origin has answered, which is how a
-page whose risk is only visible in its HTML still gets caught. By then the
-request is already out, so the only enforcement left is rewriting the body.
+"""What AgentGuard does to each intercepted flow. `handle_request` filters,
+augments prompts, redeems bypass tokens and enforces the verdict;
+`handle_response` re-checks once the HTML has arrived, where the only
+enforcement left is rewriting the body.
 """
 
 from __future__ import annotations
@@ -126,10 +117,9 @@ def handle_response(flow: http.HTTPFlow) -> None:
 def _block_low_signal_blacklist_hit(flow: http.HTTPFlow) -> bool:
     """Block a blacklisted URL the filter chain would otherwise drop.
 
-    `should_forward` deliberately declines to audit low-signal blacklist hits
-    (a sub-resource, a background request). Without this the user would get no
-    enforcement at all on them, so the block is decided here without involving
-    the backend.
+    `should_forward` declines to audit low-signal blacklist hits like
+    sub-resources, so without this they would get no enforcement at all. The
+    block is decided here rather than by the backend.
     """
     if not custom_blacklist_matches(
         flow.request.host, flow.request.pretty_url, get_custom_blacklist()
@@ -152,12 +142,9 @@ def _block_low_signal_blacklist_hit(flow: http.HTTPFlow) -> bool:
 def _redeem_bypass_token(flow: http.HTTPFlow) -> bool:
     """Honour a `?_agentguard_bypass=<token>` on its way through.
 
-    A token valid for this host registers a continue profile and redirects to
-    the same URL without it, so the address bar never keeps the token and the
-    page does not bounce back into the interstitial. The backend still sees
-    every subsequent request; only the warning UI is suppressed.
-
-    Returns True when the flow has been answered and nothing else should run.
+    A valid token registers a continue profile and redirects to the same URL
+    without it, so the token never lingers in the address bar. Returns True
+    when the flow has been answered and nothing else should run.
     """
     token = flow.request.query.get(BYPASS_QUERY_PARAM) if BYPASS_QUERY_PARAM in flow.request.query else None
     if not token:

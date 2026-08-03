@@ -1,11 +1,6 @@
-"""The rule catalogue: the eighteen rules AgentGuard can run.
-
-Grouped by type, because that is also the order they execute in: the
-deterministic rules first, the contextual ones only when the deterministic
-score comes out ambiguous, and the semantic ones last in Stage B.
-
-A rule flagged `hard_block=True` short-circuits its stage. The remaining rules
-are recorded with a NULL score and the risk score is forced to 1.0.
+"""The eighteen rules, grouped by type, which is also the order they run in. A
+rule with `hard_block=True` short-circuits its stage and forces the risk score
+to 1.0.
 """
 
 from __future__ import annotations

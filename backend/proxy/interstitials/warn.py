@@ -1,8 +1,6 @@
-"""The Warn interstitial — shown when a navigation is flagged but not blocked.
-
-The page lists the triggered rules and offers two ways out: "Go back to safety"
-to the dashboard, and "Continue anyway" — a plain link carrying a one-shot
-token, redeemed by `warn_bypass/`. No cookies, no client state.
+"""The Warn page, shown when a navigation is flagged but not blocked. Lists the
+triggered rules and offers "Continue anyway", a link carrying a one-shot bypass
+token.
 """
 
 from __future__ import annotations

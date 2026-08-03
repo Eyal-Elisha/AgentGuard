@@ -1,7 +1,5 @@
-"""Turning a set of rule results into one risk score and one decision.
-
-Shared by both stages: Stage A aggregates its own rules, and the pipeline
-aggregates again over Stage A plus Stage B once the semantic rules have run.
+"""Rule results in, one risk score and one decision out. Used by Stage A on its
+own rules, then again over both stages once Stage B has run.
 """
 
 from __future__ import annotations
@@ -18,15 +16,10 @@ from backend.analysis.rules import (
 
 
 def aggregate_risk_score(results: Iterable[RuleResult]) -> float:
-    """Weighted *average* over the rules that actually ran.
+    """Weighted average over the rules that actually ran.
 
-    Skipped rules (score None) are left out entirely rather than counted as
-    zero, so a rule whose preconditions were not met cannot dilute the score.
-
-    Averaging rather than summing is what puts the thresholds where they are:
-    the result is bounded by the highest single rule score, and one rule firing
-    among ten contributes only its share of the total weight. See
-    `analysis.rules.tuning` for the resulting numbers.
+    Skipped rules (score None) are left out rather than counted as zero, so a
+    rule whose preconditions were not met cannot dilute the score.
     """
     weighted_sum = 0.0
     total_weight = 0.0

@@ -1,11 +1,6 @@
-"""Rule definitions: the types, the calibration, and the catalogue.
-
-  models   the types a rule and its result are expressed in
-  tuning   every calibrated number — thresholds, weights, per-rule config
-  catalog  the eighteen rules themselves
-
-The rest of the codebase imports from `backend.analysis.rules` directly; the
-split is for reading, not for addressing.
+"""Rule definitions, split for reading: models (the types), tuning (the calibrated
+numbers), catalog (the eighteen rules). Everything imports from
+`backend.analysis.rules` directly.
 """
 
 from .catalog import (

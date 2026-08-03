@@ -1,11 +1,6 @@
-"""A trained model over the rule scores, used instead of the weighted average.
-
-Unlike a fixed weighting it can read combinations, which is why it wins. It is
-optional: `score()` returns None with no artifact and the caller falls back.
-
-The artifact is `analysis/data/meta_classifier.pkl`, holding
-`{"model": estimator, "features": [rule_id, ...]}`. It ships pre-built and no
-script here regenerates it. train_meta_classifier.py only runs the bake-off.
+"""A trained model over the rule scores, used instead of the weighted average when
+analysis/data/meta_classifier.pkl loads. `score()` returns None without it and
+the caller falls back.
 """
 
 from __future__ import annotations

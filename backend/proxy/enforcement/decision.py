@@ -1,8 +1,6 @@
-"""`BackendDecision` — the verdict the proxy acts on, and how one is built.
-
-Every path through the addon ends up holding one. `source` records where it
-came from, because the response differs: a real block is a 403, an unreachable
-backend a 503.
+"""`BackendDecision`, the verdict every path through the addon ends up holding.
+`source` records where it came from, since a real block is a 403 and an
+unreachable backend a 503.
 """
 
 from __future__ import annotations

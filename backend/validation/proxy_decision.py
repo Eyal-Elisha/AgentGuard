@@ -1,9 +1,6 @@
-"""Parsing the optional fields of a `POST /api/proxy/decision` body.
-
-`validate_proxy_payload` has already checked the four required fields. These
-are the four optional ones, each defaulted, each rejected if malformed.
-Whether one was *provided* matters: an explicit environment or agent name must
-agree with the session it is attributed to, an omitted one is inherited.
+"""Parses the four optional fields of a decision request, each defaulted and each
+rejected if malformed. Whether one was provided matters: an explicit
+environment or agent name has to agree with the session.
 """
 
 from __future__ import annotations

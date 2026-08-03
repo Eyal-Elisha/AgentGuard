@@ -1,10 +1,6 @@
-"""`POST /api/proxy/decision` — the endpoint the mitmproxy addon blocks on.
-
-Every intercepted request that survives the proxy's filter chain arrives here,
-and the proxy holds the connection open until it answers, so this is the one
-route on the critical path of the user's browsing.
-
-The proxy's start/stop controls live in `proxy_control.py`.
+"""`POST /api/proxy/decision`, the endpoint the mitmproxy addon blocks on. The
+proxy holds the browser's connection open until it answers; the start/stop
+controls are in proxy_control.py.
 """
 
 from __future__ import annotations
@@ -92,10 +88,10 @@ def proxy_decision():
 def _attribute_to_session(decision_request: DecisionRequest) -> tuple[str, str | None]:
     """Settle which session, environment and agent this decision belongs to.
 
-    With no explicit `session_id` the request is attributed to whatever session
-    is currently open, and its own environment and agent name stand. With one,
-    the session is authoritative: any environment or agent the proxy did send
-    must agree with it, and anything it omitted is inherited.
+    Without an explicit session_id the request goes to whatever session is
+    open and its own environment and agent stand. With one, the session wins:
+    anything the proxy sent must agree with it, anything it omitted is
+    inherited.
     """
     if decision_request.session_id is None:
         return decision_request.environment, decision_request.agent_name

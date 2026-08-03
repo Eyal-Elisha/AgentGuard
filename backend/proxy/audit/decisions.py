@@ -1,8 +1,6 @@
-"""Persisting one decision: the event row, one row per rule, and a journal line.
-
-Every rule the engine considered is written out, including the ones that never
-ran, which keep a NULL score. That keeps a stored event replayable:
-you can tell "this rule found nothing" from "this rule was skipped".
+"""Persists one decision: the event row, one row per rule, and a journal line.
+Rules that never ran keep a NULL score, which is what keeps a stored event
+replayable.
 """
 
 from __future__ import annotations

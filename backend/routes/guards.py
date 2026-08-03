@@ -15,10 +15,9 @@ _REJECTION = "This endpoint is only available from a trusted local network clien
 def is_trusted_client(remote_addr: str | None) -> bool:
     """Loopback and RFC1918 addresses only.
 
-    The proxy runs on the same machine as the backend, so nothing outside the
-    local network has a legitimate reason to reach these endpoints. Private
-    ranges are allowed because the dashboard is often opened from another
-    device on the same LAN during development.
+    The proxy runs on the same machine as the backend, so nothing off the
+    local network needs these endpoints. Private ranges are allowed because
+    the dashboard is often opened from another device on the same LAN.
     """
     if not remote_addr:
         return False

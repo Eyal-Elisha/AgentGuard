@@ -1,12 +1,6 @@
-"""Turning a set of rule results into one risk score and one decision.
-
-Two strategies, picked by `proxy/rule_engine.py`:
-
-  weighted_average  the hand-calibrated default, always available
-  meta_classifier   a model over the rule scores, used when its artifact loads
-
-Without the artifact (a bare install, or tests without scikit-learn) the
-average takes over and behaves as it always did.
+"""Rule results in, one risk score and one decision out. Two strategies:
+weighted_average always works, meta_classifier takes over when its artifact
+loads.
 """
 
 from . import meta_classifier

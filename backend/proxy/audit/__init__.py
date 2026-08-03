@@ -1,9 +1,5 @@
-"""What the proxy records about the traffic it decided on.
-
-  journal    the encrypted append-only log every record ends up in
-  agents     canonical agent names
-  sessions   opening, resolving and closing a proxy session
-  decisions  persisting one decision and its per-rule analyses
+"""What the proxy records about the traffic it decided on: the encrypted journal,
+agent names, sessions, and decisions with their per-rule analyses.
 """
 
 from .agents import normalize_proxy_agent_name

@@ -1,6 +1,4 @@
-"""The lifetime of a proxy session.
-
-One run of the proxy for one agent in one environment. At most one may be open
+"""One run of the proxy for one agent in one environment. At most one may be open
 per (agent, environment), so starting a new one closes what it supersedes.
 """
 
@@ -26,12 +24,10 @@ def resolve_proxy_session_id(
 ) -> int:
     """The session id an inbound decision belongs to.
 
-    Routes call this *before* evaluation so the evaluator can load prior-event
-    context for the contextual rules, then reuse the same id when persisting.
-
-    Raises ValueError when an explicit `session_id` does not exist, is already
-    closed, or belongs to a different agent or environment — and when no
-    session is open at all, since an event has nowhere to go without one.
+    Called before evaluation so the evaluator can load prior-event context,
+    then reused when persisting. Raises ValueError if an explicit session_id
+    is missing, closed, or belongs to another agent or environment, and if no
+    session is open at all.
     """
     _ensure_storage_ready()
 

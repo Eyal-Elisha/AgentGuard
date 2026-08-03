@@ -1,8 +1,6 @@
-"""Every number the rule engine is calibrated on, kept in one file.
-
-The thresholds look low because risk is a weighted average, not a sum. One
-rule firing among twelve lands near 0.1, not 1.0. Re-derive with
-scripts/calibrate_thresholds.py before quoting these anywhere.
+"""Every number the rule engine is calibrated on. The thresholds look low because
+risk is a weighted average rather than a sum, so re-derive them with
+scripts/calibrate_thresholds.py before quoting them.
 """
 
 from __future__ import annotations

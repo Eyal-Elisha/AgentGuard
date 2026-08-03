@@ -1,6 +1,4 @@
-"""The two secrets AgentGuard will not start without.
-
-Both fail loudly when unset rather than falling back to a default, since a
+"""The JWT secret and the log encryption key. Both fail loudly when unset, since a
 default would mean either unsigned tokens or unencrypted logs.
 """
 

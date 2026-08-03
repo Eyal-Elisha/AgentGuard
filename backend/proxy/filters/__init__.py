@@ -1,7 +1,5 @@
-"""The predicates behind `should_forward` — one question per module.
-
-Each answers a single yes/no about a flow. `filter_requests.py` is what
-composes them into the order the addon actually applies.
+"""The predicates behind `should_forward`, one question per module.
+`filter_requests.py` composes them in the order the addon applies them.
 """
 
 from .browser_filter import is_browser_user_agent

@@ -1,8 +1,5 @@
-"""How the proxy acts on a verdict.
-
-`decision` holds the verdict type and the ways one gets built, `reasons` the
-text that explains it to a human, and `responses` the HTTP the browser
-actually receives.
+"""How the proxy acts on a verdict: `decision` is the verdict itself, `reasons`
+the text explaining it, `responses` the HTTP the browser receives.
 """
 
 from .decision import (

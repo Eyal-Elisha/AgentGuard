@@ -141,22 +141,10 @@ def levenshtein(a: str, b: str) -> int:
 def is_typosquat(candidate: str, target: str) -> bool:
     """Single-edit typosquat of a brand label, tuned for precision.
 
-    Plain Levenshtein on short or common labels collides with ordinary words and
-    unrelated brands (ring/bing, allure/azure, moen/msn, bbc/bac), and because
-    this rule feeds a block decision those collisions are expensive. We therefore
-    require *all* of:
-
-    - both labels at least 5 chars — short brands (bac, max, msn, bing, ebay …)
-      are the main false-positive generators, so they are not valid edit-distance
-      targets here;
-    - lengths within 1 of each other;
-    - exactly one edit (insert / delete / substitute);
-    - the same first character — real typos keep the recognizable brand start,
-      which rejects first-letter swaps like ``maple`` vs ``apple``.
-
-    Homoglyph / confusable impersonation (``paypa1`` → ``paypal``) is a separate,
-    higher-precision signal handled by the caller and is *not* gated by these
-    length rules.
+    Plain Levenshtein collides with ordinary words on short labels (ring/bing,
+    moen/msn, bbc/bac), so all of these are required: both labels 5+ chars,
+    lengths within 1, exactly one edit, same first character. Homoglyphs
+    (paypa1) are a separate check in the caller and are not gated by this.
     """
     if len(candidate) < 5 or len(target) < 5:
         return False

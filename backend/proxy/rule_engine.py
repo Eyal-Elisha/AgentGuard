@@ -35,10 +35,9 @@ _stage_b = StageBEvaluator()
 def warm_up() -> None:
     """Load the Stage B and meta models now rather than on the first request.
 
-    Both unpickle lazily, and that first load can outlast the proxy's decision
-    timeout, which fails closed on a good page. Called from create_app so
-    the proxy process, which wants only `get_custom_blacklist`, does not pay
-    for it. Skips Stage A, whose blacklist rule may hit the network.
+    That first load can outlast the proxy's decision timeout, which fails
+    closed on a good page. Called from create_app, so the proxy process does
+    not pay for models it never uses.
     """
     try:
         features = _extractor.extract(

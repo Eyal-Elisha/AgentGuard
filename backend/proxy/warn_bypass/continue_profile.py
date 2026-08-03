@@ -1,13 +1,6 @@
-"""What "Continue anyway" leaves behind once the token has been redeemed.
-
-Redeeming a token registers two short-lived allowances for the host:
-
-* the exact URL, once, so the document the 302 pointed at renders instead
-  of bouncing straight back into the interstitial.
-* a subresource window: a couple of minutes in which non-document GETs on
-  the same host also skip it, so the page can finish loading.
-
-Both live in process memory and are lost when mitmweb restarts.
+"""What redeeming a "Continue anyway" token allows: the exact URL once, plus a
+short window for the page's subresources. Both live in process memory and are
+lost when mitmweb restarts.
 """
 
 from __future__ import annotations
@@ -49,10 +42,9 @@ def register_continue_anyway(host: str, clean_url: str) -> None:
 def should_suppress_warn_interstitial(flow) -> bool:
     """Whether a WARN on this flow should skip the interstitial.
 
-    The exact-URL match is tried first and deliberately does not depend on
-    Fetch Metadata: real browsers send `sec-fetch-dest: empty` often enough
-    that trusting those headers alone would re-show the interstitial and put
-    the user back in the loop the redirect just broke.
+    The exact-URL match is tried first and does not depend on Fetch Metadata:
+    real browsers send `sec-fetch-dest: empty` often enough that trusting
+    those headers alone would put the user back in the warning loop.
     """
     if flow.request.method.upper() != "GET":
         return False

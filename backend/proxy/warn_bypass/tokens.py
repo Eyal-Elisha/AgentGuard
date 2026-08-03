@@ -1,9 +1,6 @@
-"""One-shot tokens minted for the interstitial's "Continue anyway" link.
-
-A token is valid for exactly one redemption on the host it was minted for.
-That is what stops the link from being reusable, shareable, or repayable after
-the user has moved on. State is in process memory: restarting mitmweb
-invalidates every outstanding token, which is the safe direction to fail.
+"""One-shot tokens for the "Continue anyway" link, each valid for a single
+redemption on the host it was minted for. State is in process memory, so a
+restart invalidates them all.
 """
 
 from __future__ import annotations

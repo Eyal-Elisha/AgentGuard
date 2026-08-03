@@ -1,9 +1,6 @@
-"""Canonical names for the browser agents AgentGuard sits in front of.
-
-The agent name arrives from an HTTP header, an environment variable or the
-dashboard, so it is untrusted text that ends up in a database column. It gets
-stripped of anything unusual, length-capped, and mapped onto one of the names
-the UI knows about.
+"""Canonical names for the browser agents AgentGuard sits in front of. The name
+arrives as untrusted text, so it is stripped, length-capped and mapped onto a
+name the UI knows.
 """
 
 from __future__ import annotations

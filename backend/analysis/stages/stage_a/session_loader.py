@@ -1,8 +1,6 @@
-"""Build a `SessionContext` snapshot from persisted session events.
-
-This module is the single boundary between the analysis layer and the SQLite
-storage layer for contextual rule evaluation. The contextual rules themselves
-remain pure functions over `SessionContext`.
+"""Builds a `SessionContext` from stored session events. The only place the
+analysis layer touches storage, which keeps the contextual rules pure
+functions.
 """
 
 from __future__ import annotations

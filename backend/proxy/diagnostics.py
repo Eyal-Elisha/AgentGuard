@@ -1,9 +1,6 @@
-"""Diagnostic output from inside mitmproxy.
-
-`proxy_launcher.py` redirects mitmweb's stdout to `.agentguard/mitmweb.log`, so
-printing is what actually reaches a file. `logging.info` does not: mitmproxy
-installs no INFO-level handler on the root logger by default and the message is
-dropped.
+"""Diagnostic output from inside mitmproxy. `print` rather than `logging.info`,
+because mitmweb's stdout is redirected to a file and no INFO-level handler is
+installed.
 """
 
 from __future__ import annotations

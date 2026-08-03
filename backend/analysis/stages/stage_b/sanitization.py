@@ -1,16 +1,6 @@
-"""Text extraction and sensitive-value sanitization for Stage B.
-
-The semantic classifiers operate on textual content drawn from the HTTPS
-response and the page presented to the agent. We pull from three places:
-
-* The visible page text (`dom.all_text_content`) and `<title>`.
-* Form metadata (input `name`/`id`/`type`/placeholder) — phishing pages and
-  prompt-injection sinks often expose intent through these tokens.
-* The raw HTML — re-parsed with BeautifulSoup so we strip `<script>` and
-  `<style>` blocks that would otherwise dominate the TF-IDF vector with noise.
-
-Sensitive values are redacted *before* the text leaves this module so neither
-the classifier nor the audit log ever sees user secrets or PII.
+"""Pulls the text Stage B classifies from the title, visible text, form tokens and
+stripped HTML. Secrets and PII are redacted here, before anything reaches the
+classifier or the log.
 """
 
 from __future__ import annotations

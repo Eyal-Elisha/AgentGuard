@@ -1,13 +1,6 @@
-"""POST a response (URL + response headers + HTML body) to the backend
-`/api/proxy/decision` endpoint so the full Stage A pipeline (DOM-dependent
-deterministic rules + session-aware contextual rules) runs on real browsing
-traffic.
-
-Unlike `request_decision.fetch_backend_decision`, the result here is observed
-*after* the response has been received from the upstream server. We do not
-rewrite the response based on it (the page is already in flight); the call
-exists so that AgentGuard's session/event history accumulates across pages,
-which is what the contextual rules need to fire.
+"""POSTs the response body to /api/proxy/decision so the DOM-dependent rules run
+on real traffic. The page is already in flight so nothing is rewritten; the
+call exists to build up the session history the contextual rules need.
 """
 
 from __future__ import annotations

@@ -1,8 +1,6 @@
-"""Append-only journal of everything the proxy decided.
-
-Records go to the audit logger configured in `backend.audit_logging`, which
-encrypts each line before it reaches disk. Keys are sorted so two runs that
-decided the same thing produce the same line.
+"""Append-only journal of every proxy decision, encrypted line by line by
+`backend.audit_logging`. Keys are sorted so two runs that decided the same
+thing produce the same line.
 """
 
 from __future__ import annotations

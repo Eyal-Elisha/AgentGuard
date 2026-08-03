@@ -1,8 +1,5 @@
-"""Styling shared by the Warn and Block interstitials.
-
-Both pages are the same dark layout with a different accent colour, so the
-layout rules live in `SHARED_CSS` and each page supplies only its palette (as
-CSS custom properties) plus the handful of rules unique to it.
+"""Styling shared by the two interstitials. `SHARED_CSS` holds the layout and each
+page supplies its own accent colour as CSS custom properties.
 """
 
 from __future__ import annotations
