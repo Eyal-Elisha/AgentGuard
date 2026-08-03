@@ -62,6 +62,11 @@ the backend. In order:
 7. Top-level navigations always pass.
 8. Anything left must survive the EasyPrivacy noise lists in `filters/noise/`.
 
+Step 8 is narrower than it looks. Steps 6 and 7 between them settle every GET —
+either it is a sub-resource and dropped, or it is a navigation and passed — so
+`is_noise` is only ever reached on a POST. Tracking GETs are dropped by
+`filters/relevance/telemetry.py`, not by the EasyPrivacy lists.
+
 **Prompt augmentation — `prompting/`.** For JSON request bodies, a fallback
 instruction is appended to the agent's prompt fields telling it to find a
 trusted alternative site rather than retrying a blocked one. This mutates the
