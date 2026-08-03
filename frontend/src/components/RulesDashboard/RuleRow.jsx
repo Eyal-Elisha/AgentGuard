@@ -1,13 +1,5 @@
 import { EMPTY_CELL_DISPLAY } from '../SessionsDashboard/sessionUtils.js';
 
-function formatWeight(value) {
-  if (typeof value !== 'number' || Number.isNaN(value)) return EMPTY_CELL_DISPLAY;
-  const s = String(value);
-  if (s.includes('e') || s.includes('E')) return value.toFixed(4);
-  const rounded = Math.round(value * 10000) / 10000;
-  return String(rounded);
-}
-
 export default function RuleRow({ rule, onToggleEnabled, pendingRuleCode }) {
   const hard = Boolean(rule.is_hard_block);
   const enabled = Boolean(rule.is_enabled);
@@ -20,7 +12,6 @@ export default function RuleRow({ rule, onToggleEnabled, pendingRuleCode }) {
       <td className={`rules-cell-description${desc == null ? ' cell-value-empty' : ''}`}>{desc == null ? EMPTY_CELL_DISPLAY : desc}</td>
       <td className="rules-cell-mono rules-cell-rule-type">{rule.rule_type ?? EMPTY_CELL_DISPLAY}</td>
       <td className="rules-cell-mono rules-cell-compute">{rule.compute_class ?? EMPTY_CELL_DISPLAY}</td>
-      <td className="rules-cell-mono rules-cell-numeric">{formatWeight(rule.weight)}</td>
       <td>
         <span className={`rules-badge ${hard ? 'rules-badge--hard-block' : 'rules-badge--neutral'}`}>{hard ? 'Yes' : 'No'}</span>
       </td>

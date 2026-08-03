@@ -89,14 +89,18 @@ class TestStageADecisions:
         assert result.decision == Decision.ALLOW
         assert not result.hard_block_triggered
 
-    def test_http_page_is_hard_blocked(self):
-        """Any HTTP connection must result in a BLOCK (hard block on Rule 2)."""
+    def test_http_page_is_soft_signal_not_hard_blocked(self):
+        """HTTP is no longer an automatic hard block. Auto-blocking every HTTP
+        page created a false-positive floor on benign HTTP pages, so it is now a
+        soft weighted signal (still fires, but the decision comes from the
+        aggregate score)."""
         features = make_features("http://example.com/login", HTML_PASSWORD_FORM)
         with patch(_BLACKLIST_MOCK, return_value=(False, "not listed")):
             result = StageAEvaluator().evaluate(features)
-        assert result.decision == Decision.BLOCK
-        assert result.hard_block_triggered
-        assert result.risk_score == 1.0
+        assert not result.hard_block_triggered
+        unenc = next(r for r in result.rule_results if r.rule_id == "unencrypted_connection")
+        assert unenc.triggered and unenc.score == 1.0
+        assert result.risk_score > 0.0
 
     def test_blacklisted_domain_is_hard_blocked(self):
         features = make_features("https://phishing-site.com/login", HTML_PASSWORD_FORM)
@@ -126,12 +130,18 @@ class TestStageADecisions:
         assert result.decision == Decision.BLOCK
         assert result.hard_block_triggered
 
-    def test_typosquat_is_hard_blocked(self):
+    def test_typosquat_is_detected_as_soft_signal(self):
+        """paypa1.com (a confusable of paypal) is still flagged by the
+        typosquatting rule, but as a soft weighted signal — it no longer hard
+        blocks. The old hard block fired on more benign than phishing pages, so
+        auto-blocking on it blocked legitimate sites."""
         features = make_features("https://paypa1.com/login", HTML_PASSWORD_FORM)
         with patch(_BLACKLIST_MOCK, return_value=(False, "not listed")):
             result = StageAEvaluator().evaluate(features)
-        assert result.decision == Decision.BLOCK
-        assert result.hard_block_triggered
+        assert not result.hard_block_triggered
+        typo = next((r for r in result.rule_results if r.rule_id == "typosquatting"), None)
+        assert typo is not None and typo.triggered and typo.score == 1.0
+        assert result.risk_score > 0.0
 
     def test_brand_mismatch_with_sensitive_fields_raises_score(self):
         """Brand mismatch + sensitive fields should produce a non-zero risk score."""
@@ -253,8 +263,9 @@ class TestStageAContextualRules:
         assert all(r.rule_type != RuleType.CONTEXTUAL for r in result.rule_results)
 
     def test_contextual_rules_skip_after_hard_block(self):
-        features = make_features("http://example.com/login", HTML_PASSWORD_FORM)
-        with patch(_BLACKLIST_MOCK, return_value=(False, "not listed")):
+        # Use a still-hard-blocking rule (domain_blacklist) now that HTTP is soft.
+        features = make_features("https://phishing-site.com/login", HTML_PASSWORD_FORM)
+        with patch(_BLACKLIST_MOCK, return_value=(True, "PhishTank")):
             result = StageAEvaluator().evaluate(
                 features,
                 session=self._session_with_warned_revisits(),

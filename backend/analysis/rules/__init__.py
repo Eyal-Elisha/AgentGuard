@@ -2,7 +2,7 @@
 
   models   the types a rule and its result are expressed in
   tuning   every calibrated number — thresholds, weights, per-rule config
-  catalog  the sixteen rules themselves
+  catalog  the eighteen rules themselves
 
 The rest of the codebase imports from `backend.analysis.rules` directly; the
 split is for reading, not for addressing.
@@ -30,6 +30,8 @@ from .tuning import (
     CODE_DISABLED_RULES,
     CONTEXTUAL_RULE_CONFIG,
     HIGH_RISK_THRESHOLD,
+    META_HIGH_RISK_THRESHOLD,
+    META_WARN_THRESHOLD,
     RULE_WEIGHTS,
     SEMANTIC_RULE_CONFIG,
     STAGE_B_HIGH,
@@ -49,6 +51,8 @@ __all__ = [
     "Decision",
     "EvaluationResult",
     "HIGH_RISK_THRESHOLD",
+    "META_HIGH_RISK_THRESHOLD",
+    "META_WARN_THRESHOLD",
     "PriorEvent",
     "RULES_BY_ID",
     "RULE_WEIGHTS",

@@ -6,7 +6,13 @@ from datetime import datetime
 from typing import Optional
 
 from backend.custom_blacklist import custom_blacklist_file_path, load_custom_blacklist_file
-from backend.analysis.rules import EvaluationResult
+from backend.analysis import meta_classifier
+from backend.analysis.rules import (
+    Decision,
+    EvaluationResult,
+    META_HIGH_RISK_THRESHOLD,
+    META_WARN_THRESHOLD,
+)
 from backend.analysis.stages.stage_a import StageAEvaluator
 from backend.analysis.scoring import aggregate_risk_score, decide
 from backend.analysis.stages.stage_a.session_loader import build_context
@@ -32,12 +38,42 @@ _stage_a = StageAEvaluator(custom_blacklist=_CUSTOM_BLACKLIST)
 _stage_b = StageBEvaluator()
 
 
+def _warm_up() -> None:
+    """Pre-load the Stage B classifiers and meta-classifier at import time so the
+    first real request does not pay the cold model-load cost — which on the
+    single-threaded dev server can exceed the proxy's decision timeout and trip
+    the fail-closed block. Never raises: warmup must not break startup. Avoids
+    Stage A on purpose (its blacklist rule may hit the network)."""
+    try:
+        features = _extractor.extract(
+            url="https://warmup.invalid/",
+            method="GET",
+            headers={"Content-Type": "text/html"},
+            body=b"<html><body>warmup text to load the semantic models</body></html>",
+        )
+        combined = _stage_b.evaluate(features, enabled_rules={})
+        meta_classifier.score(combined)
+    except Exception:  # pragma: no cover - warmup is best-effort
+        pass
+
+
+_warm_up()
+
+
 def _rule_enablement_map() -> dict[str, bool]:
     try:
         rows = store.rules_list_asc()
     except Exception:
         return {}
     return {str(row["rule_code"]): bool(row["is_enabled"]) for row in rows}
+
+
+def _meta_decision(prob: float) -> Decision:
+    if prob >= META_HIGH_RISK_THRESHOLD:
+        return Decision.BLOCK
+    if prob >= META_WARN_THRESHOLD:
+        return Decision.WARN
+    return Decision.ALLOW
 
 
 def evaluate_http_payload(
@@ -67,13 +103,31 @@ def evaluate_http_payload(
         enabled_rules=enablement,
     )
 
-    if not stage_a_result.stage_b_required or stage_a_result.hard_block_triggered:
+    if stage_a_result.hard_block_triggered:
+        return stage_a_result
+
+    meta_on = meta_classifier.is_available()
+
+    # With the trained meta-classifier we always run Stage B so its feature
+    # vector is complete (it was trained with semantic scores present). Without
+    # it, keep the cheap gate: skip Stage B when Stage A did not request it.
+    if not meta_on and not stage_a_result.stage_b_required:
         return stage_a_result
 
     semantic_results = _stage_b.evaluate(features, enabled_rules=enablement)
     combined = stage_a_result.rule_results + semantic_results
-    final_score = aggregate_risk_score(combined)
 
+    meta_prob = meta_classifier.score(combined) if meta_on else None
+    if meta_prob is not None:
+        return EvaluationResult(
+            decision=_meta_decision(meta_prob),
+            risk_score=round(meta_prob, 4),
+            rule_results=combined,
+            hard_block_triggered=False,
+            stage_b_required=False,
+        )
+
+    final_score = aggregate_risk_score(combined)
     return EvaluationResult(
         decision=decide(final_score),
         risk_score=round(final_score, 4),

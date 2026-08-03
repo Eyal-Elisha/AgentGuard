@@ -139,20 +139,29 @@ def levenshtein(a: str, b: str) -> int:
 
 
 def is_typosquat(candidate: str, target: str) -> bool:
-    """Heuristic: Levenshtein alone is too loose on short labels (e.g. forter vs force).
+    """Single-edit typosquat of a brand label, tuned for precision.
 
-    - Distance 1: treat as typosquat (single typo / insertion / deletion).
-    - Distance 2: only if first and last characters match the target — catches swaps and
-      middle edits (papyal vs paypal) while rejecting many unrelated 2-edit collisions.
+    Plain Levenshtein on short or common labels collides with ordinary words and
+    unrelated brands (ring/bing, allure/azure, moen/msn, bbc/bac), and because
+    this rule feeds a block decision those collisions are expensive. We therefore
+    require *all* of:
+
+    - both labels at least 5 chars — short brands (bac, max, msn, bing, ebay …)
+      are the main false-positive generators, so they are not valid edit-distance
+      targets here;
+    - lengths within 1 of each other;
+    - exactly one edit (insert / delete / substitute);
+    - the same first character — real typos keep the recognizable brand start,
+      which rejects first-letter swaps like ``maple`` vs ``apple``.
+
+    Homoglyph / confusable impersonation (``paypa1`` → ``paypal``) is a separate,
+    higher-precision signal handled by the caller and is *not* gated by these
+    length rules.
     """
-    if len(candidate) < 3 or len(target) < 3:
+    if len(candidate) < 5 or len(target) < 5:
         return False
-    if abs(len(candidate) - len(target)) > 2:
+    if abs(len(candidate) - len(target)) > 1:
         return False
-    d = levenshtein(candidate, target)
-    if d <= 0 or d > 2:
+    if candidate[0] != target[0]:
         return False
-    if d == 1:
-        return True
-    # d == 2
-    return candidate[0] == target[0] and candidate[-1] == target[-1]
+    return levenshtein(candidate, target) == 1

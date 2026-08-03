@@ -9,7 +9,7 @@ const host = import.meta.env.VITE_PROXY_HOST?.trim() || '127.0.0.1';
 const port = import.meta.env.VITE_PROXY_PORT?.trim() || '8080';
 
 export default function Guard() {
-  const { isProxyActive, toggleProxy, isPassiveMode, togglePassiveMode } = useProxy();
+  const { isProxyActive, toggleProxy, isProxyPending, proxyPendingAction, isPassiveMode, togglePassiveMode } = useProxy();
   const { selectedAgent, setSelectedAgent } = useAgent();
 
   return (
@@ -28,16 +28,26 @@ export default function Guard() {
         </div>
 
         <div className="guard-power-block">
-          <button
-            type="button"
-            className={`guard-power-button ${isProxyActive ? 'guard-power-button--on' : 'guard-power-button--off'}`}
-            onClick={() => toggleProxy(selectedAgent)}
-            aria-pressed={isProxyActive}
-            aria-label={isProxyActive ? 'Turn protection off' : 'Turn protection on'}
-            data-tour="power"
-          >
-            <PowerIcon className="guard-power-icon" />
-          </button>
+          <div className="guard-power-button-wrap">
+            <p
+              className={`guard-power-pending ${proxyPendingAction ? `guard-power-pending--${proxyPendingAction}` : ''}`}
+              aria-live="polite"
+            >
+              {proxyPendingAction === 'stop' ? 'Stopping…' : proxyPendingAction === 'start' ? 'Starting…' : ''}
+            </p>
+            <button
+              type="button"
+              className={`guard-power-button ${isProxyActive ? 'guard-power-button--on' : 'guard-power-button--off'} ${proxyPendingAction ? `guard-power-button--${proxyPendingAction}` : ''}`}
+              onClick={() => toggleProxy(selectedAgent)}
+              aria-pressed={isProxyActive}
+              aria-label={isProxyActive ? 'Turn protection off' : 'Turn protection on'}
+              disabled={isProxyPending}
+              aria-busy={isProxyPending}
+              data-tour="power"
+            >
+              <PowerIcon className="guard-power-icon" />
+            </button>
+          </div>
         </div>
 
         <GuardStatus

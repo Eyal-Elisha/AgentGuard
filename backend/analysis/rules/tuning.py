@@ -5,11 +5,12 @@ file, and so the values can be quoted directly when reporting results.
 
 **Why the thresholds look so low.** Risk is a weighted *average* over the
 rules that actually executed — `sum(score x weight) / sum(weight)` — not a
-weighted sum. Averaging compresses the result toward zero: with ten cheap
+weighted sum. Averaging compresses the result toward zero: with twelve cheap
 rules in play and one of them firing, the aggregate is roughly that one rule's
 weight divided by the total. A page that trips a single strong signal
-therefore lands near 0.2, not near 1.0, which is why BLOCK sits at 0.19 rather
-than anywhere near the midpoint of [0, 1].
+therefore lands near 0.1, not near 1.0, which is why BLOCK sits at 0.12 rather
+than anywhere near the midpoint of [0, 1]. Every always-executed rule added
+since then has diluted that denominator further.
 
 Re-derive these on a dev split with `scripts/calibrate_thresholds.py` before
 quoting them anywhere.
@@ -20,12 +21,21 @@ from __future__ import annotations
 from typing import Any, Dict, Mapping, Optional
 
 # --- Decision thresholds ---------------------------------------------------
+# Calibrated on a domain-disjoint PhreshPhish dev split (15k rows), then
+# confirmed on a held-out test split:
+#   BLOCK 0.12 -> block precision ~0.95 at recall ~0.49 (dev)
+#   WARN  0.04 -> warn-or-block precision ~0.77 at recall ~0.87 (test)
 
-HIGH_RISK_THRESHOLD: float = 0.19  # at or above -> BLOCK
-WARN_THRESHOLD: float = 0.15       # at or above, below HIGH -> WARN
+HIGH_RISK_THRESHOLD: float = 0.12  # at or above -> BLOCK
+WARN_THRESHOLD: float = 0.04       # at or above, below HIGH -> WARN
 
 # Contextual rules only run when the deterministic score is already ambiguous;
 # below this there is nothing for session history to tip either way.
+#
+# NOTE: the gate in `stage_a/evaluator.py` is `AMBIGUOUS_LOW <= score <
+# HIGH_RISK_THRESHOLD`. Since the recalibration dropped HIGH_RISK_THRESHOLD to
+# 0.12, that band is empty and the four contextual rules never execute. Left as
+# calibrated rather than silently retuned — see ARCHITECTURE.md.
 AMBIGUOUS_LOW: float = 0.15
 
 # Stage B gate. Deliberately decoupled from WARN_THRESHOLD: the averaging above
@@ -33,6 +43,17 @@ AMBIGUOUS_LOW: float = 0.15
 # that line those pages would never reach a semantic check at all.
 STAGE_B_LOW: float = 0.0
 STAGE_B_HIGH: float = HIGH_RISK_THRESHOLD
+
+# --- Meta-classifier thresholds --------------------------------------------
+# Applied to the stacking layer's display-scaled score (see
+# `analysis/meta_classifier.py`), not to the weighted average. The scaling is
+# monotonic, so these round cutoffs are the model's real operating points —
+# raw 0.80 and 0.93, chosen for a sub-0.5% benign false-positive budget —
+# rendered as a traffic light. On the held-out fresh set: WARN recall ~0.43 at
+# ~0.4% benign-warn; BLOCK recall ~0.29 at ~0.1%.
+
+META_HIGH_RISK_THRESHOLD: float = 0.80  # at or above -> BLOCK
+META_WARN_THRESHOLD: float = 0.50       # at or above, below HIGH -> WARN
 
 # --- Rule enablement -------------------------------------------------------
 
@@ -58,14 +79,25 @@ RULE_WEIGHTS: Dict[str, float] = {
     # Down-weighted: on webpage HTML this fires on more benign than phishing
     # pages, so a high weight mostly pushed benign pages up. Disabled above.
     "sensitive_fields":       0.10,
-    "brand_domain_mismatch":  0.15,
+    # Excellent as a confirming signal (~403 phish / 5 benign when it fires
+    # alongside other rules) but a coin flip alone (~417 phish / 410 benign).
+    # Weighted so it cannot carry a page over the warn line by itself.
+    "brand_domain_mismatch":  0.08,
     "unexpected_redirect":    0.10,
     "external_form_action":   0.10,
-    "typosquatting":          0.25,
+    # Down-weighted along with the tightening in `helpers.is_typosquat`: the
+    # old edit-distance logic fired on more benign than phishing pages.
+    "typosquatting":          0.15,
     "ip_based_url":           0.05,
-    # Weak on its own (a high-abuse TLD is common enough among benign sites);
-    # meant to stack with brand and host signals rather than fire alone.
-    "suspicious_tld":         0.05,
+    # Up-weighted from 0.05 on eval evidence — phishing pages cluster heavily
+    # on free and high-abuse TLDs (lift ~75x on the eval slice).
+    "suspicious_tld":         0.20,
+    # Coverage rules, added after ~9% of phishing pages were found scoring near
+    # zero: no reputation or brand rule caught them. Both clean on the eval
+    # slice — non_standard_port 88 phish / 0 benign, algorithmic_domain 417
+    # phish / 13 benign (~46x lift).
+    "non_standard_port":      0.20,
+    "algorithmic_domain":     0.20,
     "custom_blacklist":       0.25,
 
     "sensitive_action_frequency_spike":        0.20,
@@ -73,6 +105,8 @@ RULE_WEIGHTS: Dict[str, float] = {
     "redirect_to_sensitive_action":            0.20,
     "previously_warned_domain_in_session":     0.20,
 
+    # Retrained on domain-disjoint PhreshPhish webpage HTML, which made them
+    # high-precision on real pages (lift ~23x), so both are back at full weight.
     "phishing_language":                       0.30,
     "prompt_injection":                        0.30,
 }

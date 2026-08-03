@@ -1,4 +1,4 @@
-"""The rule catalogue — the sixteen rules AgentGuard can run.
+"""The rule catalogue — the eighteen rules AgentGuard can run.
 
 Grouped by type, because that is also the order they execute in: the
 deterministic rules first, the contextual ones only when the deterministic
@@ -51,18 +51,24 @@ def _semantic(rule_id: str, description: str) -> RuleDefinition:
 
 DETERMINISTIC_RULES: List[RuleDefinition] = [
     _deterministic("domain_blacklist", "Domain in Popular Blacklist", hard_block=True),
-    _deterministic(
-        "unencrypted_connection", "Unencrypted or Invalid Secure Connection", hard_block=True
-    ),
+    # No longer a hard block: auto-blocking every plain-HTTP page left an
+    # irreducible ~1% false-positive floor, which caps precision at realistic
+    # base rates. Credentials over HTTP still block through the aggregate,
+    # because the brand and form rules stack on top of this one.
+    _deterministic("unencrypted_connection", "Unencrypted or Invalid Secure Connection"),
     # Switched off via CODE_DISABLED_RULES — fires on more benign than
     # phishing pages until it is recalibrated.
     _deterministic("sensitive_fields", "Sensitive Fields Present"),
     _deterministic("brand_domain_mismatch", "Brand Domain Mismatch"),
     _deterministic("unexpected_redirect", "Unexpected Redirect During Sensitive Interaction"),
     _deterministic("external_form_action", "External Form Action"),
-    _deterministic("typosquatting", "Typosquatting Domain Detection", hard_block=True),
+    # No longer a hard block either: it fired on more benign than phishing
+    # pages, so blocking on it alone took down legitimate sites.
+    _deterministic("typosquatting", "Typosquatting Domain Detection"),
     _deterministic("ip_based_url", "IP Based URL Usage"),
     _deterministic("suspicious_tld", "High-Abuse Top-Level Domain"),
+    _deterministic("non_standard_port", "Non-Standard Port"),
+    _deterministic("algorithmic_domain", "Algorithmically-Generated Domain"),
     _deterministic("custom_blacklist", "Custom Local Blacklist", hard_block=True),
 ]
 
