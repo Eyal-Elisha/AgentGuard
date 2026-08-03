@@ -103,9 +103,26 @@ class SessionContext:
 # Scoring thresholds (to be calibrated during model evaluation phase)
 # ---------------------------------------------------------------------------
 
-HIGH_RISK_THRESHOLD: float = 0.19   # Score above this -> BLOCK
-WARN_THRESHOLD: float = 0.15        # Score above this (and below HIGH) -> WARN
+# Calibrated on a domain-disjoint PhreshPhish dev split (15k rows) via
+# scripts/calibrate_thresholds.py, then confirmed on a held-out test split.
+# Retuned across the retrains (both semantic classifiers on HTML) and the two
+# coverage rules; the added always-executed rules dilute the weighted-average
+# denominator, so the absolute cutoffs sit lower than a naive reading suggests:
+#   BLOCK 0.12 -> block precision ~0.95 at recall ~0.49 (dev)
+#   WARN  0.04 -> warn-or-block precision ~0.77 at recall ~0.87 (test)
+HIGH_RISK_THRESHOLD: float = 0.12   # Score at/above this -> BLOCK
+WARN_THRESHOLD: float = 0.04        # Score at/above this (and below HIGH) -> WARN
 AMBIGUOUS_LOW: float = 0.15         # Deterministic score below this -> skip contextual rules
+
+# Thresholds for the trained meta-classifier path (analysis.meta_classifier),
+# on its display-scaled score (traffic light: green < 0.5, yellow warn 0.5-0.8,
+# red block > 0.8). meta_classifier._to_risk maps the model's real operating
+# points (raw 0.80 warn / 0.93 block, chosen for a sub-0.5% benign false-positive
+# budget) onto these round cutoffs, so decisions are unchanged. On the held-out
+# fresh set: WARN -> recall ~0.43 at benign-warn ~0.4%; BLOCK -> recall ~0.29 at
+# benign-warn ~0.1%.
+META_HIGH_RISK_THRESHOLD: float = 0.80   # Risk at/above this -> BLOCK
+META_WARN_THRESHOLD: float = 0.50        # Risk at/above this -> WARN
 # Stage B (semantic) gate. Decoupled from WARN_THRESHOLD so the expensive
 # classifier still runs on weak-but-non-zero pages that the weighted average
 # keeps below the warn line — otherwise a single soft signal never reaches a
@@ -137,14 +154,27 @@ RULE_WEIGHTS: Dict[str, float] = {
     # Down-weighted: on webpage HTML this fired on more benign than phishing
     # pages (negative lift), so a high weight mostly pushed benign pages up.
     "sensitive_fields":       0.10,
-    "brand_domain_mismatch":  0.15,
+    # Excellent as a confirming signal (fires ~403 phish / 5 benign when stacked
+    # with other rules) but a coin flip on its own (~417 phish / 410 benign as
+    # the sole trigger). Down-weighted so it cannot push a page over the warn
+    # line by itself, while still boosting pages where other signals agree.
+    "brand_domain_mismatch":  0.08,
     "unexpected_redirect":    0.10,
     "external_form_action":   0.10,
-    "typosquatting":          0.25,
+    # Down-weighted and de-hard-blocked: the old edit-distance logic fired on
+    # more benign than phishing pages (negative lift) and auto-blocked legit
+    # sites. Tightened in helpers.is_typosquat; kept as a soft signal.
+    "typosquatting":          0.15,
     "ip_based_url":           0.05,
-    # Weak standalone signal (high-abuse TLD); meant to stack with brand/host
-    # signals rather than fire alone.
-    "suspicious_tld":         0.05,
+    # Strong signal on PhreshPhish (lift ~75× on the eval slice): phishing pages
+    # cluster on free/high-abuse TLDs. Up-weighted from 0.05 accordingly.
+    "suspicious_tld":         0.20,
+    # Coverage rules for phishing pages no reputation/brand rule catches (added
+    # after ~9% of phish were found scoring near-zero). Both clean on the eval
+    # slice: non_standard_port 88 phish / 0 benign; algorithmic_domain 417
+    # phish / 13 benign (~46x lift).
+    "non_standard_port":      0.20,
+    "algorithmic_domain":     0.20,
     "custom_blacklist":       0.25,
     # Contextual rules (calibration knobs — tune after observing real traffic)
     "sensitive_action_frequency_spike":        0.20,
@@ -152,6 +182,9 @@ RULE_WEIGHTS: Dict[str, float] = {
     "redirect_to_sensitive_action":            0.20,
     "previously_warned_domain_in_session":     0.20,
     # Semantic rules (Stage B — TF-IDF + Logistic Regression, with heuristic fallback)
+    # Retrained on domain-disjoint PhreshPhish webpage HTML (via
+    # scripts/build_semantic_trainset.py): now high-precision on pages
+    # (lift ~23×, fires ~695 phish / 44 benign), so restored to full weight.
     "phishing_language":                       0.30,
     "prompt_injection":                        0.30,
 }
@@ -208,11 +241,16 @@ DETERMINISTIC_RULES: List[RuleDefinition] = [
         RuleType.DETERMINISTIC, ComputeClass.CHEAP,
         RULE_WEIGHTS["domain_blacklist"], hard_block=True,
     ),
+    # hard_block removed: auto-blocking every HTTP page created an irreducible
+    # ~1% false-positive floor (benign HTTP pages blocked regardless of score),
+    # which caps precision at realistic (~1%) phishing base rates. Now a strong
+    # soft signal — credential-over-HTTP still blocks via the aggregate because
+    # brand/form rules stack on top of it.
     RuleDefinition(
         "unencrypted_connection",
         "Unencrypted or Invalid Secure Connection",
         RuleType.DETERMINISTIC, ComputeClass.CHEAP,
-        RULE_WEIGHTS["unencrypted_connection"], hard_block=True,
+        RULE_WEIGHTS["unencrypted_connection"], hard_block=False,
     ),
     # Disabled in CODE_DISABLED_RULES — negative lift on webpage HTML until recalibrated.
     RuleDefinition(
@@ -239,11 +277,13 @@ DETERMINISTIC_RULES: List[RuleDefinition] = [
         RuleType.DETERMINISTIC, ComputeClass.CHEAP,
         RULE_WEIGHTS["external_form_action"], hard_block=False,
     ),
+    # hard_block removed: the rule fired on more benign than phishing pages, so
+    # auto-blocking on it blocked legitimate sites. Now a soft weighted signal.
     RuleDefinition(
         "typosquatting",
         "Typosquatting Domain Detection",
         RuleType.DETERMINISTIC, ComputeClass.CHEAP,
-        RULE_WEIGHTS["typosquatting"], hard_block=True,
+        RULE_WEIGHTS["typosquatting"], hard_block=False,
     ),
     RuleDefinition(
         "ip_based_url",
@@ -256,6 +296,18 @@ DETERMINISTIC_RULES: List[RuleDefinition] = [
         "High-Abuse Top-Level Domain",
         RuleType.DETERMINISTIC, ComputeClass.CHEAP,
         RULE_WEIGHTS["suspicious_tld"], hard_block=False,
+    ),
+    RuleDefinition(
+        "non_standard_port",
+        "Non-Standard Port",
+        RuleType.DETERMINISTIC, ComputeClass.CHEAP,
+        RULE_WEIGHTS["non_standard_port"], hard_block=False,
+    ),
+    RuleDefinition(
+        "algorithmic_domain",
+        "Algorithmically-Generated Domain",
+        RuleType.DETERMINISTIC, ComputeClass.CHEAP,
+        RULE_WEIGHTS["algorithmic_domain"], hard_block=False,
     ),
     RuleDefinition(
         "custom_blacklist",
