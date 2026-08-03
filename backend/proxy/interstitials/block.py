@@ -1,10 +1,8 @@
 """The Block interstitial — shown when AgentGuard hard-blocks a navigation.
 
-This is the Warn page's terminal counterpart: same layout, red accent, and no
-"Continue anyway" path. The page is deliberately generic, so any block source
-(custom blacklist, a hard-block rule, an aggregate score over the threshold)
-can render it by passing a short `reason` and, when available, the backend
-evaluation whose triggered rules are then listed instead.
+The Warn page's terminal counterpart: same layout, red accent, no way through.
+Generic on purpose — any block source renders it by passing a short `reason`
+and, where there is one, the evaluation whose triggered rules get listed.
 """
 
 from __future__ import annotations

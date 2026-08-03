@@ -2,17 +2,12 @@
 
 Redeeming a token registers two short-lived allowances for the host:
 
-* **the exact URL**, once — the first main-document GET to the URL the 302
-  pointed at may return WARN from the backend without showing the interstitial
-  again, so the real page renders instead of bouncing straight back into it.
-* **a subresource window** — for a couple of minutes, non-document GETs on the
-  same host (scripts, images, XHR) also skip the interstitial, so the page can
-  finish loading.
+* **the exact URL**, once — so the document the 302 pointed at renders instead
+  of bouncing straight back into the interstitial.
+* **a subresource window** — a couple of minutes in which non-document GETs on
+  the same host also skip it, so the page can finish loading.
 
-Neither suppresses evaluation. The backend is consulted for every request
-either way, events are still recorded and contextual rules still see the
-history; only the warning UI is held back. Both stores live in process memory
-and are lost when mitmweb restarts.
+Both live in process memory and are lost when mitmweb restarts.
 """
 
 from __future__ import annotations

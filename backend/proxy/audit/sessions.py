@@ -1,9 +1,7 @@
 """The lifetime of a proxy session.
 
-A session spans one run of the proxy for one agent in one environment. Events
-hang off it, and the contextual rules read their history from it, so exactly
-one session must be open per (agent, environment) pair at a time — starting a
-new one closes whatever it supersedes.
+One run of the proxy for one agent in one environment. At most one may be open
+per (agent, environment), so starting a new one closes what it supersedes.
 """
 
 from __future__ import annotations

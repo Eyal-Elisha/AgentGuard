@@ -1,30 +1,11 @@
 """A trained model over the rule scores, used instead of the weighted average.
 
-Where `weighted_average` gives every rule a fixed weight and averages, this
-takes the whole vector of rule scores as features and returns a learned
-probability. It can therefore use *combinations* — a brand mismatch matters far
-more when the TLD is also suspicious — which a fixed weighting cannot express.
-
-It is optional. `score()` returns None when no artifact is present and the
-caller falls back to the average. That is what happens on a bare install: the
-pickle needs scikit-learn, which not every environment has.
+Unlike a fixed weighting it can read combinations, which is why it wins. It is
+optional: `score()` returns None with no artifact and the caller falls back.
 
 The artifact is `analysis/data/meta_classifier.pkl`, holding
-`{"model": estimator, "features": [rule_id, ...]}`. `features` is the column
-order the model was trained on, so it — not the rule catalogue — decides how
-the vector is laid out. The shipped one has fourteen columns: the eleven
-deterministic rules that can run (`sensitive_fields` is disabled in code), the
-two semantic rules, and a synthetic `_hard_block` flag. The four contextual
-rules are absent because they never execute — see `rules/tuning.py`.
-
-`_hard_block` is always 0.0 here, since a hard block returns before the
-meta-classifier is consulted. It is in the vector because the training features
-came from `scripts/build_rule_features.py`, which scores every page including
-the hard-blocked ones.
-
-The artifact ships pre-built and the repo cannot currently regenerate it:
-`build_rule_features.py` produces the feature vectors and
-`train_meta_classifier.py` runs the bake-off, but neither writes the pickle.
+`{"model": estimator, "features": [rule_id, ...]}`. It ships pre-built and no
+script here regenerates it — `train_meta_classifier.py` only runs the bake-off.
 """
 
 from __future__ import annotations
@@ -53,8 +34,7 @@ _load_attempted = False
 
 
 def _load() -> None:
-    """Read the artifact once. A missing or unreadable one leaves the model
-    None, which is the signal to fall back — never an exception."""
+    """Read the artifact once. Failure leaves the model None — never raises."""
     global _model, _feature_order, _load_attempted
     _load_attempted = True
     if not _ARTIFACT.exists():
@@ -77,11 +57,9 @@ def is_available() -> bool:
     return _model is not None
 
 
-# The rescaling described in `rules.tuning`, written as the four points it
-# passes through: raw model probability on the left, displayed risk on the
-# right. It is linear between any two, which keeps it monotonic — and monotonic
-# is the only property that matters here, because it is what guarantees the
-# rescaling moves no decision.
+# The rescaling from `rules.tuning`, as the points it passes through: raw
+# probability -> displayed risk. Linear between any two, so monotonic, so it
+# moves no decision.
 _ANCHORS = (
     (0.0, 0.0),
     (META_RAW_WARN, META_WARN_THRESHOLD),
@@ -101,8 +79,7 @@ def _to_risk(raw: float) -> float:
 
 
 def _feature_vector(results: Sequence[RuleResult]) -> List[float]:
-    """Rule scores in the order the model was trained on. A rule that did not
-    run counts as 0.0, which is how the training features were built too."""
+    """Rule scores in training column order; a rule that did not run counts 0.0."""
     by_id = {r.rule_id: (float(r.score) if r.score is not None else 0.0) for r in results}
     return [by_id.get(rule_id, 0.0) for rule_id in _feature_order]
 

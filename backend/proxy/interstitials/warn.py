@@ -1,15 +1,8 @@
 """The Warn interstitial — shown when a navigation is flagged but not blocked.
 
-The page lists the rules that triggered and offers two ways out:
-
-  * "Go back to safety" navigates to the AgentGuard dashboard.
-  * "Continue anyway" is a plain link to `originalUrl?_agentguard_bypass=<token>`.
-    The proxy validates and consumes the token, registers a short-lived
-    continue profile for that navigation (see `warn_bypass.py`), and
-    302-redirects to the clean URL so the token never lingers in the address bar.
-
-The bypass is entirely server-side — no cookies, no client state — which is
-what makes it survive the HTTPS-via-MITM setup the proxy runs in.
+The page lists the triggered rules and offers two ways out: "Go back to safety"
+to the dashboard, and "Continue anyway" — a plain link carrying a one-shot
+token, redeemed by `warn_bypass/`. No cookies, no client state.
 """
 
 from __future__ import annotations

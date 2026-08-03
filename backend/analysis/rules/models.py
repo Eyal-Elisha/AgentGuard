@@ -1,9 +1,4 @@
-"""The vocabulary the rule engine is written in.
-
-Nothing here evaluates anything: these are the types that a rule, its result,
-and the session it ran against are expressed as. Both stages, the storage
-layer and the proxy all speak in terms of them.
-"""
+"""The types a rule, its result, and its session context are expressed as."""
 
 from __future__ import annotations
 
@@ -20,11 +15,7 @@ class RuleType(str, Enum):
 
 
 class ComputeClass(str, Enum):
-    """What a rule costs to run — the basis for the two-stage split.
-
-    Stage A runs every CHEAP rule; the EXPENSIVE ones are held back for Stage B
-    and only run when Stage A leaves the verdict undecided.
-    """
+    """What a rule costs — Stage A runs the CHEAP ones, Stage B the rest."""
 
     CHEAP = "cheap"
     EXPENSIVE = "expensive"
@@ -52,11 +43,8 @@ class RuleDefinition:
 class RuleResult:
     """What one rule concluded about one request.
 
-    A `score` of None means the rule did not run — because it was disabled, its
-    preconditions were not met, or a hard block short-circuited the stage. That
-    is distinct from a score of 0.0, which means the rule ran and found
-    nothing, and the difference is preserved all the way into the
-    `rules_analysis` table as a NULL.
+    `score` None means the rule did not run; 0.0 means it ran and found
+    nothing. The difference is kept as a NULL in `rules_analysis`.
     """
 
     rule_id: str
@@ -80,11 +68,8 @@ class EvaluationResult:
 
 @dataclass
 class PriorEvent:
-    """One event already recorded in the current session.
-
-    Deliberately narrower than the `events` row it is built from, so the
-    analysis layer does not depend on the storage schema.
-    """
+    """One recorded event, narrower than the `events` row it is built from so
+    the analysis layer does not depend on the storage schema."""
 
     timestamp: datetime
     host: str
@@ -94,13 +79,8 @@ class PriorEvent:
 
 @dataclass
 class SessionContext:
-    """The session history that contextual rules reason over.
-
-    `current_event_timestamp` and `current_event_host` describe the request
-    being evaluated right now, which is not persisted yet. `prior_events` holds
-    the events already stored for the same session, oldest first, none of them
-    later than the current one.
-    """
+    """Session history for the contextual rules. The `current_event_*` fields
+    describe the request being evaluated; `prior_events` is oldest first."""
 
     current_event_timestamp: Optional[datetime] = None
     current_event_host: str = ""

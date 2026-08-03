@@ -1,20 +1,13 @@
 """Letting the user past a Warn without putting them in a redirect loop.
 
-Cookies are unreliable in an HTTPS-via-MITM setup, so none are used. The flow
-is entirely server-side, in two halves:
+Cookies are unreliable in an HTTPS-via-MITM setup, so the flow is entirely
+server-side, in two halves:
 
-  tokens            the interstitial's "Continue anyway" link points at
-                    `originalUrl?_agentguard_bypass=<token>`. The proxy
-                    validates and consumes the token, then 302s to the clean
-                    URL so it never lingers in the address bar.
+  tokens            "Continue anyway" points at `url?_agentguard_bypass=<tok>`;
+                    the proxy consumes the token and 302s to the clean URL.
+  continue_profile  what redeeming one then allows through.
 
-  continue_profile  redeeming a token allows the one document load that
-                    follows, plus a short window for the page's subresources,
-                    to skip the interstitial.
-
-The backend is consulted on every request throughout — events are recorded and
-contextual rules still see the session history. Only the warning UI is
-suppressed, and only for those narrow cases.
+Evaluation is unaffected — only the warning UI is suppressed.
 """
 
 from .continue_profile import (

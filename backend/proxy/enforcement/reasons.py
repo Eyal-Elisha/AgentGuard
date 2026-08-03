@@ -1,8 +1,7 @@
 """The human-readable text that explains an enforcement outcome.
 
-These strings surface in three places — the plain-text 403/503 body, the
-interstitial pages, and the proxy log — so they are kept together and free of
-any dependency on the decision or response types.
+These surface in the 403/503 body, the interstitials and the proxy log, so
+they are kept together and free of any dependency on the other two modules.
 """
 
 from __future__ import annotations

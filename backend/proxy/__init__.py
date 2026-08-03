@@ -12,5 +12,5 @@
     audit            record the session, the event and every rule analysis
 
 The proxy holds the browser's connection open while the backend evaluates, so
-everything here sits on the critical path of the user's browsing.
+everything here is on the critical path.
 """

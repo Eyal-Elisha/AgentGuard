@@ -1,9 +1,8 @@
 """Turning a `BackendDecision` into the HTTP response the browser receives.
 
-Which form a block takes depends on what the browser can render. A GET
-navigation gets the HTML interstitial; anything else (XHR, a sub-resource, a
-fail-closed path) gets a plain-text status body, because a page of HTML in
-place of a script or an image is worse than useless.
+A GET navigation gets the HTML interstitial; anything else (XHR, a
+sub-resource, a fail-closed path) gets a plain-text status body, since HTML in
+place of a script is worse than useless.
 """
 
 from __future__ import annotations

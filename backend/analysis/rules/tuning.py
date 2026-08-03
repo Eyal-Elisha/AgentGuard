@@ -1,19 +1,11 @@
 """Every number the rule engine is calibrated on.
 
-Kept in one module so a change of thresholds or weights is a change to one
-file, and so the values can be quoted directly when reporting results.
+Kept in one module so retuning is a change to one file.
 
-**Why the thresholds look so low.** Risk is a weighted *average* over the
-rules that actually executed — `sum(score x weight) / sum(weight)` — not a
-weighted sum. Averaging compresses the result toward zero: with twelve cheap
-rules in play and one of them firing, the aggregate is roughly that one rule's
-weight divided by the total. A page that trips a single strong signal
-therefore lands near 0.1, not near 1.0, which is why BLOCK sits at 0.12 rather
-than anywhere near the midpoint of [0, 1]. Every always-executed rule added
-since then has diluted that denominator further.
-
-Re-derive these on a dev split with `scripts/calibrate_thresholds.py` before
-quoting them anywhere.
+The thresholds look low because risk is a weighted *average* over the rules
+that ran, not a sum — one rule firing among twelve lands near 0.1, not 1.0.
+See `scoring/weighted_average.py`. Re-derive with
+`scripts/calibrate_thresholds.py` before quoting these anywhere.
 """
 
 from __future__ import annotations

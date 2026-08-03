@@ -1,13 +1,9 @@
 """Parsing the optional fields of a `POST /api/proxy/decision` body.
 
-`validate_proxy_payload` has already checked the four fields the proxy must
-send (url, method, headers, body). What is left are the four it may omit —
-timestamp, environment, session_id and agent_name — each of which has a
-default, and each of which is rejected outright if present but malformed.
-
-Whether a field was *provided* matters downstream: an explicit environment or
-agent name has to agree with the session it is being attributed to, while an
-omitted one is simply inherited from that session.
+`validate_proxy_payload` has already checked the four required fields. These
+are the four optional ones, each defaulted, each rejected if malformed.
+Whether one was *provided* matters: an explicit environment or agent name must
+agree with the session it is attributed to, an omitted one is inherited.
 """
 
 from __future__ import annotations

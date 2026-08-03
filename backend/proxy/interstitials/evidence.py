@@ -1,8 +1,7 @@
 """Rendering of the "why we flagged this" evidence shared by both interstitials.
 
-The Warn and Block pages present the same underlying data — the triggered rule
-results carried on a backend evaluation — so the row markup, the score
-formatting and the JS-string escaping live here rather than in either page.
+Both pages present the same triggered rule results, so the row markup, score
+formatting and JS-string escaping live here rather than in either page.
 """
 
 from __future__ import annotations
