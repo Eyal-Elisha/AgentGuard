@@ -45,15 +45,21 @@ STAGE_B_LOW: float = 0.0
 STAGE_B_HIGH: float = HIGH_RISK_THRESHOLD
 
 # --- Meta-classifier thresholds --------------------------------------------
-# Applied to the stacking layer's display-scaled score (see
-# `analysis/meta_classifier.py`), not to the weighted average. The scaling is
-# monotonic, so these round cutoffs are the model's real operating points —
-# raw 0.80 and 0.93, chosen for a sub-0.5% benign false-positive budget —
-# rendered as a traffic light. On the held-out fresh set: WARN recall ~0.43 at
-# ~0.4% benign-warn; BLOCK recall ~0.29 at ~0.1%.
+# These apply to the stacking layer in `analysis/scoring/meta_classifier.py`,
+# not to the weighted average.
+#
+# The model's real operating points are the RAW pair below, chosen for a
+# sub-0.5% benign false-positive budget. On the held-out fresh set: WARN recall
+# ~0.43 at ~0.4% benign-warn, BLOCK recall ~0.29 at ~0.1%. Those numbers are
+# awkward to read on a dashboard, so the module rescales its output to put the
+# cutoffs at 0.50 and 0.80 — a traffic light. The rescaling is monotonic and
+# anchored on exactly these four values, so it moves no decision.
 
-META_HIGH_RISK_THRESHOLD: float = 0.80  # at or above -> BLOCK
 META_WARN_THRESHOLD: float = 0.50       # at or above, below HIGH -> WARN
+META_HIGH_RISK_THRESHOLD: float = 0.80  # at or above -> BLOCK
+
+META_RAW_WARN: float = 0.80   # model probability that displays as META_WARN_THRESHOLD
+META_RAW_BLOCK: float = 0.93  # model probability that displays as META_HIGH_RISK_THRESHOLD
 
 # --- Rule enablement -------------------------------------------------------
 

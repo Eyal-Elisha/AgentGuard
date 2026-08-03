@@ -22,6 +22,10 @@ def create_app() -> Flask:
     init_schema()
     rules_seed_defaults(ALL_RULES)
 
+    from .proxy.rule_engine import warm_up
+
+    warm_up()
+
     from .routes import register_blueprints
 
     register_blueprints(app)
