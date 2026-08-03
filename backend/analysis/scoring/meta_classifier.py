@@ -12,7 +12,19 @@ pickle needs scikit-learn, which not every environment has.
 The artifact is `analysis/data/meta_classifier.pkl`, holding
 `{"model": estimator, "features": [rule_id, ...]}`. `features` is the column
 order the model was trained on, so it — not the rule catalogue — decides how
-the score vector is laid out. Rebuild it with `scripts/train_meta_classifier.py`.
+the vector is laid out. The shipped one has fourteen columns: the eleven
+deterministic rules that can run (`sensitive_fields` is disabled in code), the
+two semantic rules, and a synthetic `_hard_block` flag. The four contextual
+rules are absent because they never execute — see `rules/tuning.py`.
+
+`_hard_block` is always 0.0 here, since a hard block returns before the
+meta-classifier is consulted. It is in the vector because the training features
+came from `scripts/build_rule_features.py`, which scores every page including
+the hard-blocked ones.
+
+The artifact ships pre-built and the repo cannot currently regenerate it:
+`build_rule_features.py` produces the feature vectors and
+`train_meta_classifier.py` runs the bake-off, but neither writes the pickle.
 """
 
 from __future__ import annotations
