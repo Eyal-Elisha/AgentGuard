@@ -5,7 +5,7 @@ optional: `score()` returns None with no artifact and the caller falls back.
 
 The artifact is `analysis/data/meta_classifier.pkl`, holding
 `{"model": estimator, "features": [rule_id, ...]}`. It ships pre-built and no
-script here regenerates it — `train_meta_classifier.py` only runs the bake-off.
+script here regenerates it. train_meta_classifier.py only runs the bake-off.
 """
 
 from __future__ import annotations
@@ -34,7 +34,7 @@ _load_attempted = False
 
 
 def _load() -> None:
-    """Read the artifact once. Failure leaves the model None — never raises."""
+    """Read the artifact once. Failure leaves the model None; never raises."""
     global _model, _feature_order, _load_attempted
     _load_attempted = True
     if not _ARTIFACT.exists():

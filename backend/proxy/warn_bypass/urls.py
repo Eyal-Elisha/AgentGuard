@@ -24,9 +24,9 @@ def strip_query_param(url: str, param: str) -> str:
 def normalize_url(url: str) -> str:
     """Canonical form for comparing a registered continue URL to a request URL.
 
-    The browser does not have to send back exactly what we redirected it to —
+    The browser need not send back exactly what we redirected it to.
     the default port may be dropped, a trailing slash added, query parameters
-    reordered — so both sides are reduced to the same shape before comparison.
+    reordered, so both sides are reduced to the same shape before comparison.
     """
     parts = urlsplit(url.strip())
     scheme = (parts.scheme or "https").lower()

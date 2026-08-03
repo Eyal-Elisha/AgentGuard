@@ -2,9 +2,9 @@
 
 Redeeming a token registers two short-lived allowances for the host:
 
-* **the exact URL**, once — so the document the 302 pointed at renders instead
+* the exact URL, once, so the document the 302 pointed at renders instead
   of bouncing straight back into the interstitial.
-* **a subresource window** — a couple of minutes in which non-document GETs on
+* a subresource window: a couple of minutes in which non-document GETs on
   the same host also skip it, so the page can finish loading.
 
 Both live in process memory and are lost when mitmweb restarts.

@@ -5,7 +5,7 @@ Two strategies, picked by `proxy/rule_engine.py`:
   weighted_average  the hand-calibrated default, always available
   meta_classifier   a model over the rule scores, used when its artifact loads
 
-Without the artifact — a bare install, or tests without scikit-learn — the
+Without the artifact (a bare install, or tests without scikit-learn) the
 average takes over and behaves as it always did.
 """
 

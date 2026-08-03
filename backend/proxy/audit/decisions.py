@@ -1,7 +1,7 @@
 """Persisting one decision: the event row, one row per rule, and a journal line.
 
 Every rule the engine considered is written out, including the ones that never
-ran — those keep a NULL score. That is what makes a stored event replayable:
+ran, which keep a NULL score. That keeps a stored event replayable:
 you can tell "this rule found nothing" from "this rule was skipped".
 """
 
@@ -90,7 +90,7 @@ def record_proxy_decision(
 
 
 def _guard_action(decision: Decision) -> str:
-    """'allow' -> 'Allow' — the capitalisation the `events` table stores."""
+    """'allow' -> 'Allow', the capitalisation the events table stores."""
     return decision.value.title()
 
 

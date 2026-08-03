@@ -71,7 +71,7 @@ def handle_request(flow: http.HTTPFlow) -> None:
     if decision.source == "backend":
         _cached_passive_mode = decision.passive_mode
     elif decision.source in BACKEND_FAILURE_SOURCES and _cached_passive_mode:
-        # Backend is down and this session was passive — pass through silently
+        # Backend is down and this session was passive, so pass through silently
         # rather than applying the fail-closed default.
         return
 

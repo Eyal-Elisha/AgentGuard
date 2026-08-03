@@ -1,4 +1,4 @@
-"""The rule catalogue — the eighteen rules AgentGuard can run.
+"""The rule catalogue: the eighteen rules AgentGuard can run.
 
 Grouped by type, because that is also the order they execute in: the
 deterministic rules first, the contextual ones only when the deterministic
@@ -56,7 +56,7 @@ DETERMINISTIC_RULES: List[RuleDefinition] = [
     # base rates. Credentials over HTTP still block through the aggregate,
     # because the brand and form rules stack on top of this one.
     _deterministic("unencrypted_connection", "Unencrypted or Invalid Secure Connection"),
-    # Switched off via CODE_DISABLED_RULES — fires on more benign than
+    # Switched off via CODE_DISABLED_RULES. Fires on more benign than
     # phishing pages until it is recalibrated.
     _deterministic("sensitive_fields", "Sensitive Fields Present"),
     _deterministic("brand_domain_mismatch", "Brand Domain Mismatch"),

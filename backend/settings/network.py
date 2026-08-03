@@ -30,7 +30,7 @@ def get_api_port() -> int:
 
 
 def server_port(default: int = 3000) -> int:
-    """The port `app.run()` binds. PORT only — API_PORT is the addon's view."""
+    """The port app.run() binds. PORT only; API_PORT is the addon's view."""
     raw = os.environ.get("PORT")
     if raw is None or not raw.strip():
         return default
@@ -62,7 +62,7 @@ def get_dashboard_url() -> str:
     """Where "Go back to safety" on an interstitial sends the browser.
 
     `AGENTGUARD_FRONTEND_URL` overrides it outright. Otherwise it is the API
-    host on FRONTEND_PORT — the same variable Vite uses.
+    host on FRONTEND_PORT, the same variable Vite uses.
     """
     override = read_env("AGENTGUARD_FRONTEND_URL")
     if override:
@@ -71,7 +71,7 @@ def get_dashboard_url() -> str:
 
 
 def _link_host(api_host: str) -> str:
-    """Loopback in any spelling becomes `localhost` — the form users have open."""
+    """Loopback in any spelling becomes localhost, the form users have open."""
     if (api_host or "").lower().strip() in _LOOPBACK_HOSTNAMES:
         return "localhost"
     return api_host or "localhost"
