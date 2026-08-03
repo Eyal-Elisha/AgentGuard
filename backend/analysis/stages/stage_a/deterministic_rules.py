@@ -1,4 +1,4 @@
-"""The ten deterministic rules of Stage A — one function per rule.
+"""The twelve deterministic rules of Stage A — one function per rule.
 
 Each takes the extracted page features and returns `(score, explanation)`,
 where the score is 1.0 when the rule fires and 0.0 when it does not. The
@@ -10,7 +10,6 @@ Reference data lives in `data.py` and the shared predicates in `helpers.py`.
 
 from __future__ import annotations
 
-import re
 from typing import Callable, Dict, Tuple
 from urllib.parse import urlparse
 
@@ -19,10 +18,13 @@ from backend.feature_extraction.feature_extractor import ExtractedFeatures
 from backend.analysis.stages.stage_a.blacklist import blacklist_cache
 from backend.analysis.stages.stage_a.data import (
     BRAND_DOMAINS,
+    DIGIT_THEN_LETTER,
     HIGH_ABUSE_TLDS,
+    LETTER_THEN_DIGIT,
     REDIRECT_PATTERNS,
     SENSITIVE_INPUT_TYPES,
     SENSITIVE_NAME_RE,
+    STANDARD_WEB_PORTS,
 )
 from backend.analysis.stages.stage_a.helpers import (
     brand_token_patterns,
@@ -51,7 +53,12 @@ def rule_domain_blacklist(features: ExtractedFeatures) -> Tuple[float, str]:
 
 
 def rule_unencrypted_connection(features: ExtractedFeatures) -> Tuple[float, str]:
-    """Rule 2 — Unencrypted or Invalid Secure Connection. Hard block."""
+    """Rule 2 — Unencrypted or Invalid Secure Connection.
+
+    No longer a hard block: plain HTTP alone is too common among benign pages,
+    and blocking on it left a false-positive floor nothing else could get under.
+    Credentials over HTTP still block, because the brand and form rules stack.
+    """
     if features.scheme != "https":
         if is_loopback_host(features.host):
             return 0.0, "Local loopback; HTTP is acceptable for local development"
@@ -158,7 +165,11 @@ def rule_external_form_action(features: ExtractedFeatures) -> Tuple[float, str]:
 
 
 def rule_typosquatting(features: ExtractedFeatures) -> Tuple[float, str]:
-    """Rule 7 — Typosquatting Domain Detection. Hard block.
+    """Rule 7 — Typosquatting Domain Detection.
+
+    No longer a hard block: even after `is_typosquat` was tightened, the rule
+    fires on more benign than phishing pages, so it contributes weight rather
+    than deciding on its own.
 
     Detects two attack patterns:
       1. Confusable/homoglyph — normalized label matches official but original doesn't
@@ -220,39 +231,30 @@ def rule_suspicious_tld(features: ExtractedFeatures) -> Tuple[float, str]:
     return 0.0, "Top-level domain is not in the high-abuse list"
 
 
-_STANDARD_WEB_PORTS = frozenset({80, 443, 8080})
-
-
 def rule_non_standard_port(features: ExtractedFeatures) -> Tuple[float, str]:
     """Rule 11 — Non-Standard Port.
 
-    Legitimate web traffic is served on 80/443 (occasionally 8080); phishing
-    kits are frequently hosted on high, arbitrary ports. Strong, clean signal
-    on the PhreshPhish eval slice (88 phish / 0 benign). Non-hard-block so a
-    rare legitimate service on an odd port is not auto-blocked outright.
+    Phishing kits are often parked on a high arbitrary port, and almost no
+    legitimate site is. Clean on the eval slice (88 phish / 0 benign) but not a
+    hard block, since a rare legitimate service on an odd port would be.
     """
     try:
         port = urlparse(features.url).port
     except ValueError:
         return 0.0, "No parseable port in URL"
-    if port is None or port in _STANDARD_WEB_PORTS:
+    if port is None or port in STANDARD_WEB_PORTS:
         return 0.0, "Served on a standard web port"
     return 1.0, f"Served on non-standard port {port}, uncommon for legitimate sites"
-
-
-_DIGIT_THEN_LETTER = re.compile(r"[0-9][a-z]")
-_LETTER_THEN_DIGIT = re.compile(r"[a-z][0-9]")
 
 
 def rule_algorithmic_domain(features: ExtractedFeatures) -> Tuple[float, str]:
     """Rule 12 — Algorithmically-Generated Domain.
 
-    Random-looking registrable labels with digits interspersed among letters
-    (e.g. 'e7rmtin3r4b', 'jkfhx6m4dn') are a strong phishing signal that no
-    reputation or brand rule catches. Requires >=2 digits and >=3 letters with
-    a digit both preceded and followed by a letter, so ordinary word+number
-    brands ('shop24', 'route66') do not trip it. Clean on the eval slice
-    (417 phish / 13 benign, ~46x lift).
+    Random-looking registrable labels ('e7rmtin3r4b', 'jkfhx6m4dn') are a
+    strong signal no reputation or brand rule catches — they were found on
+    roughly 9% of phishing pages that otherwise scored near zero. Requires two
+    digits and three letters as well as the interspersing, which is what keeps
+    ordinary word+number brands out (417 phish / 13 benign on the eval slice).
     """
     host = strip_www(features.host)
     if not host or is_ip(host):
@@ -262,7 +264,7 @@ def rule_algorithmic_domain(features: ExtractedFeatures) -> Tuple[float, str]:
         return 0.0, "Domain label too short to assess"
     digits = sum(c.isdigit() for c in label)
     letters = sum(c.isalpha() for c in label)
-    interspersed = bool(_LETTER_THEN_DIGIT.search(label) and _DIGIT_THEN_LETTER.search(label))
+    interspersed = bool(LETTER_THEN_DIGIT.search(label) and DIGIT_THEN_LETTER.search(label))
     if digits >= 2 and letters >= 3 and interspersed:
         return 1.0, (
             f"Domain label '{label}' looks algorithmically generated "

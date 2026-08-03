@@ -167,6 +167,16 @@ HIGH_ABUSE_TLDS: frozenset = frozenset({
     "pw", "su", "best", "live", "shop", "online", "site", "uno", "autos",
 })
 
+# Ports ordinary web traffic arrives on. Anything else is a weak phishing
+# signal — kits are often parked on a high arbitrary port.
+STANDARD_WEB_PORTS: frozenset = frozenset({80, 443, 8080})
+
+# Digits mixed in among letters, as in 'e7rmtin3r4b'. Both directions must
+# match for a label to count as algorithmic, which is what keeps ordinary
+# word+number brands ('shop24', 'route66') out of it.
+LETTER_THEN_DIGIT = re.compile(r"[a-z][0-9]")
+DIGIT_THEN_LETTER = re.compile(r"[0-9][a-z]")
+
 # input type="password" is unconditionally sensitive
 SENSITIVE_INPUT_TYPES: frozenset = frozenset({"password"})
 
