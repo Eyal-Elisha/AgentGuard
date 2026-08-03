@@ -21,45 +21,37 @@ from __future__ import annotations
 from typing import Any, Dict, Mapping, Optional
 
 # --- Decision thresholds ---------------------------------------------------
-# Calibrated on a domain-disjoint PhreshPhish dev split (15k rows), then
-# confirmed on a held-out test split:
-#   BLOCK 0.12 -> block precision ~0.95 at recall ~0.49 (dev)
-#   WARN  0.04 -> warn-or-block precision ~0.77 at recall ~0.87 (test)
+# From a domain-disjoint PhreshPhish dev split (15k rows), confirmed on a
+# held-out test split: BLOCK gives block precision ~0.95 at recall ~0.49,
+# WARN gives warn-or-block precision ~0.77 at recall ~0.87.
 
 HIGH_RISK_THRESHOLD: float = 0.12  # at or above -> BLOCK
 WARN_THRESHOLD: float = 0.04       # at or above, below HIGH -> WARN
 
-# Contextual rules only run when the deterministic score is already ambiguous;
-# below this there is nothing for session history to tip either way.
-#
-# NOTE: the gate in `stage_a/evaluator.py` is `AMBIGUOUS_LOW <= score <
-# HIGH_RISK_THRESHOLD`. Since the recalibration dropped HIGH_RISK_THRESHOLD to
-# 0.12, that band is empty and the four contextual rules never execute. Left as
-# calibrated rather than silently retuned — see ARCHITECTURE.md.
+# Contextual rules run only when the deterministic score is already ambiguous.
+# The gate in `stage_a/evaluator.py` is `AMBIGUOUS_LOW <= score <
+# HIGH_RISK_THRESHOLD`, so at 0.12 that band is empty and those four rules
+# never execute. Left as calibrated rather than quietly retuned.
 AMBIGUOUS_LOW: float = 0.15
 
-# Stage B gate. Deliberately decoupled from WARN_THRESHOLD: the averaging above
-# keeps a weak-but-real signal under the warn line, and if the gate matched
-# that line those pages would never reach a semantic check at all.
+# Stage B gate, decoupled from WARN_THRESHOLD so weak-but-real signals still
+# reach a semantic check instead of stopping just under the warn line.
 STAGE_B_LOW: float = 0.0
 STAGE_B_HIGH: float = HIGH_RISK_THRESHOLD
 
 # --- Meta-classifier thresholds --------------------------------------------
-# These apply to the stacking layer in `analysis/scoring/meta_classifier.py`,
-# not to the weighted average.
-#
-# The model's real operating points are the RAW pair below, chosen for a
-# sub-0.5% benign false-positive budget. On the held-out fresh set: WARN recall
-# ~0.43 at ~0.4% benign-warn, BLOCK recall ~0.29 at ~0.1%. Those numbers are
-# awkward to read on a dashboard, so the module rescales its output to put the
-# cutoffs at 0.50 and 0.80 — a traffic light. The rescaling is monotonic and
-# anchored on exactly these four values, so it moves no decision.
+# For `analysis/scoring/meta_classifier.py`, not the weighted average. The RAW
+# pair is where the model actually operates, picked for a sub-0.5% benign
+# false-positive budget (WARN recall ~0.43, BLOCK ~0.29 on the fresh set). The
+# module rescales onto the round pair so the dashboard reads as a traffic
+# light; that map is anchored on these four values and is monotonic, so it
+# changes no decision.
 
 META_WARN_THRESHOLD: float = 0.50       # at or above, below HIGH -> WARN
 META_HIGH_RISK_THRESHOLD: float = 0.80  # at or above -> BLOCK
 
-META_RAW_WARN: float = 0.80   # model probability that displays as META_WARN_THRESHOLD
-META_RAW_BLOCK: float = 0.93  # model probability that displays as META_HIGH_RISK_THRESHOLD
+META_RAW_WARN: float = 0.80   # displays as META_WARN_THRESHOLD
+META_RAW_BLOCK: float = 0.93  # displays as META_HIGH_RISK_THRESHOLD
 
 # --- Rule enablement -------------------------------------------------------
 
@@ -85,23 +77,18 @@ RULE_WEIGHTS: Dict[str, float] = {
     # Down-weighted: on webpage HTML this fires on more benign than phishing
     # pages, so a high weight mostly pushed benign pages up. Disabled above.
     "sensitive_fields":       0.10,
-    # Excellent as a confirming signal (~403 phish / 5 benign when it fires
-    # alongside other rules) but a coin flip alone (~417 phish / 410 benign).
-    # Weighted so it cannot carry a page over the warn line by itself.
+    # Confirming signal only: 403 phish / 5 benign alongside other rules, but
+    # 417 / 410 alone. Too low to carry a page over the warn line by itself.
     "brand_domain_mismatch":  0.08,
     "unexpected_redirect":    0.10,
     "external_form_action":   0.10,
-    # Down-weighted along with the tightening in `helpers.is_typosquat`: the
-    # old edit-distance logic fired on more benign than phishing pages.
+    # Down-weighted with the tightening in `helpers.is_typosquat`.
     "typosquatting":          0.15,
     "ip_based_url":           0.05,
-    # Up-weighted from 0.05 on eval evidence — phishing pages cluster heavily
-    # on free and high-abuse TLDs (lift ~75x on the eval slice).
+    # Up from 0.05: phishing clusters on free TLDs (lift ~75x on the eval slice).
     "suspicious_tld":         0.20,
-    # Coverage rules, added after ~9% of phishing pages were found scoring near
-    # zero: no reputation or brand rule caught them. Both clean on the eval
-    # slice — non_standard_port 88 phish / 0 benign, algorithmic_domain 417
-    # phish / 13 benign (~46x lift).
+    # Coverage rules for the ~9% of phish that scored near zero — no reputation
+    # or brand rule caught them. 88 phish / 0 benign and 417 / 13 respectively.
     "non_standard_port":      0.20,
     "algorithmic_domain":     0.20,
     "custom_blacklist":       0.25,
