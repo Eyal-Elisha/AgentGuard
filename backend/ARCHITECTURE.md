@@ -67,7 +67,7 @@ instruction is appended to the agent's prompt fields telling it to find a
 trusted alternative site rather than retrying a blocked one. This mutates the
 agent's own outbound request, not the page it is reading.
 
-**Bypass redemption — `warn_bypass.py`.** A valid one-shot
+**Bypass redemption — `warn_bypass/`.** A valid one-shot
 `?_agentguard_bypass=` token yields a 302 to the clean URL and registers a
 short-lived continue profile, so clicking "Continue anyway" does not land the
 browser in a warning loop. The backend is still consulted on every request;
@@ -101,34 +101,62 @@ request to a session, evaluates it, and records the result.
 2. `stages/stage_a/session_loader.py` loads prior events for the session.
 3. Rule enablement is read from the `rules` table.
 4. **Stage A** (`stages/stage_a/evaluator.py`) runs the cheap rules.
-5. **Stage B** (`stages/stage_b/`) runs the semantic classifiers, but only if
-   Stage A asked for it.
-6. `analysis/scoring.py` aggregates and maps the score to a decision.
+5. **Stage B** (`stages/stage_b/`) runs the semantic classifiers, if either
+   Stage A asked for it or the meta-classifier is in play.
+6. `analysis/scoring/` turns the rule results into a score and a decision.
 
-**Stage A, in order.** The ten deterministic rules
+**Stage A, in order.** The twelve deterministic rules
 (`stage_a/deterministic_rules.py`) run first. A triggered *hard-block* rule
 short-circuits: the remaining rules are recorded with NULL scores and the risk
-score is forced to 1.0. Otherwise the deterministic score is aggregated, and
-the four contextual rules (`stage_a/contextual_rules.py`) run **only** if that
-score is in `[AMBIGUOUS_LOW, HIGH_RISK_THRESHOLD)` — below that band there is
-nothing for session history to tip either way. Contextual rules return `None`
-when their preconditions are not met, which excludes them from aggregation
-rather than diluting it.
+score is forced to 1.0. Only two rules still hard-block — `domain_blacklist`
+and `custom_blacklist`. `unencrypted_connection` and `typosquatting` used to,
+and were demoted because each blocked more benign pages than phishing ones.
+
+Otherwise the deterministic score is aggregated and the four contextual rules
+(`stage_a/contextual_rules.py`) run if that score is in
+`[AMBIGUOUS_LOW, HIGH_RISK_THRESHOLD)`. Contextual rules return `None` when
+their preconditions are not met, which excludes them from aggregation rather
+than diluting it.
+
+> **The contextual rules currently never run.** That band is
+> `[0.15, 0.12)` — empty — because the recalibration lowered
+> `HIGH_RISK_THRESHOLD` to 0.12 without moving `AMBIGUOUS_LOW`. Nothing
+> crashes; the four rules are simply always skipped, and are recorded with
+> NULL scores like any other rule that did not run. Left as calibrated rather
+> than quietly retuned, since picking a new band is a calibration decision.
 
 **Stage B.** Two semantic rules, `phishing_language` and `prompt_injection`,
-TF-IDF plus logistic regression. Text is drawn from the title, visible text
-and form tokens, and PII and secrets are redacted
-(`stage_b/sanitization.py`) **before** anything reaches the classifier or the
-log. scikit-learn is not in `requirements.txt`: with no model artifact present
-each rule falls back to a keyword heuristic (`stage_b/heuristics.py`), so the
-pipeline still works on a bare install.
+TF-IDF plus logistic regression, both retrained on webpage HTML — the shipped
+models were originally fit on email and SMS corpora and were near-random on
+pages. Text is drawn from the title, visible text and form tokens, and PII and
+secrets are redacted (`stage_b/sanitization.py`) **before** anything reaches
+the classifier or the log. `scikit-learn` is required to unpickle the models;
+without it each rule falls back to a keyword heuristic
+(`stage_b/heuristics.py`), so the pipeline still works on a bare install.
 
-**Aggregation.** `analysis/scoring.py`. Risk is a weighted **average** over
-the rules that actually ran, not a weighted sum. That is the single most
-consequential detail in the engine — averaging compresses scores toward zero,
-which is why `BLOCK` is 0.19 and `WARN` 0.15 rather than anything near the
-middle of `[0, 1]`. All the calibrated numbers live in
-`analysis/rules/tuning.py`.
+**Aggregation — `analysis/scoring/`.** Two strategies answer the same
+question, and which one runs depends on whether a trained artifact loaded.
+
+*`weighted_average.py`* is the default and the one to understand first. Risk is
+a weighted **average** over the rules that actually ran, not a weighted sum.
+That is the single most consequential detail in the engine — averaging
+compresses scores toward zero, which is why `BLOCK` is 0.12 and `WARN` 0.04
+rather than anything near the middle of `[0, 1]`, and why adding an
+always-executed rule pushes every score down by enlarging the denominator.
+
+*`meta_classifier.py`* is a model trained on the rule scores themselves, so it
+can read combinations the fixed weights cannot. It runs whenever
+`analysis/data/meta_classifier.pkl` loads, and then it — not the average —
+decides, against its own thresholds (`META_WARN_THRESHOLD` 0.50,
+`META_HIGH_RISK_THRESHOLD` 0.80). Its raw output is rescaled onto those round
+numbers by a monotonic transform, so the rescaling changes no decision. When
+the artifact is absent, `score()` returns `None` and the average takes over.
+
+Note the consequence: **which thresholds apply depends on whether that pickle
+loaded.** A bare install decides at 0.04/0.12 on the weighted average; a full
+install decides at 0.50/0.80 on the model.
+
+All the calibrated numbers live in `analysis/rules/tuning.py`.
 
 ### 4. Recording — `backend/proxy/audit/`
 
@@ -140,8 +168,8 @@ also goes to the encrypted append-only journal.
 
 | Package | Holds |
 |---|---|
-| `analysis/rules/` | `models` (types), `tuning` (every calibrated number), `catalog` (the 16 rules) |
-| `analysis/scoring.py` | weighted-average aggregation, score → decision |
+| `analysis/rules/` | `models` (types), `tuning` (every calibrated number), `catalog` (the 18 rules) |
+| `analysis/scoring/` | `weighted_average` and `meta_classifier` — the two ways to go from rule results to a decision |
 | `analysis/stages/stage_a/` | deterministic and contextual rules, their data and helpers |
 | `analysis/stages/stage_b/` | semantic classifiers, text sanitization, heuristic fallback |
 | `feature_extraction/` | HTML → `ExtractedFeatures` |
@@ -186,6 +214,14 @@ dashboard reads coexist with proxy writes.
   database toggle cannot re-enable it.
 - **The thresholds are low on purpose.** See aggregation above before
   "fixing" them.
+- **The contextual rules never execute.** See the gate above.
+- **A page can warn with no rule triggered.** Stage B probabilities below their
+  `trigger_threshold` are not "triggered", but they still enter the weighted
+  average, and `WARN` is 0.04. The interstitial then has no evidence to show.
+  `data/smoke.jsonl`'s benign row does exactly this.
+- **`rule_engine.py` lives in `proxy/` but is backend code.** It is the
+  evaluation orchestrator called from `routes/proxy.py`; the proxy process
+  imports it only for `get_custom_blacklist`.
 - **Stage B decides for itself whether a rule triggered**, using each rule's
   `trigger_threshold` — 0.85 for `prompt_injection`, because the public
   injection corpora outnumber benign instructions roughly 25:1 and the model
