@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import requests
+from mitmproxy import http
 
 from backend.analysis.rules import Decision
 from backend.proxy.request_decision import (
@@ -12,6 +13,8 @@ from backend.proxy.request_decision import (
     build_enforcement_response,
     fetch_backend_decision,
 )
+from backend.proxy.utils import build_request_data, build_response_payload
+from backend.validation.proxy_requests import validate_proxy_payload
 
 
 def _make_flow():
@@ -60,6 +63,20 @@ def test_invalid_intercepted_payload_is_blocked_without_backend_call():
     assert decision.source == "proxy_validation"
     assert "absolute HTTP or HTTPS URL" in decision.reason
     session_cls.assert_not_called()
+
+
+def test_ipv6_urls_are_serialized_in_standard_form():
+    flow = http.HTTPFlow(None, None)
+    flow.request = http.Request.make("GET", "https://[2001:db8::1]:8443/path?q=1")
+    flow.response = http.Response.make(200, b"<html>ok</html>")
+
+    request_payload = build_request_data(flow)
+    response_payload = build_response_payload(flow)
+
+    assert request_payload["url"] == "https://[2001:db8::1]:8443/path?q=1"
+    assert response_payload["url"] == request_payload["url"]
+    assert validate_proxy_payload(request_payload)[1] is None
+    assert validate_proxy_payload(response_payload)[1] is None
 
 
 def test_fetch_backend_decision_allows_on_timeout_when_fail_open():
@@ -280,4 +297,3 @@ def test_build_enforcement_response_uses_fail_closed_status_for_backend_failure(
 
     assert response.status_code == 503
     assert response.headers["X-AgentGuard-Decision"] == "block"
-

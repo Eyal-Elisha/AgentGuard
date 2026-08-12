@@ -41,12 +41,21 @@ def _proxy_environment() -> str:
     return os.environ.get("AGENTGUARD_PROXY_ENVIRONMENT", "").strip() or "prod"
 
 
+def _proxy_url(flow) -> str:
+    request = flow.request
+    if ":" not in request.host:
+        return request.pretty_url
+    default_port = 443 if request.scheme == "https" else 80
+    port = "" if request.port == default_port else f":{request.port}"
+    return f"{request.scheme}://[{request.host}]{port}{request.path}"
+
+
 def build_request_data(flow):
     data = {
         "timestamp": _utc_timestamp(),
         "type": "REQUEST",
         "method": flow.request.method,
-        "url": flow.request.pretty_url,
+        "url": _proxy_url(flow),
         "host": flow.request.host,
         "environment": _proxy_environment(),
         "headers": dict(flow.request.headers),
@@ -70,7 +79,7 @@ def build_response_payload(flow):
         "timestamp": _utc_timestamp(),
         "type": "RESPONSE",
         "method": flow.request.method,
-        "url": flow.request.pretty_url,
+        "url": _proxy_url(flow),
         "host": flow.request.host,
         "environment": _proxy_environment(),
         "headers": headers,
