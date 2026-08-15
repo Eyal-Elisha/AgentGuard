@@ -54,6 +54,13 @@ def rule_unencrypted_connection(features: ExtractedFeatures) -> Tuple[float, str
     blocking on it left a false-positive floor nothing could get under.
     Credentials over HTTP still block once the brand and form rules stack.
     """
+    if not features.scheme or not features.host:
+        # No parseable URL is absence of evidence, not evidence of insecurity.
+        # Firing here scored every such request as maximally unencrypted: on a
+        # corpus of captured pages without URLs it fired on 100% of both
+        # classes, feeding the combiner a constant it had learned to read as
+        # suspicious.
+        return 0.0, "No URL available to judge the connection"
     if features.scheme != "https":
         if is_loopback_host(features.host):
             return 0.0, "Local loopback; HTTP is acceptable for local development"

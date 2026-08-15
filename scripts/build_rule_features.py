@@ -59,16 +59,60 @@ def _one(rec: dict) -> dict | None:
         return {"label": label, "error": f"{type(exc).__name__}: {exc}"}
 
 
+def _rows_from_parquet(index_path: Path, parquet_glob: str):
+    """Yield {url, html, label} by joining an index of ids to the parquet shards.
+
+    An index names rows by sha256; the HTML stays where it already is. A 1%
+    benchmark is ~91k pages, so materialising it as JSONL would run to tens of
+    GB of duplicated markup for a run that reads each page once.
+    """
+    import pyarrow.parquet as pq
+
+    wanted: dict[str, int] = {}
+    with index_path.open(encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            rec = json.loads(line)
+            if rec.get("sha256"):
+                wanted[rec["sha256"]] = int(rec.get("label", 0))
+    print(f"  index: {len(wanted)} ids", file=sys.stderr)
+
+    pattern = Path(parquet_glob)
+    files = sorted(pattern.parent.glob(pattern.name))
+    if not files:
+        raise SystemExit(f"error: no parquet matched {parquet_glob!r}")
+    seen = 0
+    for path in files:
+        table = pq.read_table(str(path), columns=["sha256", "url", "html"])
+        for row in table.to_pylist():
+            sha = row.get("sha256")
+            if sha in wanted:
+                seen += 1
+                yield {"url": row.get("url") or "", "html": row.get("html") or "",
+                       "label": wanted[sha]}
+    if seen < len(wanted):
+        print(f"  note: {len(wanted) - seen} ids not found in the shards", file=sys.stderr)
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--input", required=True, type=Path)
+    ap.add_argument("--input", required=True, type=Path,
+                    help="JSONL of {url, html, label}, or an index of {sha256, label} "
+                         "when --parquet-glob is given")
+    ap.add_argument("--parquet-glob",
+                    help="Read HTML from these shards, joining on the sha256 in --input")
     ap.add_argument("--output", required=True, type=Path)
     ap.add_argument("--workers", type=int, default=os.cpu_count() or 4)
     ap.add_argument("--parser", default="lxml")
     ap.add_argument("--progress-every", type=int, default=10000)
     args = ap.parse_args(argv)
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    rows = (json.loads(l) for l in args.input.open(encoding="utf-8") if l.strip())
+    if args.parquet_glob:
+        rows = _rows_from_parquet(args.input, args.parquet_glob)
+    else:
+        rows = (json.loads(l) for l in args.input.open(encoding="utf-8") if l.strip())
     ctx = multiprocessing.get_context("spawn")
     n = 0
     with ctx.Pool(args.workers, initializer=_init, initargs=(args.parser,)) as pool, \
