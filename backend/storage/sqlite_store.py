@@ -34,6 +34,7 @@ from .rules_store import (
     rule_get,
     rule_create,
     rule_set_enabled,
+    rule_sync_metadata,
 )
 from .rules_analysis_store import (
     rule_analysis_list_for_event,
@@ -73,6 +74,7 @@ __all__ = [
     "rule_get",
     "rule_create",
     "rule_set_enabled",
+    "rule_sync_metadata",
     # Rules analysis
     "rule_analysis_list_for_event",
     "rule_analysis_list_for_event_with_rule_meta",

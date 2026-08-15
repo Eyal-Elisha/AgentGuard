@@ -6,9 +6,10 @@ import './eventAnalysis/index.css';
 export default function EventAnalysis({ selectedEvent, ruleAnalysisRows }) {
   const guardAction = selectedEvent?.guard_action?.toLowerCase() || '';
   const riskColorClass = guardAction ? ` events-risk-value--${guardAction}` : '';
-  const eventHardBlock = ruleAnalysisRows.some(
-    (row) => Boolean(row.is_hard_block) && typeof row.rule_score === 'number' && row.rule_score > 0,
-  ) || ruleAnalysisRows.some((row) => Boolean(row.hard_block));
+  // `hard_block` on an analysis row records whether that rule hard-blocked this
+  // request. `is_hard_block` on the rule only says it is allowed to, which is
+  // true of a couple of rules on every event, so it must not be consulted here.
+  const eventHardBlock = ruleAnalysisRows.some((row) => Boolean(row.hard_block));
 
   const sections = groupRuleAnalysisSections(ruleAnalysisRows);
 

@@ -131,6 +131,49 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         payload.update(overrides)
         return payload
 
+    def test_hard_block_column_records_the_rule_that_actually_blocked(self):
+        """The column must separate "did block here" from "may block".
+
+        Recording the capability set it for every hard-block-capable rule on
+        every event, so the events view reported a hard block on pages where
+        no rule fired at all.
+        """
+        ensure_proxy_session_started(environment="test")
+        blocked = EvaluationResult(
+            decision=Decision.BLOCK,
+            risk_score=1.0,
+            rule_results=[
+                RuleResult(
+                    rule_id="sensitive_fields",
+                    rule_type=RuleType.DETERMINISTIC,
+                    score=1.0,
+                    hard_block=False,
+                    explanation="Sensitive fields present on page",
+                    triggered=True,
+                ),
+                RuleResult(
+                    rule_id="custom_blacklist",
+                    rule_type=RuleType.DETERMINISTIC,
+                    score=1.0,
+                    hard_block=True,
+                    explanation="Host is on the custom local blacklist",
+                    triggered=True,
+                ),
+            ],
+            hard_block_triggered=True,
+            stage_b_required=False,
+        )
+
+        with patch("backend.routes.proxy.evaluate_http_payload", return_value=blocked):
+            response = self.client.post("/api/proxy/decision", json=self._payload())
+
+        self.assertEqual(response.status_code, 200)
+        audit = response.get_json()["audit"]
+        analyses = store.rule_analysis_list_for_event(audit["event_id"])
+        by_code = {item["rule_code"]: item for item in analyses}
+        self.assertEqual(by_code["custom_blacklist"]["hard_block"], 1)
+        self.assertEqual(by_code["sensitive_fields"]["hard_block"], 0)
+
     def test_proxy_decision_defaults_to_browseros_agent(self):
         started = ensure_proxy_session_started(environment="test")
 
@@ -167,7 +210,13 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         blacklist_analysis = next(item for item in analyses if item["rule_code"] == "custom_blacklist")
         self.assertEqual(sensitive_analysis["hard_block"], 0)
         self.assertEqual(sensitive_analysis["rule_score"], 1.0)
-        self.assertEqual(blacklist_analysis["hard_block"], 1)
+        # custom_blacklist is *able* to hard-block, but this fixture has it
+        # scoring 0.0 and not triggering ("Not found in custom local
+        # blacklist"), so it did not hard-block this request. The column records
+        # what happened here, not what the rule is permitted to do; storing the
+        # capability set it on every event and made the dashboard report a hard
+        # block on pages where nothing fired.
+        self.assertEqual(blacklist_analysis["hard_block"], 0)
         self.assertEqual(blacklist_analysis["rule_score"], 0.0)
         self.assertIsNotNone(store.rule_get("sensitive_fields"))
         self.assertIsNotNone(store.rule_get("custom_blacklist"))
