@@ -4,6 +4,12 @@ loads.
 """
 
 from . import meta_classifier
+from .floors import apply_decision_floors
 from .weighted_average import aggregate_risk_score, decide
 
-__all__ = ["aggregate_risk_score", "decide", "meta_classifier"]
+__all__ = [
+    "aggregate_risk_score",
+    "apply_decision_floors",
+    "decide",
+    "meta_classifier",
+]

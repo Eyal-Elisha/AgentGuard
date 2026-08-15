@@ -11,6 +11,7 @@ from typing import Optional
 from bs4 import BeautifulSoup
 
 from backend.feature_extraction.feature_extractor import ExtractedFeatures
+from backend.feature_extraction.html_parser import HTML_PARSER
 
 
 _REDACTED = " <REDACTED> "
@@ -36,7 +37,7 @@ _SANITIZERS: tuple[tuple[re.Pattern[str], str], ...] = (
 
 def _strip_noise(html: str) -> str:
     """Reparse the body to drop script/style blocks before vectorization."""
-    soup = BeautifulSoup(html, "html.parser")
+    soup = BeautifulSoup(html, HTML_PARSER)
     for tag in soup(["script", "style", "noscript", "template"]):
         tag.decompose()
     return soup.get_text(" ", strip=True)

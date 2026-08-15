@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import multiprocessing
 import sys
 import warnings
@@ -130,6 +131,25 @@ def _iter_parquet(glob: str) -> Iterator[dict]:
             yield from batch.to_pylist()
 
 
+def _iter_jsonl(path: Path) -> Iterator[dict]:
+    """Same records, from a JSONL corpus instead of parquet.
+
+    Lets a second corpus be folded into the training mix. Single-corpus
+    training scores far better on its own corpus than on anyone else's, so
+    mixing corpora is the lever that actually moves cross-corpus numbers.
+    """
+    print(f"  reading {path}", file=sys.stderr)
+    with path.open(encoding="utf-8") as fh:
+        for i, line in enumerate(fh, 1):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                yield json.loads(line)
+            except json.JSONDecodeError as exc:
+                print(f"    skipping line {i}: {exc}", file=sys.stderr)
+
+
 def _load_holdout_domains(path: Path | None) -> set[str]:
     if not path or not path.exists():
         return set()
@@ -152,8 +172,13 @@ def _load_holdout_domains(path: Path | None) -> set[str]:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--parquet-glob", required=True)
+    ap.add_argument("--parquet-glob", help="PhreshPhish parquet shards")
+    ap.add_argument("--input-jsonl", action="append", default=[], type=Path,
+                    help="Additional {url, html, label} JSONL corpus (repeatable). "
+                         "Combine with --parquet-glob to train across corpora.")
     ap.add_argument("--out-dir", required=True, type=Path)
+    ap.add_argument("--append", action="store_true",
+                    help="Append to existing CSVs instead of overwriting them")
     ap.add_argument("--holdout-jsonl", type=Path,
                     help="Drop rows whose registered domain appears in this JSONL")
     ap.add_argument("--workers", type=int, default=multiprocessing.cpu_count())
@@ -162,17 +187,31 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--progress-every", type=int, default=2000)
     args = ap.parse_args(argv)
 
+    if not args.parquet_glob and not args.input_jsonl:
+        ap.error("pass --parquet-glob, --input-jsonl, or both")
+
     holdout = _load_holdout_domains(args.holdout_jsonl)
     args.out_dir.mkdir(parents=True, exist_ok=True)
     benign_path = args.out_dir / "benign.csv"
     malicious_path = args.out_dir / "malicious.csv"
 
+    # Appending lets a second corpus be added to an existing trainset without
+    # reprocessing the first; the header only belongs on a fresh file.
+    _mode = "a" if args.append else "w"
+    _write_header = not (args.append and benign_path.exists())
+
     n_in = n_out = n_pos = n_drop_holdout = 0
     ctx = multiprocessing.get_context("spawn")
 
+    def _sources():
+        if args.parquet_glob:
+            yield from _iter_parquet(args.parquet_glob)
+        for path in args.input_jsonl:
+            yield from _iter_jsonl(path)
+
     def _rows():
         nonlocal n_drop_holdout
-        for row in _iter_parquet(args.parquet_glob):
+        for row in _sources():
             if holdout:
                 dom = _registered_domain(_pick(row, _URL_CANDIDATES) or "")
                 if dom and dom in holdout:
@@ -181,10 +220,11 @@ def main(argv: list[str] | None = None) -> int:
             yield row
 
     with ctx.Pool(args.workers, initializer=_worker_init, initargs=(args.parser,)) as pool, \
-            benign_path.open("w", encoding="utf-8", newline="") as bf, \
-            malicious_path.open("w", encoding="utf-8", newline="") as mf:
+            benign_path.open(_mode, encoding="utf-8", newline="") as bf, \
+            malicious_path.open(_mode, encoding="utf-8", newline="") as mf:
         bw = csv.writer(bf); mw = csv.writer(mf)
-        bw.writerow(["text"]); mw.writerow(["text"])
+        if _write_header:
+            bw.writerow(["text"]); mw.writerow(["text"])
         for res in pool.imap_unordered(_process, _rows(), chunksize=16):
             n_in += 1
             if res is not None:

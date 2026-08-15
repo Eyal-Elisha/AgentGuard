@@ -5,6 +5,8 @@ from urllib.parse import urlparse, urljoin
 import re
 from bs4 import BeautifulSoup
 
+from backend.feature_extraction.html_parser import HTML_PARSER
+
 
 @dataclass
 class FormDetails:
@@ -61,7 +63,7 @@ class FeatureExtractor:
         content = body[:self.max_html_bytes].decode("utf-8", errors="replace") if isinstance(body, bytes) else body
         feats.raw_body = content
 
-        soup = BeautifulSoup(content, "html.parser")
+        soup = BeautifulSoup(content, HTML_PARSER)
         dom = DomFeatures(
             page_title=soup.title.get_text(strip=True) if soup.title else "",
             all_text_content=soup.get_text(" ", strip=True)  # RAW TEXT

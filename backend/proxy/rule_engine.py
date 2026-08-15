@@ -7,7 +7,12 @@ from typing import List, Optional
 
 from backend.custom_blacklist import custom_blacklist_file_path, load_custom_blacklist_file
 from backend.analysis.rules import EvaluationResult, RuleResult
-from backend.analysis.scoring import aggregate_risk_score, decide, meta_classifier
+from backend.analysis.scoring import (
+    aggregate_risk_score,
+    apply_decision_floors,
+    decide,
+    meta_classifier,
+)
 from backend.analysis.stages.stage_a import StageAEvaluator
 from backend.analysis.stages.stage_a.session_loader import build_context
 from backend.analysis.stages.stage_b import StageBEvaluator
@@ -68,6 +73,11 @@ def _score_and_decide(results: List[RuleResult]) -> EvaluationResult:
     else:
         risk = aggregate_risk_score(results)
         decision = decide(risk)
+    # Applied after scoring, so a rule detecting a threat class the scorer was
+    # not trained to predict can still act. Only ever raises the decision, and
+    # deliberately leaves the risk score alone: the score reports what the
+    # model believes, the decision is what we do about it.
+    decision = apply_decision_floors(decision, results)
     return EvaluationResult(
         decision=decision,
         risk_score=round(risk, 4),
