@@ -5,11 +5,13 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from backend.analysis.rules import Decision
-from backend.proxy.request_decision import BackendDecision
+from backend.proxy.enforcement import BackendDecision
 from backend.proxy.addon import handle_request
 
 
 class _FakeQuery:
+    """Minimal stand-in for mitmproxy's flow.request.query (MultiDictView)."""
+
     def __init__(self, items=None):
         self._d = dict(items or {})
 
@@ -18,6 +20,9 @@ class _FakeQuery:
 
     def pop(self, key, default=None):
         return self._d.pop(key, default)
+
+    def __contains__(self, key):
+        return key in self._d
 
 
 def _make_flow():

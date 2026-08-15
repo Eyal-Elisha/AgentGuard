@@ -1,12 +1,14 @@
-"""Quick manual tester: run URLs through the rule engine and show what fires.
+"""Quick manual tester: run URLs through the URL-only rules and show what fires.
 
-Shows each deterministic URL rule's verdict for the given URLs, so you can see
-exactly why (or why not) a domain is flagged. Pass one or more URLs:
+Prints each rule's verdict and explanation for the URLs given, which is the
+fastest way to answer "why is this domain flagged?". Pass one or more URLs, or
+none to use the built-in samples:
 
     python scripts/try_domain.py https://e7rmtin3r4b.com https://fox13memphis.com
 
-With --html, also runs the full page pipeline (needs real HTML on stdin isn't
-supported here; this is a URL-only quick check of the domain/URL rules).
+Only the six rules that decide from the URL alone. Anything needing page
+content — brand mismatch, forms, the semantic rules — is not covered here; use
+`eval_offline.py` for the full pipeline.
 """
 from __future__ import annotations
 import sys

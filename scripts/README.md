@@ -1,10 +1,30 @@
-# Reproducing AgentGuard's detection results
+# Offline tooling
 
-Everything reported in Chapter 4 of the project book can be regenerated from the
-public datasets using the scripts in this directory. Nothing was produced by
-hand. This file is the recipe.
+Everything here runs outside the request path — nothing in `backend/` imports
+any of it. This is where the numbers in `analysis/rules/tuning.py` came from,
+and where you go to re-derive them.
 
-Run all commands from the repository root with the virtualenv active.
+| Script | Does |
+|---|---|
+| `load_phreshphish.py` | PhreshPhish parquet → `data/*.jsonl` |
+| `split_by_domain.py` | split a JSONL into dev/test disjoint by registered domain |
+| `eval_offline.py` | score a JSONL through the real rule engine → `runs/*.jsonl` |
+| `eval_metrics.py` | precision/recall/AP/per-rule lift from a scored run |
+| `calibrate_thresholds.py` | pick WARN and BLOCK from a scored dev split |
+| `build_semantic_trainset.py` | PhreshPhish → the two CSVs Stage B trains on |
+| `train_semantic_models.py` | fit and write the Stage B classifier pickles |
+| `build_rule_features.py` | per-page rule-score vectors, for the meta-classifier |
+| `train_meta_classifier.py` | meta-classifier vs weighted-average bake-off (reports only) |
+| `fit_meta_classifier.py` | fit and **write** the deployed meta-classifier artifact |
+| `try_domain.py` | what the URL-only rules say about one domain |
+| `create_admin.py` | create or promote an admin user in the local DB |
+
+`create_admin.py` is the odd one out — an operational helper, not part of the
+eval pipeline.
+
+The rest of this file is the end-to-end recipe: every trained artifact the
+detector ships can be rebuilt from public datasets by the steps below, in
+order. Run all commands from the repository root with the virtualenv active.
 
 ## What gets built
 
@@ -14,7 +34,7 @@ PhreshPhish   ──▶ data/*.jsonl ──▶ runs/*_scored.jsonl ──▶ met
   (parquet)         │                        (eval_offline)  (eval_metrics)
                     │
                     ├──▶ semantic_train/*.csv ──▶ stage_b/data/*.pkl   (text classifiers)
-                    │       (build_semantic_trainset)   (stage_b/train)
+                    │       (build_semantic_trainset)   (train_semantic_models)
                     │
                     └──▶ runs/*_feats.jsonl ──▶ meta_classifier.pkl    (stacking layer)
                             (build_rule_features)   (fit_meta_classifier)
@@ -24,9 +44,14 @@ Three trained artifacts come out of this, and all three are reproducible:
 
 | Artifact | Built by | From |
 |---|---|---|
-| `stage_b/data/phishing.pkl` | `stage_b/train.py` | PhreshPhish train split, domain-holdout applied |
-| `stage_b/data/prompt_injection.pkl` | `stage_b/train.py` | prompt-injection corpora + Dolly + PhreshPhish benign text |
+| `stage_b/data/phishing.pkl` | `train_semantic_models.py` | PhreshPhish train split, domain-holdout applied |
+| `stage_b/data/prompt_injection.pkl` | `train_semantic_models.py` | prompt-injection corpora + Dolly + PhreshPhish benign text |
 | `analysis/data/meta_classifier.pkl` | `fit_meta_classifier.py` | rule features over the dev split |
+
+`scikit-learn` is in `requirements.txt` (the runtime needs it to unpickle
+these), but `datasets` and `pandas` are not — install them before training.
+Stage B falls back to keyword heuristics when the artifacts are missing, so the
+backend still runs without them.
 
 ## Determinism
 
@@ -76,10 +101,12 @@ set every headline number is reported on.
 
 ## Step 3 — Retrain the page-text classifier
 
-Extract training text through **the same code path the proxy uses at inference**
-(`extract_semantic_text`), not from raw HTML. That mismatch was the single
-largest defect found during evaluation. `--holdout-jsonl` drops every training
-page whose registered domain appears in the evaluation sets.
+Train on page text, not email text. The original classifiers were fitted on
+email/SMS corpora and were near-random on webpages.
+`build_semantic_trainset.py` runs PhreshPhish rows through the same
+`FeatureExtractor` → `extract_semantic_text` path the classifier sees at
+inference, and `--holdout-jsonl` drops every training page whose registered
+domain appears in the evaluation sets.
 
 ```bash
 python scripts/build_semantic_trainset.py --parquet-glob "data/phreshphish/data/train-*.parquet" --out-dir data/semantic_train --holdout-jsonl data/test.jsonl --workers 8
@@ -89,7 +116,7 @@ Expected: 208,750 rows kept (100,340 phishing / 108,410 benign) after dropping
 279,572 of 498,255 training rows for domain overlap.
 
 ```bash
-python -m backend.analysis.stages.stage_b.train --rule phishing_language --benign-csv data/semantic_train/benign.csv --malicious-csv data/semantic_train/malicious.csv
+python scripts/train_semantic_models.py --rule phishing_language --benign-csv data/semantic_train/benign.csv --malicious-csv data/semantic_train/malicious.csv
 ```
 
 TF-IDF (unigrams + bigrams, `min_df=2`, 50k features, sublinear term frequency)
@@ -102,10 +129,11 @@ Its original negative class was instruction text only, so it treated ordinary
 web pages as attacks. Pass real webpage text as additional benign examples:
 
 ```bash
-AGENTGUARD_PI_WEB_BENIGN_CSV=data/semantic_train/benign.csv python -m backend.analysis.stages.stage_b.train --rule prompt_injection
+AGENTGUARD_PI_WEB_BENIGN_CSV=data/semantic_train/benign.csv python scripts/train_semantic_models.py --rule prompt_injection
 ```
 
-On PowerShell: `$env:AGENTGUARD_PI_WEB_BENIGN_CSV = "data/semantic_train/benign.csv"` first.
+On PowerShell set the variable first:
+`$env:AGENTGUARD_PI_WEB_BENIGN_CSV = "data/semantic_train/benign.csv"`.
 
 ## Step 5 — Build rule features and fit the meta-classifier
 
@@ -132,6 +160,10 @@ To check a refit against the shipped artifact without overwriting it:
 ```bash
 python scripts/fit_meta_classifier.py --train runs/dev_feats.jsonl --dry-run --verify-against backend/analysis/data/meta_classifier.pkl
 ```
+
+`train_meta_classifier.py` is the older bake-off script: it compares candidate
+models and prints results, but writes no artifact. Use it to evaluate a change,
+`fit_meta_classifier.py` to ship one.
 
 ## Step 6 — Evaluate
 
@@ -162,12 +194,13 @@ Both matter when reading any number this pipeline produces.
    URLhaus, which can take up to 3 s per uncached domain and, on a corpus of
    historical captures, would return *today's* feed contents rather than what
    was known when each page was live. Pass `--blacklist-network` to enable it.
-   Because it is off by default, **this pipeline makes no claim about how much
-   reputation lookup contributes** — it is not measured, not measured as zero.
+   Because it is off by default, this pipeline makes no claim about how much
+   reputation lookup contributes — it is not measured, not measured as zero.
 
-2. **HTML parser.** The harness uses `lxml`; the proxy uses `html.parser`. Rule
-   outputs are identical, only speed differs (~20%). Pass
-   `--parser html.parser` to mirror production exactly.
+2. **HTML parser.** The harness uses `lxml`; the proxy uses `html.parser`.
+   Measured over 1,000 pages: the same rules fire on every page, the risk score
+   differs on two, and one of those crosses a decision band. Small but not zero.
+   Pass `--parser html.parser` to mirror production exactly.
 
 ## Reading the numbers honestly
 
@@ -184,5 +217,4 @@ Both matter when reading any number this pipeline produces.
    deployment.
 4. **Six of the seventeen rules are unmeasured here.** The four session-aware
    rules need a session, which this harness never builds; the two blacklist
-   rules are disabled per above. No conclusion in Chapter 4 rests on any of
-   them.
+   rules are disabled per above. No conclusion rests on any of them.

@@ -1,13 +1,6 @@
-"""Keyword-based fallback scorers for Stage B semantic rules.
-
-These are used when no trained sklearn artifact is present for a rule's
-`model_id`. They produce a probability-like score in [0, 1] derived from a
-small bag of high-precision phrases, so the pipeline yields useful signal
-out-of-the-box before the operator runs `train.py`.
-
-Each entry is a list of (regex, weight) tuples. Total weight is squashed into
-[0, 1] via a logistic-like saturation so the output remains comparable to the
-real classifier's `predict_proba` output.
+"""Keyword fallback scorers, used when a rule has no trained artifact. Each is a
+list of (regex, weight) squashed into [0, 1] so the output stays comparable to
+a real `predict_proba`.
 """
 
 from __future__ import annotations

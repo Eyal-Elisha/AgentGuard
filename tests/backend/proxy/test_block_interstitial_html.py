@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from backend.proxy.block_interstitial import build_block_html
+from backend.proxy.interstitials import build_block_html
 
 
 def test_build_block_html_renders_url_score_and_rules():

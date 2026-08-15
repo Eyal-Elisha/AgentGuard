@@ -1,15 +1,6 @@
-"""Contextual rule implementations for Stage A.
-
-Each rule reads recent session activity (`SessionContext`) and returns a score
-plus a short explanation for the user. If the rule does not apply (e.g. no
-prior history yet), it returns `score=None` so aggregation ignores it. If it
-applies but nothing suspicious was found, the score is `0.0`.
-
-Scores rise with how strong the pattern is and are capped at 1.0 using each
-rule's `max_events` setting in `CONTEXTUAL_RULE_CONFIG`.
-
-A prior "warning" for these rules means AgentGuard already marked an earlier
-request as Warn or Block for that session (`guard_action` in `{Warn, Block}`).
+"""The contextual rules, which score a request against the session's recent
+activity. A rule returns None when it does not apply, so aggregation skips it
+instead of counting a zero.
 """
 
 from __future__ import annotations
@@ -56,8 +47,8 @@ def rule_sensitive_action_frequency_spike(
     if t0 is None or not session.prior_events:
         return None, "Skipped - no browsing history yet in this session"
 
-    n_max = int(config.get("max_events", config.get("Nmax", 5)))
-    t_ms = int(config.get("window_ms", config.get("T_ms", 60_000)))
+    n_max = int(config.get("max_events", 5))
+    t_ms = int(config.get("window_ms", 60_000))
     window_seconds = max(1, t_ms // 1000)
     window_start = t0 - timedelta(milliseconds=t_ms)
 
@@ -89,7 +80,7 @@ def rule_repeated_sensitive_action_after_warning(
 
     Skipped (None) when there is no prior warning to anchor against.
     """
-    n_max = int(config.get("max_events", config.get("Nmax", 5)))
+    n_max = int(config.get("max_events", 5))
     t_warn = _first_flagged_timestamp(session)
     if t_warn is None:
         return None, "Skipped - AgentGuard hasn't warned you yet in this session"
@@ -130,7 +121,7 @@ def rule_redirect_to_sensitive_action(
     if t0 is None or not session.prior_events:
         return None, "Skipped - no browsing history to form a redirect chain"
 
-    n_max = int(config.get("max_events", config.get("Nmax", 5)))
+    n_max = int(config.get("max_events", 5))
     window_ms = int(config.get("redirect_window_ms", 2_000))
     window = timedelta(milliseconds=window_ms)
 
@@ -186,7 +177,7 @@ def rule_previously_warned_domain_in_session(
     Skipped (None) when the session has no flagged events to define
     a "warned-domain set".
     """
-    n_max = int(config.get("max_events", config.get("Nmax", 5)))
+    n_max = int(config.get("max_events", 5))
     if not session.prior_events:
         return None, "Skipped - no browsing history yet in this session"
 

@@ -1,6 +1,5 @@
 from . import create_app
-from .config import env_flag, server_port
-from backend.settings import get_api_host
+from .settings import env_flag, get_api_host, server_port
 
 app = create_app()
 

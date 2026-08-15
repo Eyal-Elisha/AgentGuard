@@ -401,8 +401,8 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
 
     def test_proxy_control_start_creates_session(self):
         with (
-            patch("backend.routes.proxy.start_proxy_process", return_value=(True, "started")),
-            patch("backend.routes.proxy.proxy_is_running", return_value=True),
+            patch("backend.routes.proxy_control.start_proxy_process", return_value=(True, "started")),
+            patch("backend.routes.proxy_control.proxy_is_running", return_value=True),
         ):
             response = self.client.post("/api/proxy/control", json={"active": True, "environment": "test"})
 
@@ -421,8 +421,8 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
 
     def test_proxy_control_start_uses_selected_agent(self):
         with (
-            patch("backend.routes.proxy.start_proxy_process", return_value=(True, "started")) as start_proxy,
-            patch("backend.routes.proxy.proxy_is_running", return_value=True),
+            patch("backend.routes.proxy_control.start_proxy_process", return_value=(True, "started")) as start_proxy,
+            patch("backend.routes.proxy_control.proxy_is_running", return_value=True),
         ):
             response = self.client.post(
                 "/api/proxy/control",
@@ -485,8 +485,8 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         started = ensure_proxy_session_started(environment="test")
 
         with (
-            patch("backend.routes.proxy.stop_proxy_process", return_value=(True, "stopped")),
-            patch("backend.routes.proxy.proxy_is_running", return_value=False),
+            patch("backend.routes.proxy_control.stop_proxy_process", return_value=(True, "stopped")),
+            patch("backend.routes.proxy_control.proxy_is_running", return_value=False),
         ):
             response = self.client.post("/api/proxy/control", json={"active": False, "environment": "test"})
 

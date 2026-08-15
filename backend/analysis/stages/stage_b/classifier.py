@@ -1,14 +1,6 @@
-"""Semantic classifier abstraction for Stage B.
-
-Each semantic rule binds to a `model_id`. At runtime we look up a classifier
-artifact under `stage_b/data/<model_id>.pkl`. If the artifact exists *and*
-scikit-learn is importable, we deserialize it and use `predict_proba`.
-
-If either is missing we fall back to `heuristics.heuristic_score`, which keeps
-the pipeline useful before the operator runs `train.py`.
-
-The pickle is expected to contain a scikit-learn `Pipeline` whose final step is
-a binary `LogisticRegression`. The positive class label must be `1` (malicious).
+"""Loads a rule's classifier from stage_b/data/ and scores with `predict_proba`.
+Falls back to the keyword heuristics when the artifact or scikit-learn is
+missing.
 """
 
 from __future__ import annotations

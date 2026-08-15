@@ -3,7 +3,7 @@ from __future__ import annotations
 from urllib.parse import parse_qs, urlsplit
 
 from backend.proxy.warn_bypass import BYPASS_QUERY_PARAM
-from backend.proxy.warn_interstitial import append_bypass_param, build_warn_html
+from backend.proxy.interstitials import append_bypass_param, build_warn_html
 
 
 def test_append_bypass_param_no_existing_query():

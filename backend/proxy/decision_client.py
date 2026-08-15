@@ -1,3 +1,5 @@
+"""The HTTP call from the proxy to the backend decision endpoint."""
+
 from __future__ import annotations
 
 import logging
@@ -20,7 +22,13 @@ from .enforcement import (
 _logger = logging.getLogger(__name__)
 
 
-def fetch_backend_decision(payload: Dict[str, Any]) -> BackendDecision:
+def post_decision(payload: Dict[str, Any]) -> BackendDecision:
+    """POST one payload to the backend and map the reply onto a decision.
+
+    Never raises: a timeout, an unreachable backend or an unparseable reply
+    all become a BackendDecision whose `source` says which, so the caller
+    always has something to enforce.
+    """
     payload, validation_error, _ = validate_proxy_payload(payload)
     if validation_error:
         return BackendDecision(

@@ -9,7 +9,7 @@ from .sec_fetch_filter import sec_fetch_is_subresource
 from .content_type_filter import is_binary_media_response
 from .browser_filter import is_browser_user_agent
 from .noise_filter import is_noise
-from .action_filter import is_action_request
+from .action_filter import is_enforced_request_method
 
 
 def _has_response_body(flow: http.HTTPFlow) -> bool:
@@ -45,7 +45,7 @@ def should_ignore_response(flow: http.HTTPFlow) -> bool:
     if is_noise(flow):
         return True
 
-    if is_action_request(flow):
+    if is_enforced_request_method(flow):
         return not _has_response_body(flow)
 
     if flow.request.method.upper() != "GET":
