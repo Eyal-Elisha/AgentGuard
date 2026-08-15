@@ -6,15 +6,13 @@ from typing import List, Mapping, Optional
 
 from backend.feature_extraction.feature_extractor import ExtractedFeatures
 from backend.analysis.rules import (
-    CONTEXTUAL_RULE_CONFIG,
-    CONTEXTUAL_RULES,
-    DETERMINISTIC_RULES,
-    RULE_WEIGHTS,
-    HIGH_RISK_THRESHOLD,
-    WARN_THRESHOLD,
     AMBIGUOUS_LOW,
-    STAGE_B_LOW,
+    CONTEXTUAL_RULES,
+    CONTEXTUAL_RULE_CONFIG,
+    DETERMINISTIC_RULES,
+    HIGH_RISK_THRESHOLD,
     STAGE_B_HIGH,
+    STAGE_B_LOW,
     Decision,
     EvaluationResult,
     RuleResult,
@@ -22,6 +20,7 @@ from backend.analysis.rules import (
     SessionContext,
     is_rule_enabled,
 )
+from backend.analysis.scoring import aggregate_risk_score, decide
 from backend.analysis.stages.stage_a.contextual_rules import CONTEXTUAL_RULE_FN
 from backend.analysis.stages.stage_a.deterministic_rules import RULE_FN, rule_custom_blacklist
 
@@ -36,7 +35,7 @@ def _run_contextual_rules(
     Contextual rules may return a `None` score to indicate they were skipped
     (preconditions not met). Skipped results are still included in
     `rule_results` for full audit history but excluded from aggregation by
-    `_aggregate`.
+    `aggregate_risk_score`.
     """
     results: List[RuleResult] = []
     for rule_def in CONTEXTUAL_RULES:
@@ -57,27 +56,6 @@ def _run_contextual_rules(
             triggered=triggered,
         ))
     return results
-
-
-def _aggregate(results: List[RuleResult]) -> float:
-    """Weighted average over all executed (non-skipped) rules."""
-    total_weight = 0.0
-    weighted_sum = 0.0
-    for r in results:
-        if r.score is None:
-            continue
-        w = RULE_WEIGHTS.get(r.rule_id, 0.0)
-        weighted_sum += r.score * w
-        total_weight += w
-    return weighted_sum / total_weight if total_weight > 0 else 0.0
-
-
-def _make_decision(risk_score: float) -> Decision:
-    if risk_score >= HIGH_RISK_THRESHOLD:
-        return Decision.BLOCK
-    if risk_score >= WARN_THRESHOLD:
-        return Decision.WARN
-    return Decision.ALLOW
 
 
 class StageAEvaluator:
@@ -148,7 +126,7 @@ class StageAEvaluator:
             )
 
         # ── Step 2: Initial deterministic score ──────────────────────────────
-        initial_score = _aggregate(rule_results)
+        initial_score = aggregate_risk_score(rule_results)
 
         # ── Step 3: Contextual rules (ambiguous range only) ───────────────────
         contextual_results: List[RuleResult] = []
@@ -156,13 +134,13 @@ class StageAEvaluator:
             contextual_results = _run_contextual_rules(features, session, enabled_rules)
 
         all_results = rule_results + contextual_results
-        final_score = _aggregate(all_results) if contextual_results else initial_score
+        final_score = aggregate_risk_score(all_results) if contextual_results else initial_score
 
         # ── Step 4: Flag whether Stage B is needed ────────────────────────────
         stage_b_required = STAGE_B_LOW <= final_score < STAGE_B_HIGH
 
         return EvaluationResult(
-            decision=_make_decision(final_score),
+            decision=decide(final_score),
             risk_score=round(final_score, 4),
             rule_results=all_results,
             hard_block_triggered=False,

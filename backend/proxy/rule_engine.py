@@ -3,18 +3,12 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
 from backend.custom_blacklist import custom_blacklist_file_path, load_custom_blacklist_file
-from backend.analysis import meta_classifier
-from backend.analysis.rules import (
-    Decision,
-    EvaluationResult,
-    META_HIGH_RISK_THRESHOLD,
-    META_WARN_THRESHOLD,
-)
+from backend.analysis.rules import EvaluationResult, RuleResult
+from backend.analysis.scoring import aggregate_risk_score, decide, meta_classifier
 from backend.analysis.stages.stage_a import StageAEvaluator
-from backend.analysis.stages.stage_a.evaluator import _aggregate, _make_decision
 from backend.analysis.stages.stage_a.session_loader import build_context
 from backend.analysis.stages.stage_b import StageBEvaluator
 from backend.feature_extraction.feature_extractor import FeatureExtractor
@@ -38,12 +32,13 @@ _stage_a = StageAEvaluator(custom_blacklist=_CUSTOM_BLACKLIST)
 _stage_b = StageBEvaluator()
 
 
-def _warm_up() -> None:
-    """Pre-load the Stage B classifiers and meta-classifier at import time so the
-    first real request does not pay the cold model-load cost — which on the
-    single-threaded dev server can exceed the proxy's decision timeout and trip
-    the fail-closed block. Never raises: warmup must not break startup. Avoids
-    Stage A on purpose (its blacklist rule may hit the network)."""
+def warm_up() -> None:
+    """Load the Stage B and meta models now rather than on the first request.
+
+    That first load can outlast the proxy's decision timeout, which fails
+    closed on a good page. Called from create_app, so the proxy process does
+    not pay for models it never uses.
+    """
     try:
         features = _extractor.extract(
             url="https://warmup.invalid/",
@@ -51,13 +46,9 @@ def _warm_up() -> None:
             headers={"Content-Type": "text/html"},
             body=b"<html><body>warmup text to load the semantic models</body></html>",
         )
-        combined = _stage_b.evaluate(features, enabled_rules={})
-        meta_classifier.score(combined)
-    except Exception:  # pragma: no cover - warmup is best-effort
+        meta_classifier.score(_stage_b.evaluate(features, enabled_rules={}))
+    except Exception:
         pass
-
-
-_warm_up()
 
 
 def _rule_enablement_map() -> dict[str, bool]:
@@ -68,12 +59,22 @@ def _rule_enablement_map() -> dict[str, bool]:
     return {str(row["rule_code"]): bool(row["is_enabled"]) for row in rows}
 
 
-def _meta_decision(prob: float) -> Decision:
-    if prob >= META_HIGH_RISK_THRESHOLD:
-        return Decision.BLOCK
-    if prob >= META_WARN_THRESHOLD:
-        return Decision.WARN
-    return Decision.ALLOW
+def _score_and_decide(results: List[RuleResult]) -> EvaluationResult:
+    """Turn the full rule set into a score and a decision, preferring the
+    trained meta-classifier and falling back to the weighted average."""
+    risk = meta_classifier.score(results)
+    if risk is not None:
+        decision = meta_classifier.decide(risk)
+    else:
+        risk = aggregate_risk_score(results)
+        decision = decide(risk)
+    return EvaluationResult(
+        decision=decision,
+        risk_score=round(risk, 4),
+        rule_results=results,
+        hard_block_triggered=False,
+        stage_b_required=False,
+    )
 
 
 def evaluate_http_payload(
@@ -106,32 +107,11 @@ def evaluate_http_payload(
     if stage_a_result.hard_block_triggered:
         return stage_a_result
 
-    meta_on = meta_classifier.is_available()
-
-    # With the trained meta-classifier we always run Stage B so its feature
-    # vector is complete (it was trained with semantic scores present). Without
-    # it, keep the cheap gate: skip Stage B when Stage A did not request it.
-    if not meta_on and not stage_a_result.stage_b_required:
+    # The meta-classifier was trained with the semantic scores present, so its
+    # feature vector is only complete if Stage B has run. When it is in play we
+    # therefore always run Stage B; otherwise Stage A's cheap gate stands.
+    if not meta_classifier.is_available() and not stage_a_result.stage_b_required:
         return stage_a_result
 
     semantic_results = _stage_b.evaluate(features, enabled_rules=enablement)
-    combined = stage_a_result.rule_results + semantic_results
-
-    meta_prob = meta_classifier.score(combined) if meta_on else None
-    if meta_prob is not None:
-        return EvaluationResult(
-            decision=_meta_decision(meta_prob),
-            risk_score=round(meta_prob, 4),
-            rule_results=combined,
-            hard_block_triggered=False,
-            stage_b_required=False,
-        )
-
-    final_score = _aggregate(combined)
-    return EvaluationResult(
-        decision=_make_decision(final_score),
-        risk_score=round(final_score, 4),
-        rule_results=combined,
-        hard_block_triggered=False,
-        stage_b_required=False,
-    )
+    return _score_and_decide(stage_a_result.rule_results + semantic_results)

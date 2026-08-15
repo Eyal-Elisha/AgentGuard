@@ -16,11 +16,17 @@ Modular Python package under `backend/`:
 
 | Package | Role |
 |--------|------|
+| `proxy/` | The mitmproxy addon: traffic triage, enforcement, interstitials, audit |
+| `analysis/` | The rule engine: rule definitions, the two evaluation stages, scoring |
+| `feature_extraction/` | HTML → the features the rules read |
 | `routes/` | HTTP API routing |
-| `analysis/` | Analysis logic |
+| `validation/` | Request validation, one module per request family |
 | `storage/` | Persistence (SQLite) |
 
 Entry: `python -m backend.app` (Flask app factory in `backend/__init__.py`).
+
+**[`backend/ARCHITECTURE.md`](backend/ARCHITECTURE.md) traces one request from
+interception through to storage and says which file does what.** Start there.
 
 ## Environment (venv + dependencies)
 
@@ -84,6 +90,13 @@ The proxy listen port comes from `PROXY_PORT` in `backend/.env` and defaults to 
 
 ## Run tests
 
+With the venv activated, from the repository root:
+
 ```bash
-python -m unittest discover -s tests/backend -p "test_*.py" -v
+python -m pytest -q
 ```
+
+Run it from that virtual environment rather than a system Python — the proxy
+tests import `mitmproxy`, and collection fails without it. Tests marked
+`integration` make real network requests and are deselected by default; run
+them with `python -m pytest -m integration`.

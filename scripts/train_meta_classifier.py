@@ -1,8 +1,12 @@
 """Bake-off: trained meta-classifier over rule outputs vs the hand-weighted mean.
 
 Trains on dev rule-feature vectors, evaluates on a held-out set, and prints a
-head-to-head at realistic phishing base rates. Purely diagnostic — does not
-touch product code. Adopt the meta-classifier only if it clearly wins.
+head-to-head at realistic phishing base rates. It reports only — it does not
+write a model artifact, so the shipped
+`backend/analysis/data/meta_classifier.pkl` cannot be regenerated from here.
+
+The bake-off is what settled the question: the meta-classifier won, and is now
+the live aggregation path whenever that artifact loads.
 
 Usage:
     python scripts/train_meta_classifier.py --train runs/dev_feats.jsonl \

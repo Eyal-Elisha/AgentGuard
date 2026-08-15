@@ -1,12 +1,6 @@
-"""Domain/URL blacklist checking via multiple threat intelligence sources.
-
-Sources used:
-  - PhishTank  (phishing-specific, free API — optionally authenticated via
-                PHISHTANK_API_KEY env var for higher rate limits)
-  - URLhaus    (abuse.ch malware URL feed, free, no key required)
-
-Both checks run concurrently; a positive from either triggers the rule.
-Results are cached in-memory with a TTL to avoid hammering the APIs.
+"""Domain and URL blacklist checks against PhishTank and URLhaus. Both run
+concurrently, either one triggers the rule, and results are cached in memory
+with a TTL.
 """
 
 from __future__ import annotations

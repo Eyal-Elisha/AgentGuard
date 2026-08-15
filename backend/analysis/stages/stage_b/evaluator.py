@@ -1,9 +1,5 @@
-"""Stage B evaluator — executes semantic rules on the extracted page text.
-
-Stage B runs only when Stage A flags `stage_b_required` (i.e. the deterministic
-+ contextual score landed in the ambiguous band). It produces a list of
-`RuleResult` entries that the orchestrator merges with Stage A's results before
-re-aggregating into the final risk score.
+"""Runs the semantic rules over the extracted page text and returns their
+RuleResults. The orchestrator merges them with Stage A's before re-aggregating.
 """
 
 from __future__ import annotations
