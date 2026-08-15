@@ -150,7 +150,9 @@ rather than anything near the middle of `[0, 1]`, and why adding an
 always-executed rule pushes every score down by enlarging the denominator.
 
 *`meta_classifier.py`* is a model trained on the rule scores themselves, so it
-can read combinations the fixed weights cannot. It runs whenever
+can read combinations the fixed weights cannot. `scripts/fit_meta_classifier.py`
+rebuilds the artifact and has a `--verify-against` mode that refits and asserts
+it reproduces the deployed one. It runs whenever
 `analysis/data/meta_classifier.pkl` loads, and then it — not the average —
 decides, against its own thresholds (`META_WARN_THRESHOLD` 0.50,
 `META_HIGH_RISK_THRESHOLD` 0.80). Its raw output is rescaled onto those round
@@ -161,7 +163,31 @@ Note the consequence: **which thresholds apply depends on whether that pickle
 loaded.** A bare install decides at 0.04/0.12 on the weighted average; a full
 install decides at 0.50/0.80 on the model.
 
+*`floors.py`* runs last and can only make a decision stricter. Both strategies
+reduce every rule to one number, so a rule can influence the outcome only in
+proportion to how much the scorer weighs it. That is right by default and wrong
+for one case: a rule detecting a threat class the scorer was never trained to
+predict. The meta-classifier learns from phishing labels, so it discounts
+prompt injection, and a page carrying a live payload scored 0.28 while the
+injection rule itself read 0.94. `DECISION_FLOORS` in `tuning.py` names the
+rules allowed to force a minimum decision on their own; `apply_decision_floors`
+raises the decision without touching the risk score, because the score reports
+what the model believes and the decision is what we do about it.
+
 All the calibrated numbers live in `analysis/rules/tuning.py`.
+
+### Parsing
+
+Every analysed request is parsed twice, once to extract features and once to
+strip script and style before Stage B vectorises the text, so the parser is a
+measurable share of the latency the agent waits on. `feature_extraction/
+html_parser.py` selects it once and both call sites import the constant, so they
+cannot drift apart. `lxml` is used when installed and `html.parser` otherwise.
+
+The two are close but not identical: over 1,000 captured pages the same rules
+fired on every page, the risk score differed on two, and one of those crossed a
+decision band. Measured interleaved in one process, `lxml` cuts median analysis
+from 43.6 ms to 40.8 ms and the 95th percentile from 365.8 ms to 308.6 ms.
 
 ### 4. Recording — `backend/proxy/audit/`
 
@@ -174,10 +200,10 @@ also goes to the encrypted append-only journal.
 | Package | Holds |
 |---|---|
 | `analysis/rules/` | `models` (types), `tuning` (every calibrated number), `catalog` (the 18 rules) |
-| `analysis/scoring/` | `weighted_average` and `meta_classifier` — the two ways to go from rule results to a decision |
+| `analysis/scoring/` | `weighted_average` and `meta_classifier` — the two ways to go from rule results to a decision — and `floors`, which can only make one stricter |
 | `analysis/stages/stage_a/` | deterministic and contextual rules, their data and helpers |
 | `analysis/stages/stage_b/` | semantic classifiers, text sanitization, heuristic fallback |
-| `feature_extraction/` | HTML → `ExtractedFeatures` |
+| `feature_extraction/` | HTML → `ExtractedFeatures`; `html_parser` picks the BeautifulSoup backend once for both call sites |
 | `proxy/` | the mitmproxy addon and everything it calls |
 | `proxy/filters/` | one yes/no question per module, composed by `filter_requests.py` |
 | `proxy/enforcement/` | `decision` (the verdict), `reasons` (the text), `responses` (the HTTP) |
