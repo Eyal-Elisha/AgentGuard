@@ -125,3 +125,45 @@ SEMANTIC_RULE_CONFIG: Dict[str, Dict[str, Any]] = {
         "trigger_threshold": 0.85,
     },
 }
+
+# --- Decision floors -------------------------------------------------------
+# A rule listed here forces a minimum decision when it scores at or above its
+# threshold, whatever the combined risk score says.
+#
+# This exists because of how the scoring layer is trained. The meta-classifier
+# learns from a phishing-labelled corpus, so it weighs every rule by how well
+# that rule predicts *phishing*. Prompt injection is a different threat class
+# and is only weakly correlated with phishing, so the model learned to discount
+# it -- correctly, for the objective it was given, and wrongly for ours.
+#
+# Measured on demo_pages/injection.html: the prompt-injection rule fires at
+# 0.94, well above its own 0.85 trigger, and the combiner still returns 0.28,
+# an Allow. A page carrying a live injection payload reached the agent. Since
+# defending the agent is the capability that distinguishes this project, a rule
+# detecting a threat class absent from the training labels has to be able to
+# act without the combiner's agreement.
+#
+# WARN rather than BLOCK: the classifier is known to over-fire on benign
+# technical text, so the floor buys a recoverable interstitial, not a block.
+#
+# min_score is deliberately stricter than the rule's own 0.85 trigger. Adding
+# evidence to a score and unilaterally overriding the scorer are different
+# acts, and the second deserves a higher bar. Sweeping the threshold against
+# the benign warn rate on 49,998 held-out pages shows a cliff just below 0.92:
+#
+#   floor   benign pages newly warned   benign warn rate (baseline 0.326%)
+#   0.85                          196                              1.085%
+#   0.91                          137                              0.856%
+#   0.92                           16                              0.388%
+#   0.93                           10                              0.364%
+#   0.95                            5                              0.345%
+#
+# At 0.85 the floor triples the benign warn rate, which at a 1% base rate
+# roughly halves warn-tier precision. At 0.93 it costs 10 pages in 25,806 and
+# still catches the demonstration payload, which scores 0.9356.
+DECISION_FLOORS: Dict[str, Dict[str, Any]] = {
+    "prompt_injection": {
+        "min_score": 0.93,
+        "min_decision": "warn",
+    },
+}
