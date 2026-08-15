@@ -58,4 +58,8 @@ data/*.pkl
 # artifact and its history; a snapshot taken before retraining is local only,
 # whatever suffix it was given.
 *.pkl.bak
-*.pkl.[a-z_]*
+# Any snapshot taken before retraining, whatever suffix it was given.
+*.pkl.[A-Za-z0-9_]*
+# Downloaded corpora and cached benchmark id lists: gigabytes, all re-fetchable.
+data/kaggle/
+data/benchmark_ids/
