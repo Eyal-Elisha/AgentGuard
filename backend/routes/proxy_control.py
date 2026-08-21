@@ -21,7 +21,7 @@ from . import api_bp
 from .guards import local_clients_only
 
 try:
-    from proxy_launcher import proxy_is_running, start_proxy_process, stop_proxy_process
+    from backend.proxy.launcher import proxy_is_running, start_proxy_process, stop_proxy_process
 except ImportError:  # pragma: no cover - the launcher is not importable from every cwd
     proxy_is_running = None  # type: ignore[assignment, misc]
     start_proxy_process = None  # type: ignore[assignment, misc]
