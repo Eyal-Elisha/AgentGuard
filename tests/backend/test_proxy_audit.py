@@ -557,6 +557,85 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         self.assertEqual(closed["event"], "proxy_session_closed")
         self.assertEqual(closed["reason"], "proxy_stopped")
 
+    def test_proxy_control_stop_addresses_the_named_agent(self):
+        """Stop has to name the agent, or it would stop whichever instance the
+        launcher happened to reach for."""
+        with (
+            patch("backend.routes.proxy_control.stop_proxy_process", return_value=(True, "stopped")) as stop_proxy,
+            patch("backend.routes.proxy_control.proxy_is_running", return_value=False),
+        ):
+            response = self.client.post(
+                "/api/proxy/control",
+                json={"active": False, "environment": "test", "agent_name": "MicrosoftEdge"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        stop_proxy.assert_called_once_with(agent_name="MicrosoftEdge")
+        self.assertEqual(response.get_json()["agent_name"], "MicrosoftEdge")
+
+    def test_proxy_control_reports_the_endpoint_of_the_agent_it_started(self):
+        with (
+            patch("backend.routes.proxy_control.start_proxy_process", return_value=(True, "started")),
+            patch("backend.routes.proxy_control.proxy_is_running", return_value=True),
+        ):
+            response = self.client.post(
+                "/api/proxy/control",
+                json={"active": True, "environment": "test", "agent_name": "MicrosoftEdge"},
+            )
+
+        body = response.get_json()
+        self.assertEqual(body["proxy_port"], 8082)
+        self.assertEqual(body["admin_port"], 8182)
+
+    def test_proxy_control_rejects_an_agent_with_no_allocation(self):
+        with (
+            patch("backend.routes.proxy_control.start_proxy_process") as start_proxy,
+            patch("backend.routes.proxy_control.proxy_is_running", return_value=False),
+        ):
+            response = self.client.post(
+                "/api/proxy/control",
+                json={"active": True, "environment": "test", "agent_name": "Firefox"},
+            )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.get_json(), {"error": "Unknown agent: Firefox"})
+        start_proxy.assert_not_called()
+
+    def test_proxy_status_reports_one_entry_per_agent(self):
+        snapshot = [
+            {
+                "agent_name": "AllTraffic",
+                "active": True,
+                "proxy_port": 8080,
+                "admin_port": 8180,
+                "environment": "prod",
+            },
+            {
+                "agent_name": "BrowserOS",
+                "active": False,
+                "proxy_port": 8081,
+                "admin_port": 8181,
+                "environment": None,
+            },
+            {
+                "agent_name": "MicrosoftEdge",
+                "active": False,
+                "proxy_port": 8082,
+                "admin_port": 8182,
+                "environment": None,
+            },
+        ]
+        with (
+            patch("backend.routes.proxy_control.proxy_status_snapshot", return_value=snapshot),
+            patch("backend.routes.proxy_control.any_proxy_running", return_value=True),
+        ):
+            response = self.client.get("/api/proxy/status")
+
+        self.assertEqual(response.status_code, 200)
+        body = response.get_json()
+        self.assertEqual(body["active"], True)
+        self.assertEqual(body["agents"], snapshot)
+
 
 class NormalizeProxyAgentNameTestCase(unittest.TestCase):
     def test_legacy_gemini_maps_to_microsoft_edge(self):
