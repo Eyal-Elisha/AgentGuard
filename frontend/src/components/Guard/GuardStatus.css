@@ -50,3 +50,10 @@
 .guard-status-passive-label--active { color: var(--color-proxy-on-start); }
 .guard-status-passive-toggle { width: 32px !important; height: 16px !important; }
 .guard-status-passive-toggle .proxy-knob { width: 12px !important; height: 12px !important; }
+
+@media (max-width: 34rem) {
+  /* The pill is wider than the card once the labels stop sharing a line. */
+  .guard-status { flex-wrap: wrap; justify-content: center; gap: var(--space-md); max-width: 100%; }
+  .guard-status-divider { display: none; }
+  .guard-status-passive-label { width: auto; text-align: left; }
+}

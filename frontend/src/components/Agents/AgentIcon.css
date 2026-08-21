@@ -5,3 +5,8 @@
   display: block;
   object-fit: contain;
 }
+
+/* Drawn rather than loaded, so it takes the surrounding text colour. */
+.agent-icon--glyph {
+  color: var(--color-text-muted);
+}
