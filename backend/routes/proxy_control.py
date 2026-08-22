@@ -1,6 +1,7 @@
-"""Start, stop and observe the local proxy from the dashboard. Starting opens a
-proxy session and stopping closes one; passive mode keeps evaluating but stops
-enforcing.
+"""Start, stop and observe the local proxies from the dashboard. Every route
+here addresses one agent: starting opens a proxy session for it and stopping
+closes one, and neither touches another agent's instance. Passive mode is the
+exception, and is deliberately system-wide: all instances call the one backend.
 """
 
 from __future__ import annotations
@@ -11,8 +12,10 @@ from backend.auth import require_jwt
 from backend.proxy.audit import (
     close_proxy_session,
     ensure_proxy_session_started,
+    is_catalogue_agent,
     normalize_proxy_agent_name,
 )
+from backend.proxy.ports import ports_for_agent
 from backend.settings import get_passive_mode, set_passive_mode
 from backend.storage import sqlite_store as store
 from backend.validation.proxy_decision import parse_agent_name, parse_environment
@@ -20,35 +23,30 @@ from backend.validation.proxy_decision import parse_agent_name, parse_environmen
 from . import api_bp
 from .guards import local_clients_only
 
-try:
-    from proxy_launcher import proxy_is_running, start_proxy_process, stop_proxy_process
-except ImportError:  # pragma: no cover - the launcher is not importable from every cwd
-    proxy_is_running = None  # type: ignore[assignment, misc]
-    start_proxy_process = None  # type: ignore[assignment, misc]
-    stop_proxy_process = None  # type: ignore[assignment, misc]
-
-_LAUNCHER_UNAVAILABLE = "Proxy launcher is not available on this server"
+from backend.proxy.launcher import (
+    any_proxy_running,
+    proxy_is_running,
+    proxy_status_snapshot,
+    start_proxy_process,
+    stop_proxy_process,
+)
 
 
 @api_bp.route("/proxy/status", methods=["GET"])
 @require_jwt
 @local_clients_only
 def proxy_status():
-    if proxy_is_running is None:
-        return jsonify({"error": _LAUNCHER_UNAVAILABLE}), 503
-    return jsonify({"active": proxy_is_running()}), 200
+    """One entry per agent, plus `active` for whether any of them is running."""
+    return jsonify({"active": any_proxy_running(), "agents": proxy_status_snapshot()}), 200
 
 
 @api_bp.route("/proxy/control", methods=["POST", "OPTIONS"])
 @require_jwt
 @local_clients_only
 def proxy_control():
-    """Start or stop mitmweb with `traffic_interception.py`, and its session."""
+    """Start or stop one agent's mitmweb, and its session."""
     if request.method == "OPTIONS":
         return "", 204
-    if start_proxy_process is None or stop_proxy_process is None:
-        return jsonify({"error": _LAUNCHER_UNAVAILABLE}), 503
-
     payload = request.get_json(silent=True)
     if not isinstance(payload, dict):
         return jsonify({"error": "JSON request body is required"}), 400
@@ -60,6 +58,10 @@ def proxy_control():
         agent_name = normalize_proxy_agent_name(parse_agent_name(payload))
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
+    # Only a catalogue agent has ports allocated to it, so only a catalogue
+    # agent can be launched, however the name is spelled on the way in.
+    if not is_catalogue_agent(agent_name):
+        return jsonify({"error": f"Unknown agent: {agent_name}"}), 400
 
     if active:
         ok, message = start_proxy_process(agent_name=agent_name, environment=environment)
@@ -72,14 +74,21 @@ def proxy_control():
             else None
         )
     else:
-        ok, message = stop_proxy_process()
+        ok, message = stop_proxy_process(agent_name=agent_name)
         session = close_proxy_session(environment=environment, agent_name=agent_name) if ok else None
 
-    running = proxy_is_running()
+    running = proxy_is_running(agent_name)
     if not ok:
-        return jsonify({"error": message, "active": running}), 500
+        return jsonify({"error": message, "active": running, "agent_name": agent_name}), 500
 
-    response = {"active": running, "message": message}
+    ports = ports_for_agent(agent_name)
+    response = {
+        "active": running,
+        "message": message,
+        "agent_name": agent_name,
+        "proxy_port": ports.listen_port,
+        "admin_port": ports.web_port,
+    }
     if session is not None:
         response["session"] = session
     return jsonify(response), 200

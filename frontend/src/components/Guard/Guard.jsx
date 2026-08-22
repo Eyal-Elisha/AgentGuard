@@ -1,48 +1,65 @@
-import { useAgent } from '../../context/AgentContext.jsx';
+import { useEffect } from 'react';
 import { useProxy } from '../../context/ProxyContext.jsx';
-import SessionAgentSelector from '../SessionsDashboard/SessionAgentSelector.jsx';
 import PowerIcon from '../Proxy/PowerIcon.jsx';
+import GuardAgentRow from './GuardAgentRow.jsx';
+import GuardAgentSelector from './GuardAgentSelector.jsx';
 import GuardStatus from './GuardStatus.jsx';
 import './Guard.css';
 
 const host = import.meta.env.VITE_PROXY_HOST?.trim() || '127.0.0.1';
-const port = import.meta.env.VITE_PROXY_PORT?.trim() || '8080';
 
 export default function Guard() {
-  const { isProxyActive, toggleProxy, isProxyPending, proxyPendingAction, isPassiveMode, togglePassiveMode } = useProxy();
-  const { selectedAgent, setSelectedAgent } = useAgent();
+  const {
+    agents,
+    selectedAgents,
+    setSelectedAgents,
+    isSelectionActive,
+    isAllTrafficSelected,
+    activeSelectedCount,
+    toggleProxy,
+    pendingActions,
+    pendingSelectionAction,
+    isPassiveMode,
+    togglePassiveMode,
+    refreshStatus,
+  } = useProxy();
+
+  // The provider's own call fires before sign-in and is refused, so the
+  // endpoints arrive here, on the first screen that is behind the login.
+  useEffect(() => { void refreshStatus(); }, [refreshStatus]);
+
+  const isPending = Boolean(pendingSelectionAction);
 
   return (
     <main className="guard-page">
       <div className="guard-card">
         <header className="guard-heading">
           <h1 className="guard-title">Guard</h1>
-          <p className="guard-tagline">Turn on protection for your agent</p>
+          <p className="guard-tagline">Turn on protection for your agents</p>
         </header>
 
-        <div className="guard-agent-row" data-tour="agent">
-          <SessionAgentSelector
-            selectedAgent={selectedAgent}
-            onAgentSelect={setSelectedAgent}
-          />
-        </div>
+        <GuardAgentSelector
+          selectedAgents={selectedAgents}
+          onSelect={setSelectedAgents}
+          disabled={isPending}
+        />
 
         <div className="guard-power-block">
           <div className="guard-power-button-wrap">
             <p
-              className={`guard-power-pending ${proxyPendingAction ? `guard-power-pending--${proxyPendingAction}` : ''}`}
+              className={`guard-power-pending ${pendingSelectionAction ? `guard-power-pending--${pendingSelectionAction}` : ''}`}
               aria-live="polite"
             >
-              {proxyPendingAction === 'stop' ? 'Stopping…' : proxyPendingAction === 'start' ? 'Starting…' : ''}
+              {pendingSelectionAction === 'stop' ? 'Stopping…' : pendingSelectionAction === 'start' ? 'Starting…' : ''}
             </p>
             <button
               type="button"
-              className={`guard-power-button ${isProxyActive ? 'guard-power-button--on' : 'guard-power-button--off'} ${proxyPendingAction ? `guard-power-button--${proxyPendingAction}` : ''}`}
-              onClick={() => toggleProxy(selectedAgent)}
-              aria-pressed={isProxyActive}
-              aria-label={isProxyActive ? 'Turn protection off' : 'Turn protection on'}
-              disabled={isProxyPending}
-              aria-busy={isProxyPending}
+              className={`guard-power-button ${isSelectionActive ? 'guard-power-button--on' : 'guard-power-button--off'} ${pendingSelectionAction ? `guard-power-button--${pendingSelectionAction}` : ''}`}
+              onClick={toggleProxy}
+              aria-pressed={isSelectionActive}
+              aria-label={isSelectionActive ? 'Turn protection off' : 'Turn protection on'}
+              disabled={isPending || selectedAgents.length === 0}
+              aria-busy={isPending}
               data-tour="power"
             >
               <PowerIcon className="guard-power-icon" />
@@ -50,22 +67,36 @@ export default function Guard() {
           </div>
         </div>
 
+        {/* One row per selected agent: each is its own proxy instance, so each
+            has its own endpoint to point that agent at. */}
+        <ul className="guard-agents" data-tour="agent">
+          {selectedAgents.map((agentName) => (
+            <GuardAgentRow
+              key={agentName}
+              agentName={agentName}
+              host={host}
+              state={agents[agentName]}
+              pendingAction={pendingActions[agentName] ?? null}
+            />
+          ))}
+        </ul>
+
+        {/* The endpoint alone does not say what to do with it, and the two
+            modes are set in different places. Named without an operating
+            system, since the same two steps apply on each. */}
+        <p className="guard-setup-hint">
+          {isAllTrafficSelected
+            ? 'Set this as your system proxy to cover everything on this machine.'
+            : 'Leave the system proxy alone. Start each agent pointed at its own address.'}
+        </p>
+
+        {/* Passive mode is system-wide: every instance calls the one backend. */}
         <GuardStatus
-          isProxyActive={isProxyActive}
+          activeCount={activeSelectedCount}
+          totalCount={selectedAgents.length}
           isPassiveMode={isPassiveMode}
           togglePassiveMode={togglePassiveMode}
         />
-
-        <dl className="guard-endpoints">
-          <div className="guard-endpoint-row">
-            <dt>Proxy address</dt>
-            <dd>{host}</dd>
-          </div>
-          <div className="guard-endpoint-row">
-            <dt>Port</dt>
-            <dd>{port}</dd>
-          </div>
-        </dl>
       </div>
     </main>
   );

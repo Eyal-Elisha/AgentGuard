@@ -6,10 +6,16 @@ import { useSelectDismiss } from './useSelectDismiss.js';
 
 /** @typedef {{ value: string, label: string, disabled?: boolean, divider?: boolean }} StyledSelectOption */
 
+/**
+ * Single-select by default. With `multiple`, `value` is an array of values and
+ * `onChange` receives the next array; the list stays open while picking, since
+ * choosing several things one at a time is the point.
+ */
 export default function StyledSelect({
   value,
   onChange,
   options,
+  multiple = false,
   disabled = false,
   ariaLabel,
   className = '',
@@ -21,9 +27,14 @@ export default function StyledSelect({
   const rootRef = useRef(null);
   const listId = useId();
 
+  const selectedValues = useMemo(
+    () => (multiple ? (Array.isArray(value) ? value : []) : []),
+    [multiple, value],
+  );
+
   const selected = useMemo(
-    () => options.find((o) => !o.divider && o.value === value),
-    [options, value],
+    () => (multiple ? null : options.find((o) => !o.divider && o.value === value)),
+    [multiple, options, value],
   );
 
   useSelectDismiss(open, setOpen, rootRef);
@@ -35,13 +46,24 @@ export default function StyledSelect({
 
   function pick(opt) {
     if (opt.disabled || opt.divider) return;
+    if (multiple) {
+      const next = selectedValues.includes(opt.value)
+        ? selectedValues.filter((v) => v !== opt.value)
+        : options.filter((o) => !o.divider)
+          .map((o) => o.value)
+          .filter((v) => v === opt.value || selectedValues.includes(v)); // keep catalogue order
+      onChange(next);
+      return;
+    }
     onChange(opt.value);
     setOpen(false);
   }
 
   const display = renderValue
-    ? renderValue(selected, value)
-    : (selected?.label ?? value);
+    ? renderValue(multiple ? selectedValues : selected, value)
+    : multiple
+      ? selectedValues.join(', ')
+      : (selected?.label ?? value);
 
   return (
     <div
@@ -67,6 +89,8 @@ export default function StyledSelect({
           listId={listId}
           options={options}
           value={value}
+          multiple={multiple}
+          selectedValues={selectedValues}
           ariaLabel={ariaLabel}
           renderOption={renderOption}
           onPick={pick}

@@ -126,3 +126,24 @@
   color: var(--color-text-body);
   background-color: var(--color-input-bg);
 }
+
+/* Multi-select: a checkbox gutter so the labels stay aligned whether or not
+   an option is ticked. */
+.styled-select-option--checkable { gap: var(--space-sm); }
+
+.styled-select-check {
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-subtle);
+}
+
+.styled-select-option--active .styled-select-check {
+  border-color: currentColor;
+}
+
+.styled-select-check svg { width: 0.7rem; height: 0.7rem; }

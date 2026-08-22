@@ -8,7 +8,6 @@ import LoginPage from './components/Auth/LoginPage.jsx';
 import SignupPage from './components/Auth/SignupPage.jsx';
 import ProtectedRoute from './components/Auth/ProtectedRoute.jsx';
 import AdminDashboard from './components/AdminDashboard/AdminDashboard.jsx';
-import { AgentProvider } from './context/AgentContext.jsx';
 import { ProxyProvider } from './context/ProxyContext.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { ThemeProvider } from './context/ThemeContext.jsx';
@@ -18,22 +17,20 @@ function App() {
     <ThemeProvider>
       <AuthProvider>
         <ProxyProvider>
-          <AgentProvider>
-            <Routes>
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/signup" element={<SignupPage />} />
-              <Route element={<ProtectedRoute />}>
-                <Route element={<AppLayout />}>
-                  <Route index element={<Guard />} />
-                  <Route path="sessions" element={<SessionsDashboard />} />
-                  <Route path="sessions/:sessionId/events" element={<EventsView />} />
-                  <Route path="rules" element={<RulesDashboard />} />
-                  <Route path="admin" element={<AdminDashboard />} />
-                </Route>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignupPage />} />
+            <Route element={<ProtectedRoute />}>
+              <Route element={<AppLayout />}>
+                <Route index element={<Guard />} />
+                <Route path="sessions" element={<SessionsDashboard />} />
+                <Route path="sessions/:sessionId/events" element={<EventsView />} />
+                <Route path="rules" element={<RulesDashboard />} />
+                <Route path="admin" element={<AdminDashboard />} />
               </Route>
-              <Route path="*" element={<Navigate to="/login" replace />} />
-            </Routes>
-          </AgentProvider>
+            </Route>
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          </Routes>
         </ProxyProvider>
       </AuthProvider>
     </ThemeProvider>

@@ -26,15 +26,17 @@ safe.
   React dashboard, frontend/
 ```
 
-Two processes, started separately:
+Processes, started separately — one backend, and one proxy per protected
+agent:
 
 | Process | Started by | Entry point |
 |---|---|---|
 | Backend API | `python -m backend.app` | `backend/app.py` → `create_app()` in `backend/__init__.py` |
-| Proxy | `python proxy_launcher.py` | mitmweb loading `backend/proxy/traffic_interception.py` |
+| Proxy | `python proxy_launcher.py --agent NAME` | mitmweb loading `backend/proxy/traffic_interception.py` |
 
-The dashboard can also start and stop the proxy, through
-`backend/routes/proxy_control.py`, which drives the same launcher.
+The dashboard can also start and stop each proxy, through
+`backend/routes/proxy_control.py`, which drives the same launcher. See
+[Running several agents at once](#running-several-agents-at-once).
 
 ## The path of one request
 
@@ -195,6 +197,55 @@ One event row, one `rules_analysis` row per rule — including the rules that
 never ran, which keep a NULL score so a stored event stays replayable. A line
 also goes to the encrypted append-only journal.
 
+## Running several agents at once
+
+AgentGuard protects any agent that honours system proxy settings, and several
+at the same time, each behind its own proxy instance. Everything below
+`proxy/launcher/` is keyed by agent: the registry, the two allocated ports,
+the environment label and the log file — a shared log written by two
+instances interleaves into something unreadable. `start`, `stop` and `status`
+each take an agent and address the matching entry, and the stop path resolves
+its port fallback against the port allocated to the agent being stopped, so
+stopping one agent leaves the others running.
+
+The agent's identity reaches the proxy as `AGENTGUARD_PROXY_AGENT_NAME` at
+spawn time, so every decision the instance reports is attributed without the
+request having to say so. Sessions are already unique per `(agent, environment)`.
+
+Ports are allocated deterministically rather than dynamically, because nothing
+hands the endpoint to the agent — the operator types it into the agent's own
+network settings by hand. `proxy/ports.py` derives both from the agent's
+position in `AGENT_CATALOGUE` (`proxy/audit/agents.py`), which is why appending
+to that tuple is safe and reordering it moves endpoints already configured.
+Only a catalogue member has an allocation, so only a catalogue member can be
+started; any other name can still be *recorded* against a decision.
+
+| Instance | Interception port | Administrative port |
+|---|---|---|
+| `AllTraffic`, the default | 8080, unchanged | 8180 |
+| `BrowserOS` | 8081 | 8181 |
+| `MicrosoftEdge` | 8082 | 8182 |
+| The *n*th agent in catalogue order | `PROXY_PORT` + *n* | `PROXY_WEB_PORT` + *n* |
+
+`AllTraffic` is first because it is the default and the general case: it is
+not tied to a named agent but intercepts whatever is pointed at it, which is
+what the system proxy does. Keeping it on 8080 means the endpoint
+already configured on a machine keeps working. Note that this differs from
+Table 3.5 in the project book, which has `BrowserOS` on 8080 and no catch-all
+entry.
+
+The two ranges come from separate bases because mitmweb serves its own
+administrative interface on the port immediately above its interception port:
+allocated from one base, the second agent's interception port would land on the
+first agent's administrative port. `ports.py` falls back to the defaults if the
+configured bases are close enough to recreate that collision.
+
+All instances share one certificate authority — mitmproxy's default confdir —
+so the operator installs a single certificate. Two limitations remain: every
+instance calls the one backend, so agents share its analysis capacity and
+passive mode is system-wide rather than per agent; and per-agent resource
+attribution is not reported.
+
 ## Where things live
 
 | Package | Holds |
@@ -209,7 +260,9 @@ also goes to the encrypted append-only journal.
 | `proxy/enforcement/` | `decision` (the verdict), `reasons` (the text), `responses` (the HTTP) |
 | `proxy/interstitials/` | the Warn and Block pages, their shared evidence rendering and theme |
 | `proxy/warn_bypass/` | `tokens` (one-shot links) and `continue_profile` (what redeeming one allows) |
-| `proxy/audit/` | `journal`, `agents`, `sessions`, `decisions` |
+| `proxy/audit/` | `journal`, `agents` (the ordered catalogue), `sessions`, `decisions` |
+| `proxy/ports.py` | Which two ports each agent's instance owns |
+| `proxy/launcher/` | `command` (argv and log), `termination` (stopping a tree), `registry` (what is running) |
 | `routes/` | HTTP API; `guards.py` holds the local-client guard |
 | `validation/` | one module per request family; nothing else validates input |
 | `storage/` | SQLite; `schema.py` owns the DDL, one store module per table |

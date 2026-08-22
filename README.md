@@ -50,7 +50,8 @@ Configuration is loaded from `backend/.env`. Copy `backend/.env.example` to `bac
 - `DATABASE_URL`: SQLite URL; if unset, the app defaults to `backend/agentguard.db` under the package
 - `AGENTGUARD_LOG_ENCRYPTION_KEY`: Fernet key used to encrypt audit JSONL records, event URLs/headers/risk scores, and rule-analysis scores/details before they are stored. Required before persisting logs. Generate one with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`.
 - `API_HOST` / `API_PORT`: used by the **mitmproxy addon** to build the URL for `POST /api/proxy/decision`. If `API_PORT` is unset, **`PORT` is used** so the proxy and Flask stay aligned.
-- `PROXY_PORT`: listen port for the local proxy (`python proxy_launcher.py`; default **8080**)
+- `PROXY_PORT`: base of the interception range; the first agent in the catalogue listens here (default **8080**)
+- `PROXY_WEB_PORT`: base of the administrative range, which mitmweb's own interface is served from (default **8180**). A separate base rather than an offset, because mitmweb puts its interface on the port immediately above its interception port
 - `AGENTGUARD_BACKEND_TIMEOUT_SECONDS`, `AGENTGUARD_BACKEND_FAILURE_MODE`: proxy → backend behavior (see `backend/.env.example`)
 
 ## Run the backend
@@ -83,10 +84,29 @@ In a third Terminal window, from the repository root with the virtual
 environment activated:
 
 ```bash
-python proxy_launcher.py
+python proxy_launcher.py --agent BrowserOS
 ```
 
-The proxy listen port comes from `PROXY_PORT` in `backend/.env` and defaults to `8080`.
+One proxy instance protects one agent, and several can run at once. Each agent
+gets its own two ports, allocated from its position in the catalogue so the
+endpoint you configure in the agent never moves:
+
+| Agent | Point the agent at | mitmweb's own interface |
+|---|---|---|
+| `AllTraffic` (default) | 8080 | 8180 |
+| `BrowserOS` | 8081 | 8181 |
+| `MicrosoftEdge` | 8082 | 8182 |
+
+`AllTraffic` is the catch-all: it is not tied to a named agent, so point
+the system proxy at it and anything honouring system proxy settings is
+protected. It keeps 8080, the port the proxy has always listened
+on. Omitting `--agent` uses it. The bases come from `PROXY_PORT` and
+`PROXY_WEB_PORT` in `backend/.env`. All instances share one certificate
+authority, so the certificate is installed once.
+
+The Guard screen in the dashboard does the same thing: pick one or more agents
+(All traffic by default), and one power button starts and stops the lot. Each
+selected agent shows its own endpoint beside its live status.
 
 ## Run tests
 

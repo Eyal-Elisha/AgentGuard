@@ -9,7 +9,8 @@ from .env import read_env, read_port
 
 _DEFAULT_API_HOST = "127.0.0.1"
 _DEFAULT_API_PORT = 3000
-_DEFAULT_PROXY_PORT = 8080
+DEFAULT_PROXY_PORT = 8080
+DEFAULT_PROXY_WEB_PORT = 8180
 _DEFAULT_FRONTEND_PORT = 5173
 
 _LOOPBACK_HOSTNAMES = ("localhost", "127.0.0.1", "::1", "0.0.0.0")
@@ -44,7 +45,21 @@ def server_port(default: int = 3000) -> int:
 
 
 def get_proxy_port() -> int:
-    return read_port(read_env("PROXY_PORT"), env_name="PROXY_PORT", default_port=_DEFAULT_PROXY_PORT)
+    """Base of the interception range. The first catalogue agent listens here."""
+    return read_port(read_env("PROXY_PORT"), env_name="PROXY_PORT", default_port=DEFAULT_PROXY_PORT)
+
+
+def get_proxy_web_port() -> int:
+    """Base of the administrative range, which mitmweb's own UI is served from.
+
+    A separate base rather than an offset from the interception one, because
+    mitmweb puts its administrative interface on the port immediately above its
+    interception port: with a single base, the second agent's interception port
+    would land on the first agent's administrative port.
+    """
+    return read_port(
+        read_env("PROXY_WEB_PORT"), env_name="PROXY_WEB_PORT", default_port=DEFAULT_PROXY_WEB_PORT
+    )
 
 
 def get_frontend_port() -> int:
