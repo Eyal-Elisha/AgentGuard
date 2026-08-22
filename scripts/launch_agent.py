@@ -19,7 +19,6 @@ from __future__ import annotations
 import argparse
 import os
 import shutil
-import socket
 import subprocess
 import sys
 import tempfile
@@ -32,6 +31,7 @@ if str(REPO) not in sys.path:
 
 from backend.proxy.audit.agents import AGENT_CATALOGUE, normalize_proxy_agent_name
 from backend.proxy.launcher import start_proxy_process, stop_proxy_process
+from backend.proxy.launcher.probe import port_is_listening
 from backend.proxy.ports import UnknownAgentError, ports_for_agent
 
 PROXY_HOST = "127.0.0.1"
@@ -99,22 +99,12 @@ def find_browser(agent: str, platform: str | None = None) -> str | None:
     return None
 
 
-def port_is_open(port: int) -> bool:
-    with socket.socket() as probe:
-        probe.settimeout(0.5)
-        try:
-            probe.connect((PROXY_HOST, port))
-            return True
-        except OSError:
-            return False
-
-
 def wait_for_port(port: int, timeout: float = PROXY_READY_TIMEOUT) -> bool:
     """Block until the proxy accepts connections, so the browser does not open
     before there is anything to open into."""
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
-        if port_is_open(port):
+        if port_is_listening(port, PROXY_HOST):
             return True
         time.sleep(0.25)
     return False
@@ -192,7 +182,7 @@ def main() -> int:
 
     # A proxy someone else started is not ours to stop afterwards.
     started_here = False
-    if not port_is_open(port):
+    if not port_is_listening(port, PROXY_HOST):
         ok, message = start_proxy_process(agent)
         if not ok:
             print(f"Could not start the proxy for {agent}: {message}", file=sys.stderr)

@@ -25,6 +25,7 @@ from .command import (
     repo_root,
     spawn_kwargs,
 )
+from .probe import port_is_listening
 from .termination import kill_process_on_port, terminate
 
 _logger = logging.getLogger(__name__)
@@ -62,14 +63,28 @@ def _forget(instance: Instance, closing_note: str) -> None:
     _instances.pop(instance.agent_name, None)
 
 
+def _adopted(agent_name: str) -> bool:
+    """Whether this agent's port is served by an instance we have no entry for.
+
+    A backend restart empties the registry while the proxies it started keep
+    running, so an entry is evidence that an agent is up but its absence is not
+    evidence that it is down.
+    """
+    try:
+        return port_is_listening(ports_for_agent(agent_name).listen_port)
+    except UnknownAgentError:
+        return False
+
+
 def proxy_is_running(agent_name: str | None = None) -> bool:
-    """Whether this agent's instance is running. Defaults to the default agent."""
-    return _live_instance(normalize_proxy_agent_name(agent_name)) is not None
+    """Whether this agent is protected. Defaults to the default agent."""
+    agent = normalize_proxy_agent_name(agent_name)
+    return _live_instance(agent) is not None or _adopted(agent)
 
 
 def any_proxy_running() -> bool:
     """Whether any agent is currently protected."""
-    return any(_live_instance(name) is not None for name in list(_instances))
+    return any(proxy_is_running(name) for name in AGENT_CATALOGUE)
 
 
 def proxy_status_snapshot() -> list[dict[str, Any]]:
@@ -85,7 +100,7 @@ def proxy_status_snapshot() -> list[dict[str, Any]]:
         snapshot.append(
             {
                 "agent_name": agent_name,
-                "active": instance is not None,
+                "active": instance is not None or _adopted(agent_name),
                 "proxy_port": ports.listen_port,
                 "admin_port": ports.web_port,
                 "environment": instance.environment if instance is not None else None,
@@ -108,6 +123,10 @@ def start_proxy_process(
         cmd = build_mitmweb_command(agent)
     except (UnknownAgentError, RuntimeError) as exc:
         return False, str(exc)
+    # Nothing to start: an instance from before a backend restart still holds
+    # the port, and a second one would only fail to bind to it.
+    if port_is_listening(ports.listen_port):
+        return True, "already_running"
     try:
         log_handle = open_log(agent, environment, cmd)
     except OSError as exc:
