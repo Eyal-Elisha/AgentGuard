@@ -18,13 +18,37 @@ and where you go to re-derive them.
 | `fit_meta_classifier.py` | fit and **write** the deployed meta-classifier artifact |
 | `try_domain.py` | what the URL-only rules say about one domain |
 | `create_admin.py` | create or promote an admin user in the local DB |
+| `launch_agent.py` | start a browser agent behind its own proxy port |
 
-`create_admin.py` is the odd one out — an operational helper, not part of the
-eval pipeline.
+`create_admin.py` and `launch_agent.py` are the odd ones out — operational
+helpers, not part of the eval pipeline.
 
-The rest of this file is the end-to-end recipe: every trained artifact the
-detector ships can be rebuilt from public datasets by the steps below, in
-order. Run all commands from the repository root with the virtualenv active.
+## Launching an agent behind its proxy
+
+A machine has one system proxy setting and `AllTraffic` already uses it, so a
+named agent takes its endpoint on the command line instead. One command does the
+lot — it starts that agent's proxy, opens the browser through it, and stops the
+proxy again when the browser closes:
+
+```bash
+python scripts/launch_agent.py --agent BrowserOS
+```
+
+```bash
+python scripts/launch_agent.py --agent MicrosoftEdge
+```
+
+A proxy already running, from the Guard screen or another terminal, is used as
+it is and left running. `--keep-proxy` leaves one this script started running
+too.
+
+The port comes from `ports_for_agent`, the same allocation the backend and the
+Guard screen report, so it cannot drift from the catalogue. Each launch gets a
+profile directory of its own, because Chromium hands a new launch to an instance
+that is already running and silently ignores the proxy flag;
+`--use-main-profile` opts out, and then the browser has to be fully quit first.
+`--browser-path` covers an install the script does not know about, and
+`--dry-run` prints the command without running anything.
 
 ## What gets built
 
