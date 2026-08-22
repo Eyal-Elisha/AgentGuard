@@ -1,6 +1,8 @@
 import RuleRow from './RuleRow.jsx';
 
-export default function RulesTable({ filteredRules, rules, onToggleEnabled, pendingRuleCode }) {
+export default function RulesTable({
+  filteredRules, rules, onToggleEnabled, onToggleHardBlock, pendingRuleCode, canEditHardBlock,
+}) {
   return (
     <div className="rules-table-wrapper">
       <div className="rules-table-scroll">
@@ -21,7 +23,9 @@ export default function RulesTable({ filteredRules, rules, onToggleEnabled, pend
                 key={rule.rule_code}
                 rule={rule}
                 onToggleEnabled={onToggleEnabled}
+                onToggleHardBlock={onToggleHardBlock}
                 pendingRuleCode={pendingRuleCode}
+                canEditHardBlock={canEditHardBlock}
               />
             ))}
             {rules.length > 0 && filteredRules.length === 0 && (

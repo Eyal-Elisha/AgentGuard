@@ -58,6 +58,19 @@ def _run_contextual_rules(
     return results
 
 
+def _may_hard_block(rule_def, overrides) -> bool:
+    """Whether this rule is allowed to force a Block on its own.
+
+    The catalogue value is the default; an operator setting for that rule wins.
+    Keeping the lookup in one place means the flag recorded on the RuleResult
+    and the flag that short-circuits the loop can never disagree, which is what
+    made the dashboard report pages as hard-blocked when nothing had blocked.
+    """
+    if overrides is None:
+        return rule_def.hard_block
+    return bool(overrides.get(rule_def.rule_id, rule_def.hard_block))
+
+
 class StageAEvaluator:
     """
     Executes Stage A (cheap rule evaluation) against extracted page features.
@@ -76,7 +89,15 @@ class StageAEvaluator:
         features: ExtractedFeatures,
         session: Optional[SessionContext] = None,
         enabled_rules: Optional[Mapping[str, bool]] = None,
+        hard_block_rules: Optional[Mapping[str, bool]] = None,
     ) -> EvaluationResult:
+        """Evaluate Stage A.
+
+        `hard_block_rules` lets the operator override which rules may block on
+        their own, the way `enabled_rules` overrides which rules run at all.
+        A missing entry falls back to the catalogue, so the default behaviour is
+        unchanged and callers that pass nothing see exactly what they saw before.
+        """
         if session is None:
             session = SessionContext()
 
@@ -94,23 +115,24 @@ class StageAEvaluator:
                 score, explanation = RULE_FN[rule_def.rule_id](features)
 
             triggered = score > 0.0
+            may_hard_block = _may_hard_block(rule_def, hard_block_rules)
             rule_results.append(RuleResult(
                 rule_id=rule_def.rule_id,
                 rule_type=RuleType.DETERMINISTIC,
                 score=score,
-                hard_block=rule_def.hard_block,
+                hard_block=may_hard_block,
                 explanation=explanation,
                 triggered=triggered,
             ))
 
-            if triggered and rule_def.hard_block:
+            if triggered and may_hard_block:
                 hard_block_triggered = True
                 for remaining in DETERMINISTIC_RULES[i + 1:]:
                     rule_results.append(RuleResult(
                         rule_id=remaining.rule_id,
                         rule_type=RuleType.DETERMINISTIC,
                         score=None,
-                        hard_block=remaining.hard_block,
+                        hard_block=_may_hard_block(remaining, hard_block_rules),
                         explanation="Skipped — prior hard-block rule triggered",
                         triggered=False,
                     ))

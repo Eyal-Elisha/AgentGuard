@@ -1,8 +1,38 @@
 import { EMPTY_CELL_DISPLAY } from '../SessionsDashboard/sessionUtils.js';
 
-export default function RuleRow({ rule, onToggleEnabled, pendingRuleCode }) {
+function ToggleSwitch({ on, pending, onChange, label, title, variant = '' }) {
+  return (
+    <button
+      type="button"
+      className={[
+        'rules-switch',
+        on ? 'rules-switch--on' : 'rules-switch--off',
+        pending ? 'rules-switch--pending' : '',
+        variant,
+      ].filter(Boolean).join(' ')}
+      onClick={() => onChange(!on)}
+      disabled={pending}
+      role="switch"
+      aria-checked={on}
+      aria-label={label}
+      title={title}
+    >
+      <span className="rules-switch-track" aria-hidden="true"><span className="rules-switch-thumb" /></span>
+      <span className="rules-switch-label">{on ? 'Yes' : 'No'}</span>
+    </button>
+  );
+}
+
+export default function RuleRow({
+  rule,
+  onToggleEnabled,
+  onToggleHardBlock,
+  pendingRuleCode,
+  canEditHardBlock = false,
+}) {
   const hard = Boolean(rule.is_hard_block);
   const enabled = Boolean(rule.is_enabled);
+  const pending = pendingRuleCode === rule.rule_code;
   const rowClass = ['rules-row', hard ? 'rules-row--hard-block' : '', !enabled ? 'rules-row--disabled' : ''].filter(Boolean).join(' ');
   const desc = rule.description != null && String(rule.description).trim() !== '' ? rule.description : null;
 
@@ -13,19 +43,28 @@ export default function RuleRow({ rule, onToggleEnabled, pendingRuleCode }) {
       <td className="rules-cell-mono rules-cell-rule-type">{rule.rule_type ?? EMPTY_CELL_DISPLAY}</td>
       <td className="rules-cell-mono rules-cell-compute">{rule.compute_class ?? EMPTY_CELL_DISPLAY}</td>
       <td>
-        <span className={`rules-badge ${hard ? 'rules-badge--hard-block' : 'rules-badge--neutral'}`}>{hard ? 'Yes' : 'No'}</span>
+        {/* Only an admin may hand a rule the power to override every other
+            signal, so everyone else keeps the read-only badge. */}
+        {canEditHardBlock ? (
+          <ToggleSwitch
+            on={hard}
+            pending={pending}
+            onChange={(next) => onToggleHardBlock(rule.rule_code, next)}
+            label={`Hard block for ${rule.rule_code}`}
+            title="A hard-blocking rule forces a Block on its own, whatever the other rules say"
+            variant="rules-switch--danger"
+          />
+        ) : (
+          <span className={`rules-badge ${hard ? 'rules-badge--hard-block' : 'rules-badge--neutral'}`}>{hard ? 'Yes' : 'No'}</span>
+        )}
       </td>
       <td>
-        <button
-          type="button"
-          className={`rules-switch ${enabled ? 'rules-switch--on' : 'rules-switch--off'} ${pendingRuleCode === rule.rule_code ? 'rules-switch--pending' : ''}`}
-          onClick={() => onToggleEnabled(rule.rule_code, !enabled)}
-          disabled={pendingRuleCode === rule.rule_code}
-          role="switch" aria-checked={enabled}
-        >
-          <span className="rules-switch-track" aria-hidden="true"><span className="rules-switch-thumb" /></span>
-          <span className="rules-switch-label">{enabled ? 'Yes' : 'No'}</span>
-        </button>
+        <ToggleSwitch
+          on={enabled}
+          pending={pending}
+          onChange={(next) => onToggleEnabled(rule.rule_code, next)}
+          label={`Enabled for ${rule.rule_code}`}
+        />
       </td>
     </tr>
   );

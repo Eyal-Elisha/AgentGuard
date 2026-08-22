@@ -116,7 +116,10 @@ class TestRuleEnginePromotesPhishingPage:
         with (
             patch(_BLACKLIST_MOCK, return_value=(False, "not listed")),
             patch.object(rule_engine, "build_context", return_value=None),
-            patch.object(rule_engine, "_rule_enablement_map", return_value={}),
+            # Both operator-owned maps now come from one call: which rules run,
+            # and which may hard block. Empty means "no override, use the
+            # catalogue", which is what this test wants.
+            patch.object(rule_engine, "_rule_settings", return_value=({}, {})),
         ):
             result = rule_engine.evaluate_http_payload(
                 url="https://paypal-fake.com/login",

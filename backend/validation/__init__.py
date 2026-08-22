@@ -4,6 +4,7 @@ from .auth import validate_login_signup
 from .events import parse_event_filters, validate_event_payload
 from .rules import (
     validate_rule_enabled_payload,
+    validate_rule_hard_block_payload,
     validate_rule_payload,
     validate_rules_analysis_list_query,
     validate_rules_analysis_payload,
@@ -18,6 +19,7 @@ __all__ = [
     "validate_login_signup",
     "validate_proxy_payload",
     "validate_rule_enabled_payload",
+    "validate_rule_hard_block_payload",
     "validate_rule_payload",
     "validate_rules_analysis_list_query",
     "validate_rules_analysis_payload",
