@@ -110,6 +110,64 @@ def save_for_viewing(pages: List[Dict], verdicts: List[tuple], out_dir: Path) ->
     return index
 
 
+def serve(pages: List[Dict], port: int) -> None:
+    """Serve each page at its own real hostname, for a live end-to-end demo.
+
+    The rules read the URL, so a page served from `http://127.0.0.1:8777/` is
+    judged on `127.0.0.1` and the demo proves nothing. Here each page answers on
+    the hostname it was captured from, so `www.kimcabral.shop` reaches the proxy
+    as `www.kimcabral.shop` and `suspicious_tld` fires for the real reason.
+
+    That needs the hostnames pointed at this machine, which is a hosts-file
+    edit and needs administrator rights. The lines to add are printed below;
+    remove them when the demo is over.
+    """
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    by_host: Dict[str, Dict] = {}
+    for page in pages:
+        host = (page.get("url") or "").split("//", 1)[-1].split("/", 1)[0].split(":")[0]
+        if host:
+            by_host.setdefault(host, page)
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):  # noqa: N802
+            host = self.headers.get("Host", "").split(":")[0]
+            page = by_host.get(host)
+            if page is None:
+                body = (f"<h1>No page for {html_mod.escape(host)}</h1>"
+                        "<p>Reach this server at one of the demo hostnames.</p>").encode()
+                self.send_response(404)
+            else:
+                body = page["html"].encode("utf-8", "ignore")
+                self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, fmt, *args):
+            print("  request for", self.headers.get("Host", "?"), file=sys.stderr)
+
+    print()
+    print("  Add these to your hosts file (needs administrator rights):")
+    print(r"     Windows: C:\Windows\System32\drivers\etc\hosts")
+    print("     macOS/Linux: /etc/hosts")
+    print()
+    for host in by_host:
+        print(f"     127.0.0.1  {host}")
+    print()
+    print("  Then browse to, through the proxy:")
+    for host, page in by_host.items():
+        tag = "PHISHING" if page.get("label") == 1 else "benign  "
+        print(f"     {tag}  http://{host}:{port}/")
+    print()
+    print("  Remove those hosts lines when you are done.  Ctrl-C to stop.")
+    print()
+
+    HTTPServer(("127.0.0.1", port), Handler).serve_forever()
+
+
 def build_engine():
     warnings.filterwarnings("ignore")
     from backend.analysis.stages.stage_a import blacklist as bl
@@ -156,6 +214,9 @@ def main(argv: List[str] | None = None) -> int:
                     help="show only the phishing pages that were acted on")
     ap.add_argument("--save", type=Path, metavar="DIR",
                     help="also write viewable copies of the pages here, with an index")
+    ap.add_argument("--serve", type=int, metavar="PORT", nargs="?", const=8081,
+                    help="serve the pages at their real hostnames for a live "
+                         "end-to-end demo through the proxy (default port 8081)")
     args = ap.parse_args(argv)
 
     if not args.input.exists():
@@ -166,6 +227,13 @@ def main(argv: List[str] | None = None) -> int:
     if not pages:
         print("error: no usable pages in that file", file=sys.stderr)
         return 1
+
+    if args.serve:
+        try:
+            serve(pages, args.serve)
+        except KeyboardInterrupt:
+            print("  stopped")
+        return 0
 
     engine = build_engine()
     caught = missed = false_alarm = correct_pass = 0
