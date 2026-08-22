@@ -63,3 +63,6 @@ data/*.pkl
 # Downloaded corpora and cached benchmark id lists: gigabytes, all re-fetchable.
 data/kaggle/
 data/benchmark_ids/
+
+# Demo output: real captured pages written by scripts/demo_live.py --save
+demo_out/

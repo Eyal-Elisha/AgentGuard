@@ -22,8 +22,10 @@ depends on a live feed.
 from __future__ import annotations
 
 import argparse
+import html as html_mod
 import json
 import random
+import re
 import sys
 import time
 import warnings
@@ -62,6 +64,47 @@ def load_pages(path: Path, count: int, seed: int, max_bytes: int) -> List[Dict]:
     picked = phishing[:want] + benign[:want]
     rng.shuffle(picked)
     return picked
+
+
+_SCRIPT_TAG = re.compile(r"<script.*?</script>", re.I | re.S)
+
+
+def save_for_viewing(pages: List[Dict], verdicts: List[tuple], out_dir: Path) -> Path:
+    """Write viewable copies plus an index, so the pages can be shown on screen.
+
+    Scripts are stripped from these copies. They exist to be looked at, and
+    opening a captured credential-harvesting page with its JavaScript live is a
+    bad idea in a room full of people. The verdicts above were produced from the
+    untouched HTML, not from these files.
+    """
+    out_dir.mkdir(parents=True, exist_ok=True)
+    rows = []
+    for i, (page, (verdict, risk, fired, _ms)) in enumerate(zip(pages, verdicts)):
+        safe = _SCRIPT_TAG.sub("<!-- script removed for viewing -->", page["html"])
+        name = f"page{i:02d}_{'phishing' if page.get('label') == 1 else 'benign'}.html"
+        (out_dir / name).write_text(safe, encoding="utf-8", errors="ignore")
+        rules = ", ".join(rule for rule, _ in fired[:3]) or "none"
+        rows.append(
+            f"<tr><td><a href='{name}'>{name}</a></td>"
+            f"<td>{'PHISHING' if page.get('label') == 1 else 'legitimate'}</td>"
+            f"<td>{risk:.2f}</td><td><b>{verdict.upper()}</b></td>"
+            f"<td>{html_mod.escape(rules)}</td>"
+            f"<td class=u>{html_mod.escape((page.get('url') or '')[:70])}</td></tr>"
+        )
+    index = out_dir / "index.html"
+    index.write_text(
+        "<!doctype html><meta charset='utf-8'><title>AgentGuard demo pages</title>"
+        "<style>body{font:15px/1.6 system-ui,sans-serif;margin:2rem auto;max-width:60rem;"
+        "padding:0 1rem}table{border-collapse:collapse;width:100%;font-size:.9rem}"
+        "td,th{border-bottom:1px solid #e3e3e3;padding:.45rem .6rem;text-align:left}"
+        "td.u{font-family:ui-monospace,monospace;font-size:.78rem;color:#777}"
+        "p{color:#666}</style>"
+        "<h1>AgentGuard demo pages</h1>"
+        "<p>Real captured pages. JavaScript stripped for safe viewing; the verdicts "
+        "were produced from the original HTML with its real URL.</p>"
+        "<table><tr><th>file<th>truth<th>risk<th>verdict<th>rules fired<th>original URL</tr>"
+        + "".join(rows) + "</table>", encoding="utf-8")
+    return index
 
 
 def build_engine():
@@ -107,6 +150,8 @@ def main(argv: List[str] | None = None) -> int:
     ap.add_argument("--max-kb", type=int, default=400)
     ap.add_argument("--only-caught", action="store_true",
                     help="show only the phishing pages that were acted on")
+    ap.add_argument("--save", type=Path, metavar="DIR",
+                    help="also write viewable copies of the pages here, with an index")
     args = ap.parse_args(argv)
 
     if not args.input.exists():
@@ -121,11 +166,13 @@ def main(argv: List[str] | None = None) -> int:
     engine = build_engine()
     caught = missed = false_alarm = correct_pass = 0
     times: List[float] = []
+    verdicts: List[tuple] = []
 
     print(f"\n  {len(pages)} real captured pages, real URLs, through the live engine\n")
     for page in pages:
         verdict, risk, fired, ms = judge(engine, page["url"], page["html"])
         times.append(ms)
+        verdicts.append((verdict, risk, fired, ms))
         is_phishing = page.get("label") == 1
         acted = verdict in ("warn", "block")
         if is_phishing and acted:
@@ -158,6 +205,12 @@ def main(argv: List[str] | None = None) -> int:
     print(f"  caught {caught}/{total_phishing} phishing"
           f"   false alarms {false_alarm}/{total_benign} legitimate"
           f"   median {sorted(times)[len(times)//2]:.0f} ms")
+
+    if args.save:
+        index = save_for_viewing(pages, verdicts, args.save)
+        print()
+        print(f"  viewable copies written to {args.save}/")
+        print(f"  open {index} to browse them")
     return 0
 
 
