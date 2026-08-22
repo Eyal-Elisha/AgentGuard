@@ -1,22 +1,28 @@
-"""Deterministic rule implementations for Stage A (Rules 1–9)."""
+"""The twelve deterministic rules of Stage A, one function per rule, each
+returning (score, explanation). Reference data is in data.py, shared predicates
+in helpers.py.
+"""
 
 from __future__ import annotations
 
-import re
-from functools import lru_cache
-from typing import Dict, Tuple
+from typing import Callable, Dict, Tuple
 from urllib.parse import urlparse
 
-from backend.custom_blacklist import custom_blacklist_entry_matches, custom_blacklist_matches
+from backend.custom_blacklist import custom_blacklist_matches
 from backend.feature_extraction.feature_extractor import ExtractedFeatures
 from backend.analysis.stages.stage_a.blacklist import blacklist_cache
 from backend.analysis.stages.stage_a.data import (
     BRAND_DOMAINS,
+    DIGIT_THEN_LETTER,
     HIGH_ABUSE_TLDS,
+    LETTER_THEN_DIGIT,
+    REDIRECT_PATTERNS,
     SENSITIVE_INPUT_TYPES,
     SENSITIVE_NAME_RE,
+    STANDARD_WEB_PORTS,
 )
 from backend.analysis.stages.stage_a.helpers import (
+    brand_token_patterns,
     domain_matches,
     get_sld_label,
     has_sensitive_inputs,
@@ -24,22 +30,9 @@ from backend.analysis.stages.stage_a.helpers import (
     is_loopback_host,
     is_typosquat,
     normalize_confusables,
+    official_sld_labels,
     strip_www,
 )
-
-
-@lru_cache(maxsize=1)
-def _official_sld_labels() -> frozenset[str]:
-    """Every registrable SLD label listed as an official brand domain.
-
-    Used so legitimate domains (e.g. spotify vs shopify) are not flagged as mutual
-    typosquats — Levenshtein cannot tell them from real attacks.
-    """
-    labels: set[str] = set()
-    for domains in BRAND_DOMAINS.values():
-        for official in domains:
-            labels.add(get_sld_label(official))
-    return frozenset(labels)
 
 
 def rule_domain_blacklist(features: ExtractedFeatures) -> Tuple[float, str]:
@@ -55,7 +48,19 @@ def rule_domain_blacklist(features: ExtractedFeatures) -> Tuple[float, str]:
 
 
 def rule_unencrypted_connection(features: ExtractedFeatures) -> Tuple[float, str]:
-    """Rule 2 — Unencrypted or Invalid Secure Connection. Hard block."""
+    """Rule 2 — Unencrypted or Invalid Secure Connection.
+
+    Not a hard block any more. Plain HTTP is too common on benign pages, and
+    blocking on it left a false-positive floor nothing could get under.
+    Credentials over HTTP still block once the brand and form rules stack.
+    """
+    if not features.scheme or not features.host:
+        # No parseable URL is absence of evidence, not evidence of insecurity.
+        # Firing here scored every such request as maximally unencrypted: on a
+        # corpus of captured pages without URLs it fired on 100% of both
+        # classes, feeding the combiner a constant it had learned to read as
+        # suspicious.
+        return 0.0, "No URL available to judge the connection"
     if features.scheme != "https":
         if is_loopback_host(features.host):
             return 0.0, "Local loopback; HTTP is acceptable for local development"
@@ -68,27 +73,6 @@ def rule_sensitive_fields(features: ExtractedFeatures) -> Tuple[float, str]:
     if has_sensitive_inputs(features):
         return 1.0, "Page contains input fields associated with credential or secret collection"
     return 0.0, "No sensitive input fields detected"
-
-
-@lru_cache(maxsize=1)
-def _brand_token_patterns() -> Tuple[Tuple[str, Tuple[str, ...], "re.Pattern[str]"], ...]:
-    """Compile a word-boundary matcher per brand (length >= 3).
-
-    The brand must be flanked by non-letters (separators, digits, or string
-    edges) so 'paypal-login', 'secure.amazon', and 'amazon1' match while
-    dictionary collisions like 'pineapple' (→apple) or 'discovery' (→discover)
-    do not.
-    """
-    patterns = []
-    for brand, official in BRAND_DOMAINS.items():
-        if len(brand) < 3:
-            continue
-        patterns.append((
-            brand,
-            tuple(official),
-            re.compile(r"(?<![a-z])" + re.escape(brand) + r"(?![a-z])"),
-        ))
-    return tuple(patterns)
 
 
 def rule_brand_domain_mismatch(features: ExtractedFeatures) -> Tuple[float, str]:
@@ -115,7 +99,7 @@ def rule_brand_domain_mismatch(features: ExtractedFeatures) -> Tuple[float, str]
                 f"but is hosted on non-official domain '{host}'"
             )
 
-    for brand, official_domains, pattern in _brand_token_patterns():
+    for brand, official_domains, pattern in brand_token_patterns():
         if domain_matches(host, official_domains):
             continue
         if pattern.search(host):
@@ -130,22 +114,6 @@ def rule_brand_domain_mismatch(features: ExtractedFeatures) -> Tuple[float, str]
             )
 
     return 0.0, "No brand-domain mismatch detected"
-
-
-
-# Patterns that extract a redirect target URL from various redirect vectors
-_REDIRECT_PATTERNS = [
-    # <meta http-equiv="refresh" content="0; url=...">
-    (re.compile(r'http-equiv=["\']refresh["\'][^>]*content=["\'][^"\']*url\s*=\s*([^"\'>\s;]+)', re.IGNORECASE), "meta-refresh"),
-    (re.compile(r'content=["\'][^"\']*url\s*=\s*([^"\'>\s;]+)[^"\']*["\'][^>]*http-equiv=["\']refresh["\']', re.IGNORECASE), "meta-refresh"),
-    # JS: window.location = "..." / window.location.href = "..." / location.replace("...") / location.assign("...")
-    (re.compile(r'(?:window\.)?location(?:\.href)?\s*=\s*["\']([^"\']+)["\']', re.IGNORECASE), "JS location assignment"),
-    (re.compile(r'location\.(?:replace|assign)\s*\(\s*["\']([^"\']+)["\']', re.IGNORECASE), "JS location redirect"),
-    # <body onload="window.location=..."> or similar event attributes
-    (re.compile(r'on(?:load|DOMContentLoaded)\s*=\s*["\'][^"\']*(?:window\.)?location\s*=\s*["\']?([^"\'>\s]+)', re.IGNORECASE), "onload redirect"),
-    # <img onerror="window.location=...">
-    (re.compile(r'onerror\s*=\s*["\'][^"\']*(?:window\.)?location\s*=\s*["\']?([^"\'>\s]+)', re.IGNORECASE), "onerror redirect"),
-]
 
 
 def rule_unexpected_redirect(features: ExtractedFeatures) -> Tuple[float, str]:
@@ -163,7 +131,7 @@ def rule_unexpected_redirect(features: ExtractedFeatures) -> Tuple[float, str]:
 
     page_host = strip_www(features.host)
 
-    for pattern, vector in _REDIRECT_PATTERNS:
+    for pattern, vector in REDIRECT_PATTERNS:
         for match in pattern.finditer(body):
             target = match.group(1).strip()
             redirect_host = urlparse(target).hostname or ""
@@ -199,13 +167,11 @@ def rule_external_form_action(features: ExtractedFeatures) -> Tuple[float, str]:
 
 
 def rule_typosquatting(features: ExtractedFeatures) -> Tuple[float, str]:
-    """Rule 7 — Typosquatting Domain Detection. Hard block.
+    """Rule 7 — Typosquatting Domain Detection.
 
-    Detects two attack patterns:
-      1. Confusable/homoglyph — normalized label matches official but original doesn't
-         (e.g. paypa1.com, pаypal.com with Cyrillic а)
-      2. Edit-distance typosquat — see ``is_typosquat`` (not raw ≤2 edits on short strings)
-         (e.g. payal.com, papyal.com)
+    Not a hard block any more; it fires on more benign than phishing pages.
+    Catches two patterns: confusables where normalizing the label matches an
+    official brand (paypa1.com), and single-edit typos (papyal.com).
     """
     host = strip_www(features.host)
     if is_ip(host):
@@ -219,7 +185,7 @@ def rule_typosquatting(features: ExtractedFeatures) -> Tuple[float, str]:
     # must still be caught by the confusable / edit-distance logic below.
     if (
         original_label == normalized_label
-        and normalized_label in _official_sld_labels()
+        and normalized_label in official_sld_labels()
     ):
         return 0.0, "Domain label is a known official brand (not a typosquat of another brand)"
 
@@ -261,10 +227,45 @@ def rule_suspicious_tld(features: ExtractedFeatures) -> Tuple[float, str]:
     return 0.0, "Top-level domain is not in the high-abuse list"
 
 
-def _host_matches_blacklist_entry(host_stripped: str, entry_host: str) -> bool:
-    return bool(entry_host) and (
-        host_stripped == entry_host or host_stripped.endswith("." + entry_host)
-    )
+def rule_non_standard_port(features: ExtractedFeatures) -> Tuple[float, str]:
+    """Rule 11 — Non-Standard Port.
+
+    Phishing kits are often parked on a high arbitrary port and almost no
+    legitimate site is. 88 phish, 0 benign on the eval slice. Not a hard
+    block, so a legitimate service on an odd port is not taken down.
+    """
+    try:
+        port = urlparse(features.url).port
+    except ValueError:
+        return 0.0, "No parseable port in URL"
+    if port is None or port in STANDARD_WEB_PORTS:
+        return 0.0, "Served on a standard web port"
+    return 1.0, f"Served on non-standard port {port}, uncommon for legitimate sites"
+
+
+def rule_algorithmic_domain(features: ExtractedFeatures) -> Tuple[float, str]:
+    """Rule 12 — Algorithmically-Generated Domain.
+
+    Random-looking labels like 'e7rmtin3r4b' turned up on roughly 9% of
+    phishing pages that no other rule caught. Requires two digits and three
+    letters on top of the interspersing, which keeps ordinary word+number
+    brands out. 417 phish, 13 benign on the eval slice.
+    """
+    host = strip_www(features.host)
+    if not host or is_ip(host):
+        return 0.0, "No registrable domain to inspect"
+    label = get_sld_label(host).lower()
+    if len(label) < 6:
+        return 0.0, "Domain label too short to assess"
+    digits = sum(c.isdigit() for c in label)
+    letters = sum(c.isalpha() for c in label)
+    interspersed = bool(LETTER_THEN_DIGIT.search(label) and DIGIT_THEN_LETTER.search(label))
+    if digits >= 2 and letters >= 3 and interspersed:
+        return 1.0, (
+            f"Domain label '{label}' looks algorithmically generated "
+            f"(digits interspersed among letters)"
+        )
+    return 0.0, "Domain label does not look algorithmically generated"
 
 
 def rule_custom_blacklist(
@@ -280,7 +281,7 @@ def rule_custom_blacklist(
 
 
 # Dispatch map — rule_id → function (rule_custom_blacklist handled separately)
-RULE_FN: Dict[str, callable] = {
+RULE_FN: Dict[str, Callable[[ExtractedFeatures], Tuple[float, str]]] = {
     "domain_blacklist":       rule_domain_blacklist,
     "unencrypted_connection": rule_unencrypted_connection,
     "sensitive_fields":       rule_sensitive_fields,
@@ -290,4 +291,6 @@ RULE_FN: Dict[str, callable] = {
     "typosquatting":          rule_typosquatting,
     "ip_based_url":           rule_ip_based_url,
     "suspicious_tld":         rule_suspicious_tld,
+    "non_standard_port":      rule_non_standard_port,
+    "algorithmic_domain":     rule_algorithmic_domain,
 }

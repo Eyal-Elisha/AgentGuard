@@ -16,11 +16,17 @@ Modular Python package under `backend/`:
 
 | Package | Role |
 |--------|------|
+| `proxy/` | The mitmproxy addon: traffic triage, enforcement, interstitials, audit |
+| `analysis/` | The rule engine: rule definitions, the two evaluation stages, scoring |
+| `feature_extraction/` | HTML → the features the rules read |
 | `routes/` | HTTP API routing |
-| `analysis/` | Analysis logic |
+| `validation/` | Request validation, one module per request family |
 | `storage/` | Persistence (SQLite) |
 
 Entry: `python -m backend.app` (Flask app factory in `backend/__init__.py`).
+
+**[`backend/ARCHITECTURE.md`](backend/ARCHITECTURE.md) traces one request from
+interception through to storage and says which file does what.** Start there.
 
 ## Environment (venv + dependencies)
 
@@ -42,6 +48,7 @@ Configuration is loaded from `backend/.env`. Copy `backend/.env.example` to `bac
 - `FLASK_DEBUG`: `true` to run the dev server with Flask debug mode (default off when unset)
 - `PORT`: HTTP port for the Flask dev server (default **3000** when unset or invalid)
 - `DATABASE_URL`: SQLite URL; if unset, the app defaults to `backend/agentguard.db` under the package
+- `AGENTGUARD_LOG_ENCRYPTION_KEY`: Fernet key used to encrypt audit JSONL records, event URLs/headers/risk scores, and rule-analysis scores/details before they are stored. Required before persisting logs. Generate one with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`.
 - `API_HOST` / `API_PORT`: used by the **mitmproxy addon** to build the URL for `POST /api/proxy/decision`. If `API_PORT` is unset, **`PORT` is used** so the proxy and Flask stay aligned.
 - `PROXY_PORT`: listen port for the local proxy (`python proxy_launcher.py`; default **8080**)
 - `AGENTGUARD_BACKEND_TIMEOUT_SECONDS`, `AGENTGUARD_BACKEND_FAILURE_MODE`: proxy → backend behavior (see `backend/.env.example`)
@@ -83,6 +90,13 @@ The proxy listen port comes from `PROXY_PORT` in `backend/.env` and defaults to 
 
 ## Run tests
 
+With the venv activated, from the repository root:
+
 ```bash
-python -m unittest discover -s tests/backend -p "test_*.py" -v
+python -m pytest -q
 ```
+
+Run it from that virtual environment rather than a system Python — the proxy
+tests import `mitmproxy`, and collection fails without it. Tests marked
+`integration` make real network requests and are deselected by default; run
+them with `python -m pytest -m integration`.

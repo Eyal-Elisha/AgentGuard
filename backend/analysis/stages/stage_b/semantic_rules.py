@@ -1,13 +1,6 @@
-"""Semantic rule implementations for Stage B.
-
-Each rule receives the sanitized page text plus the rule-specific config (model
-id, minimum text length, trigger threshold) and returns `(score, explanation)`.
-Score is the classifier's probability that the content is malicious. The rule
-is recorded as `triggered` when the score crosses `trigger_threshold`.
-
-Score is `None` (skipped) when there is not enough text to vectorize
-meaningfully — this keeps aggregation from being diluted by trivially short
-documents.
+"""The semantic rules: classifier probability in, (score, explanation) out,
+triggered once the score crosses `trigger_threshold`. Score is None when there
+is too little text to vectorize.
 """
 
 from __future__ import annotations

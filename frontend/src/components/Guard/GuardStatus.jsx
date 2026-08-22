@@ -10,13 +10,13 @@ export default function GuardStatus({ isProxyActive, isPassiveMode, togglePassiv
       {isProxyActive && <div className="guard-status-divider" />}
       {isProxyActive && (
         <div className="guard-status-passive">
-          <span className={`guard-status-passive-label ${isPassiveMode ? 'guard-status-passive-label--active' : ''}`}>
+          <span className={`guard-status-passive-label ${!isPassiveMode ? 'guard-status-passive-label--active' : ''}`}>
             {isPassiveMode ? 'Passive' : 'Enforcing'}
           </span>
           <ProxyToggleButton
-            isActive={isPassiveMode}
+            isActive={!isPassiveMode}
             onToggle={togglePassiveMode}
-            ariaLabel={isPassiveMode ? 'Disable passive mode' : 'Enable passive mode'}
+            ariaLabel={isPassiveMode ? 'Switch to enforcing mode' : 'Switch to passive mode'}
             className="guard-status-passive-toggle"
           />
         </div>

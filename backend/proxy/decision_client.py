@@ -1,3 +1,5 @@
+"""The HTTP call from the proxy to the backend decision endpoint."""
+
 from __future__ import annotations
 
 import logging
@@ -7,6 +9,7 @@ import requests
 
 from backend.analysis.rules import Decision
 from backend.settings import get_backend_decision_url, get_backend_timeout_seconds
+from backend.validation.proxy_requests import validate_proxy_payload
 
 from .enforcement import (
     BackendDecision,
@@ -19,7 +22,23 @@ from .enforcement import (
 _logger = logging.getLogger(__name__)
 
 
-def fetch_backend_decision(payload: Dict[str, Any]) -> BackendDecision:
+def post_decision(payload: Dict[str, Any]) -> BackendDecision:
+    """POST one payload to the backend and map the reply onto a decision.
+
+    Never raises: a timeout, an unreachable backend or an unparseable reply
+    all become a BackendDecision whose `source` says which, so the caller
+    always has something to enforce.
+    """
+    payload, validation_error, _ = validate_proxy_payload(payload)
+    if validation_error:
+        return BackendDecision(
+            decision=Decision.BLOCK,
+            reason=f"AgentGuard rejected an invalid intercepted message: {validation_error}.",
+            evaluation=None,
+            source="proxy_validation",
+        )
+    assert payload is not None
+
     session = requests.Session()
     session.trust_env = False
     timeout_seconds = get_backend_timeout_seconds()

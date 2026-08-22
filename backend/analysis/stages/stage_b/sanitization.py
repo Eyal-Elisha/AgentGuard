@@ -1,16 +1,6 @@
-"""Text extraction and sensitive-value sanitization for Stage B.
-
-The semantic classifiers operate on textual content drawn from the HTTPS
-response and the page presented to the agent. We pull from three places:
-
-* The visible page text (`dom.all_text_content`) and `<title>`.
-* Form metadata (input `name`/`id`/`type`/placeholder) — phishing pages and
-  prompt-injection sinks often expose intent through these tokens.
-* The raw HTML — re-parsed with BeautifulSoup so we strip `<script>` and
-  `<style>` blocks that would otherwise dominate the TF-IDF vector with noise.
-
-Sensitive values are redacted *before* the text leaves this module so neither
-the classifier nor the audit log ever sees user secrets or PII.
+"""Pulls the text Stage B classifies from the title, visible text, form tokens and
+stripped HTML. Secrets and PII are redacted here, before anything reaches the
+classifier or the log.
 """
 
 from __future__ import annotations
@@ -21,6 +11,7 @@ from typing import Optional
 from bs4 import BeautifulSoup
 
 from backend.feature_extraction.feature_extractor import ExtractedFeatures
+from backend.feature_extraction.html_parser import HTML_PARSER
 
 
 _REDACTED = " <REDACTED> "
@@ -46,7 +37,7 @@ _SANITIZERS: tuple[tuple[re.Pattern[str], str], ...] = (
 
 def _strip_noise(html: str) -> str:
     """Reparse the body to drop script/style blocks before vectorization."""
-    soup = BeautifulSoup(html, "html.parser")
+    soup = BeautifulSoup(html, HTML_PARSER)
     for tag in soup(["script", "style", "noscript", "template"]):
         tag.decompose()
     return soup.get_text(" ", strip=True)

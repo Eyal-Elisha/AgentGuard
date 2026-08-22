@@ -167,6 +167,15 @@ HIGH_ABUSE_TLDS: frozenset = frozenset({
     "pw", "su", "best", "live", "shop", "online", "site", "uno", "autos",
 })
 
+# Ports ordinary web traffic arrives on. Phishing kits often use a high
+# arbitrary port instead.
+STANDARD_WEB_PORTS: frozenset = frozenset({80, 443, 8080})
+
+# Digits mixed in among letters, as in 'e7rmtin3r4b'. Both directions must
+# match, which keeps word+number brands like 'shop24' out.
+LETTER_THEN_DIGIT = re.compile(r"[a-z][0-9]")
+DIGIT_THEN_LETTER = re.compile(r"[0-9][a-z]")
+
 # input type="password" is unconditionally sensitive
 SENSITIVE_INPUT_TYPES: frozenset = frozenset({"password"})
 
@@ -202,6 +211,23 @@ SENSITIVE_NAME_RE = re.compile(
     r")",
     re.IGNORECASE,
 )
+
+# Ways a page can send the browser somewhere else without a HTTP redirect.
+# Each entry pairs a pattern whose first group is the destination URL with the
+# label used to describe that vector in a rule explanation.
+REDIRECT_PATTERNS: List[Tuple["re.Pattern[str]", str]] = [
+    # <meta http-equiv="refresh" content="0; url=..."> — either attribute order
+    (re.compile(r'http-equiv=["\']refresh["\'][^>]*content=["\'][^"\']*url\s*=\s*([^"\'>\s;]+)', re.IGNORECASE), "meta-refresh"),
+    (re.compile(r'content=["\'][^"\']*url\s*=\s*([^"\'>\s;]+)[^"\']*["\'][^>]*http-equiv=["\']refresh["\']', re.IGNORECASE), "meta-refresh"),
+    # window.location = "..." / window.location.href = "..."
+    (re.compile(r'(?:window\.)?location(?:\.href)?\s*=\s*["\']([^"\']+)["\']', re.IGNORECASE), "JS location assignment"),
+    # location.replace("...") / location.assign("...")
+    (re.compile(r'location\.(?:replace|assign)\s*\(\s*["\']([^"\']+)["\']', re.IGNORECASE), "JS location redirect"),
+    # <body onload="window.location=...">
+    (re.compile(r'on(?:load|DOMContentLoaded)\s*=\s*["\'][^"\']*(?:window\.)?location\s*=\s*["\']?([^"\'>\s]+)', re.IGNORECASE), "onload redirect"),
+    # <img onerror="window.location=...">
+    (re.compile(r'onerror\s*=\s*["\'][^"\']*(?:window\.)?location\s*=\s*["\']?([^"\'>\s]+)', re.IGNORECASE), "onerror redirect"),
+]
 
 # Multi-character visual substitutions — applied before single-char confusables
 MULTI_CHAR_SUBS: List[Tuple[str, str]] = [

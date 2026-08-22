@@ -11,6 +11,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from cryptography.fernet import Fernet
+
 from backend import create_app
 
 
@@ -22,11 +24,13 @@ class BackendApiTestCase(unittest.TestCase):
             "DATABASE_URL": os.environ.get("DATABASE_URL"),
             "JWT_SECRET": os.environ.get("JWT_SECRET"),
             "REQUIRE_AUTH": os.environ.get("REQUIRE_AUTH"),
+            "AGENTGUARD_LOG_ENCRYPTION_KEY": os.environ.get("AGENTGUARD_LOG_ENCRYPTION_KEY"),
         }
         db_url_path = Path(self.db_path).resolve().as_posix()
         os.environ["DATABASE_URL"] = f"sqlite:///{db_url_path}"
         os.environ["JWT_SECRET"] = "test-secret"
         os.environ["REQUIRE_AUTH"] = "false"
+        os.environ["AGENTGUARD_LOG_ENCRYPTION_KEY"] = Fernet.generate_key().decode("utf-8")
 
         self.app = create_app()
         self.client = self.app.test_client()

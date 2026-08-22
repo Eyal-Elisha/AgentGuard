@@ -44,7 +44,22 @@ backend/proxy/.env
 backend/.env
 backend/agentguard.db
 
-# Offline eval pipeline outputs (scripts/ commits, but artifacts/data are local)
+# Offline eval pipeline outputs (scripts/ commits, but artifacts/data are local).
+# Each row carries full page HTML, so these run multiple GB — never commit them.
 runs/
-data/phreshphish_*.jsonl
-data/*_large.jsonl
+data/*.jsonl
+data/phreshphish/
+# Any trainset directory, however the corpora were mixed, not just the first one.
+data/semantic_train*/
+# Experiment models live in data/; only the artifacts under backend/ are shipped.
+data/*.pkl
+!data/smoke.jsonl
+# Local model backups. The tracked .pkl under backend/ carries the real
+# artifact and its history; a snapshot taken before retraining is local only,
+# whatever suffix it was given.
+*.pkl.bak
+# Any snapshot taken before retraining, whatever suffix it was given.
+*.pkl.[A-Za-z0-9_]*
+# Downloaded corpora and cached benchmark id lists: gigabytes, all re-fetchable.
+data/kaggle/
+data/benchmark_ids/

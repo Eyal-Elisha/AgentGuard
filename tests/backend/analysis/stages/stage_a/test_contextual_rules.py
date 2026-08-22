@@ -1,6 +1,6 @@
 """Unit tests for Stage A contextual rules.
 
-Each rule produces a continuous score = min(N / Nmax, 1) over a `SessionContext`
+Each rule produces a continuous score = min(N / max_events, 1) over a `SessionContext`
 constructed in-memory (no DB, no proxy plumbing).
 """
 
@@ -36,7 +36,7 @@ def _ev(seconds_before: float, host: str, action: str, score: float = 0.0) -> Pr
 # ---------------------------------------------------------------------------
 
 class TestRuleSensitiveActionFrequencySpike:
-    config = {"Nmax": 5, "T_ms": 60_000}
+    config = {"max_events": 5, "window_ms": 60_000}
 
     def test_empty_session_is_skipped(self):
         session = SessionContext(current_event_timestamp=T0, current_event_host="x.com")
@@ -87,7 +87,7 @@ class TestRuleSensitiveActionFrequencySpike:
         assert score == 1.0
 
     def test_inclusive_window_lower_bound(self):
-        prior = [_ev(60, "a.com", "Warn")]  # exactly t0 - 60s with T_ms=60_000
+        prior = [_ev(60, "a.com", "Warn")]  # exactly t0 - 60s with window_ms=60_000
         session = SessionContext(
             current_event_timestamp=T0,
             current_event_host="x.com",
@@ -114,7 +114,7 @@ class TestRuleSensitiveActionFrequencySpike:
 # ---------------------------------------------------------------------------
 
 class TestRuleRepeatedSensitiveActionAfterWarning:
-    config = {"Nmax": 5}
+    config = {"max_events": 5}
 
     def test_no_prior_warning_is_skipped(self):
         prior = [_ev(10, "a.com", "Allow")]
@@ -178,7 +178,7 @@ class TestRuleRepeatedSensitiveActionAfterWarning:
 # ---------------------------------------------------------------------------
 
 class TestRuleRedirectToSensitiveAction:
-    config = {"Nmax": 5, "redirect_window_ms": 2_000}
+    config = {"max_events": 5, "redirect_window_ms": 2_000}
 
     def test_empty_session_is_skipped(self):
         session = SessionContext(current_event_timestamp=T0, current_event_host="x.com")
@@ -295,7 +295,7 @@ class TestRuleRedirectToSensitiveAction:
 # ---------------------------------------------------------------------------
 
 class TestRulePreviouslyWarnedDomainInSession:
-    config = {"Nmax": 5}
+    config = {"max_events": 5}
 
     def test_empty_session_is_skipped(self):
         session = SessionContext(current_event_timestamp=T0, current_event_host="x.com")

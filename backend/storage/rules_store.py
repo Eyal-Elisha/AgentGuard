@@ -77,6 +77,43 @@ def rule_create(
         )
 
 
+def rule_sync_metadata(
+    rule_code: str,
+    weight: float,
+    rule_type: str,
+    compute_class: str,
+    is_hard_block: bool,
+    description: str | None,
+) -> bool:
+    """Bring a rule's code-owned columns back in line with the catalogue.
+
+    Rules are inserted the first time they run and were never updated after,
+    so recalibrating a weight or demoting a rule from hard-blocking left the
+    database describing the engine as it used to be. The dashboard reads these
+    columns, so it kept showing the old numbers.
+
+    `is_enabled` is deliberately not touched: that column belongs to the
+    operator, who can toggle a rule from the dashboard, and the catalogue has
+    no opinion about it.
+
+    Returns True when a row was actually changed.
+    """
+    with _connect() as conn:
+        cursor = conn.execute(
+            "UPDATE rules SET weight = ?, rule_type = ?, compute_class = ?, "
+            "is_hard_block = ?, description = ? "
+            "WHERE rule_code = ? AND ("
+            "  weight IS NOT ? OR rule_type IS NOT ? OR compute_class IS NOT ? "
+            "  OR is_hard_block IS NOT ? OR description IS NOT ?)",
+            (
+                weight, rule_type, compute_class, 1 if is_hard_block else 0, description,
+                rule_code,
+                weight, rule_type, compute_class, 1 if is_hard_block else 0, description,
+            ),
+        )
+        return cursor.rowcount > 0
+
+
 def rule_set_enabled(rule_code: str, is_enabled: bool) -> bool:
     with _connect() as conn:
         cur = conn.execute(

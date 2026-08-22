@@ -5,12 +5,14 @@ from __future__ import annotations
 import ipaddress
 import re
 import warnings
-from typing import List
+from functools import lru_cache
+from typing import List, Tuple
 
 from publicsuffix2 import get_public_suffix, get_sld
 
 from backend.feature_extraction.feature_extractor import ExtractedFeatures
 from backend.analysis.stages.stage_a.data import (
+    BRAND_DOMAINS,
     CHAR_CONFUSABLES,
     MULTI_CHAR_SUBS,
     SENSITIVE_INPUT_TYPES,
@@ -84,6 +86,36 @@ def get_sld_label(host: str) -> str:
     return registrable.split(".")[0]
 
 
+@lru_cache(maxsize=1)
+def official_sld_labels() -> frozenset[str]:
+    """The registrable label of every official brand domain.
+
+    Legitimate brands are one or two edits apart often enough (spotify and
+    shopify, discover and discord) that the typosquatting rule has to know
+    which labels are real before it starts measuring distance.
+    """
+    return frozenset(
+        get_sld_label(official)
+        for domains in BRAND_DOMAINS.values()
+        for official in domains
+    )
+
+
+@lru_cache(maxsize=1)
+def brand_token_patterns() -> Tuple[Tuple[str, Tuple[str, ...], "re.Pattern[str]"], ...]:
+    """Per-brand `(brand, official domains, matcher)`, for brands of 3+ letters.
+
+    The matcher requires the brand to be flanked by non-letters, so
+    'paypal-login', 'secure.amazon' and 'amazon1' match while 'pineapple' does
+    not accidentally match apple, nor 'discovery' discover.
+    """
+    return tuple(
+        (brand, tuple(official), re.compile(r"(?<![a-z])" + re.escape(brand) + r"(?![a-z])"))
+        for brand, official in BRAND_DOMAINS.items()
+        if len(brand) >= 3
+    )
+
+
 def normalize_confusables(domain: str) -> str:
     """Normalize Unicode confusables and common visual substitutions."""
     domain = domain.lower()
@@ -107,20 +139,17 @@ def levenshtein(a: str, b: str) -> int:
 
 
 def is_typosquat(candidate: str, target: str) -> bool:
-    """Heuristic: Levenshtein alone is too loose on short labels (e.g. forter vs force).
+    """Single-edit typosquat of a brand label, tuned for precision.
 
-    - Distance 1: treat as typosquat (single typo / insertion / deletion).
-    - Distance 2: only if first and last characters match the target — catches swaps and
-      middle edits (papyal vs paypal) while rejecting many unrelated 2-edit collisions.
+    Plain Levenshtein collides with ordinary words on short labels (ring/bing,
+    moen/msn, bbc/bac), so all of these are required: both labels 5+ chars,
+    lengths within 1, exactly one edit, same first character. Homoglyphs
+    (paypa1) are a separate check in the caller and are not gated by this.
     """
-    if len(candidate) < 3 or len(target) < 3:
+    if len(candidate) < 5 or len(target) < 5:
         return False
-    if abs(len(candidate) - len(target)) > 2:
+    if abs(len(candidate) - len(target)) > 1:
         return False
-    d = levenshtein(candidate, target)
-    if d <= 0 or d > 2:
+    if candidate[0] != target[0]:
         return False
-    if d == 1:
-        return True
-    # d == 2
-    return candidate[0] == target[0] and candidate[-1] == target[-1]
+    return levenshtein(candidate, target) == 1

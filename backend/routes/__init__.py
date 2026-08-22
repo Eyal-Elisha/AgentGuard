@@ -17,6 +17,15 @@ def register_blueprints(application):
     application.register_blueprint(api_bp)
 
 
-from . import auth_routes, event_routes, rule_routes, session_routes, admin_routes, blacklist_routes  # noqa: E402,F401
-
-from . import proxy as _proxy_routes  # noqa: E402,F401
+# Imported for their side effect of registering routes on the blueprints above,
+# which is why they come after the blueprints are defined.
+from . import (  # noqa: E402,F401
+    admin_routes,
+    auth_routes,
+    blacklist_routes,
+    event_routes,
+    proxy,
+    proxy_control,
+    rule_routes,
+    session_routes,
+)

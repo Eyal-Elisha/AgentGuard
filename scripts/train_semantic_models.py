@@ -1,6 +1,7 @@
 """Train TF-IDF + Logistic Regression classifiers for Stage B semantic rules.
 
-This script materializes the pickle artifacts in `stage_b/data/` consumed by
+This script materializes the pickle artifacts in
+`backend/analysis/stages/stage_b/data/` consumed by
 `SemanticClassifier`. Each artifact is a scikit-learn `Pipeline` whose final
 step is a binary `LogisticRegression(classes_=[0, 1])`.
 
@@ -21,9 +22,9 @@ Dependencies (install before running): `scikit-learn`, `datasets`, `pandas`.
 
 CLI:
 
-    python -m backend.analysis.stages.stage_b.train --all
-    python -m backend.analysis.stages.stage_b.train --rule phishing_language
-    python -m backend.analysis.stages.stage_b.train --rule prompt_injection \\
+    python scripts/train_semantic_models.py --all
+    python scripts/train_semantic_models.py --rule phishing_language
+    python scripts/train_semantic_models.py --rule prompt_injection \\
         --benign-csv path/to/benign.csv --malicious-csv path/to/malicious.csv
 
 When `--benign-csv` and `--malicious-csv` are passed, the script reads them
@@ -42,7 +43,8 @@ from typing import Iterable, List, Tuple
 
 _logger = logging.getLogger(__name__)
 
-_MODEL_DIR = Path(__file__).resolve().parent / "data"
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+_MODEL_DIR = _REPO_ROOT / "backend" / "analysis" / "stages" / "stage_b" / "data"
 _MIN_PER_CLASS = 50  # refuse to train if either class has fewer samples than this
 
 
@@ -193,6 +195,26 @@ def _load_prompt_injection_datasets() -> Tuple[List[str], List[int]]:
         texts.append(str(text))
         labels.append(0)
         benign_added += 1
+
+    # Extra benign — real webpage text. The Dolly/injection corpora contain no
+    # webpage HTML, so the classifier treats ordinary page text as out-of-domain
+    # and over-fires on it (the dominant false-positive source in phishing eval).
+    # Point AGENTGUARD_PI_WEB_BENIGN_CSV at a CSV with a `text` column of benign
+    # page text (e.g. data/semantic_train/benign.csv) to fold it into the
+    # negative class. Capped at ~2x the positive count so it strengthens the
+    # web-text signal without swamping the injection features.
+    import os
+    web_csv = os.environ.get("AGENTGUARD_PI_WEB_BENIGN_CSV")
+    if web_csv:
+        import pandas as pd
+        cap = max(pos_count * 2, 2000)
+        df = pd.read_csv(web_csv)
+        if "text" not in df.columns:
+            raise ValueError(f"{web_csv} must have a 'text' column")
+        web = [str(t) for t in df["text"].tolist()[:cap] if isinstance(t, str) and t.strip()]
+        texts.extend(web)
+        labels.extend([0] * len(web))
+        _logger.info("added %d webpage-benign negatives from %s", len(web), web_csv)
 
     _logger.info("prompt-injection dataset loaded: %d rows (pos=%d, neg=%d)",
                  len(texts), pos_count, len(texts) - pos_count)

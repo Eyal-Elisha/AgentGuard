@@ -139,7 +139,7 @@ def _worker_init(
 def _score_one(record: dict) -> dict:
     """Run the pipeline for a single record. Catches per-record exceptions."""
     from backend.analysis.rules import EvaluationResult
-    from backend.analysis.stages.stage_a.evaluator import _aggregate
+    from backend.analysis.scoring import aggregate_risk_score
     from backend.analysis.stages.stage_a.session_loader import build_context
 
     url = record.get("url") or ""
@@ -175,7 +175,7 @@ def _score_one(record: dict) -> dict:
         else:
             semantic_results = stage_b.evaluate(features, enabled_rules=enablement)
             combined = stage_a_result.rule_results + semantic_results
-            final_score = _aggregate(combined)
+            final_score = aggregate_risk_score(combined)
             result = EvaluationResult(
                 decision=stage_a_result.decision,
                 risk_score=round(final_score, 4),

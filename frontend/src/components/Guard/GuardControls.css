@@ -4,7 +4,29 @@
   padding: var(--space-xl) 0;
 }
 
+/* Wrapper sized to the button so the loading label can float above it without
+   pushing the button off-centre. */
+.guard-power-button-wrap {
+  position: relative;
+  display: flex;
+}
+
+.guard-power-pending {
+  position: absolute;
+  bottom: calc(100% + var(--space-sm));
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.guard-power-pending--start { color: var(--color-proxy-on-end); animation: guard-power-pulse 1.1s ease-in-out infinite; }
+.guard-power-pending--stop { color: var(--color-risk-high); animation: guard-power-pulse 1.1s ease-in-out infinite; }
+
 .guard-power-button {
+  position: relative;
   width: 7.5rem;
   height: 7.5rem;
   border-radius: 50%;
@@ -15,6 +37,24 @@
   justify-content: center;
   transition: background-color 220ms ease, box-shadow 220ms ease, border-color 220ms ease, transform 160ms ease;
 }
+
+/* Spinning ring + icon pulse while starting (green) / stopping (red) */
+.guard-power-button--start, .guard-power-button--stop { cursor: progress; }
+.guard-power-button--start::after,
+.guard-power-button--stop::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  animation: guard-power-spin 0.9s linear infinite;
+}
+.guard-power-button--start::after { border-top-color: var(--color-proxy-on-end); }
+.guard-power-button--stop::after { border-top-color: var(--color-risk-high); }
+.guard-power-button--start .guard-power-icon,
+.guard-power-button--stop .guard-power-icon { animation: guard-power-pulse 1.1s ease-in-out infinite; }
+@keyframes guard-power-spin { to { transform: rotate(360deg); } }
+@keyframes guard-power-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 
 .guard-power-button:hover { transform: scale(1.03); }
 .guard-power-button:active { transform: scale(0.98); }
