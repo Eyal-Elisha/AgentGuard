@@ -3,20 +3,19 @@
 @import './GuardAgents.css';
 @import './GuardAgentSelector.css';
 
-/* The card is sized by its content and anchored to the top. Stretched to the
-   full height it would re-centre its content every time a row was added, and
-   the heading, selector and button would all jump. */
 .guard-page {
   flex: 1;
   display: flex;
   justify-content: center;
-  align-items: flex-start;
+  align-items: center;
   padding: var(--space-main-y) var(--space-header-x) 3rem;
 }
 
 .guard-card {
   width: 100%;
   max-width: 40rem;
+  min-height: 43rem;
+  justify-content: flex-start;
   background: radial-gradient(circle at top left, var(--color-bg-card-gradient-start) 0, var(--color-bg-elevated) 55%);
   border-radius: var(--radius-xl);
   border: 1px solid var(--color-border-subtle);

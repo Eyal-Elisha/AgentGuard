@@ -14,18 +14,22 @@ export default function GuardAgentRow({ agentName, host, state, pendingAction })
 
   return (
     <li className={`guard-agent-row guard-agent-row--${isActive ? 'active' : 'inactive'}`}>
-      <AgentDisplay agentName={agentName} className="guard-agent-name" />
+      <div className="guard-agent-head">
+        <AgentDisplay agentName={agentName} className="guard-agent-name" />
+        <span
+          className={`guard-agent-status ${pendingAction ? `guard-agent-status--${pendingAction}` : ''}`}
+          aria-live="polite"
+        >
+          {statusLabel}
+        </span>
+      </div>
 
-      <span className="guard-agent-endpoint">
-        {port == null ? 'Checking…' : `${host}:${port}`}
-      </span>
-
-      <span
-        className={`guard-agent-status ${pendingAction ? `guard-agent-status--${pendingAction}` : ''}`}
-        aria-live="polite"
-      >
-        {statusLabel}
-      </span>
+      <div className="guard-agent-endpoint-row">
+        <span className="guard-agent-endpoint-label">Address</span>
+        <span className="guard-agent-endpoint">
+          {port == null ? '—' : `${host}:${port}`}
+        </span>
+      </div>
     </li>
   );
 }
