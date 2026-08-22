@@ -69,7 +69,62 @@ def load_pages(path: Path, count: int, seed: int, max_bytes: int) -> List[Dict]:
     return picked
 
 
-_SCRIPT_TAG = re.compile(r"<script.*?</script>", re.I | re.S)
+#: Tags that execute, fetch, or navigate on their own.
+_KILL_TAGS = ("script", "iframe", "frame", "object", "embed", "applet",
+              "link", "base", "meta", "noscript")
+
+#: Attributes that point somewhere. A captured page's form still targets the
+#: attacker's collector, and every remote image is a beacon announcing that
+#: someone opened it, so these go too.
+_URL_ATTRS = ("src", "srcset", "href", "action", "formaction", "poster",
+              "data", "background")
+
+#: Second layer, because sanitisers have bugs. default-src 'none' stops the
+#: page reaching the network at all; the exceptions only keep it readable.
+_CSP = ('<meta http-equiv="Content-Security-Policy" content="default-src '
+        "'none'; style-src 'unsafe-inline'; img-src data:;\">")
+
+
+def sanitise_for_viewing(html: str) -> str:
+    """Strip everything that could execute or call home.
+
+    A regex over <script> is not enough, and an earlier version of this file
+    both claimed it was and got the pattern wrong: an escape turned into a
+    literal control character, so it matched nothing and every script survived.
+
+    A captured phishing page also carries onclick handlers, iframes, meta
+    refreshes, external stylesheets and images, and a form whose action still
+    points at the attacker. Any of those either runs code or tells the attacker
+    that someone opened the page. BeautifulSoup is already a dependency and
+    gives a real parse, so the removal happens on the tree, not on the text.
+    """
+    from bs4 import BeautifulSoup
+
+    from backend.feature_extraction.html_parser import HTML_PARSER
+
+    soup = BeautifulSoup(html, HTML_PARSER)
+
+    for tag in soup.find_all(_KILL_TAGS):
+        tag.decompose()
+
+    for tag in soup.find_all(True):
+        for attr in list(tag.attrs):
+            value = tag.attrs[attr]
+            if attr.lower().startswith("on"):
+                del tag.attrs[attr]
+            elif attr.lower() in _URL_ATTRS:
+                if not (isinstance(value, str) and value.startswith("data:")):
+                    del tag.attrs[attr]
+
+    banner = soup.new_tag("div")
+    banner["style"] = ("background:#7f1d1d;color:#fff;padding:.6rem 1rem;"
+                       "font:600 14px system-ui,sans-serif")
+    banner.string = ("Captured phishing page, rendered inert: scripts, frames and "
+                     "every external link removed. Do not type anything into it.")
+    if soup.body:
+        soup.body.insert(0, banner)
+
+    return _CSP + str(soup)
 
 
 def save_for_viewing(pages: List[Dict], verdicts: List[tuple], out_dir: Path) -> Path:
@@ -83,7 +138,7 @@ def save_for_viewing(pages: List[Dict], verdicts: List[tuple], out_dir: Path) ->
     out_dir.mkdir(parents=True, exist_ok=True)
     rows = []
     for i, (page, (verdict, risk, fired, _ms)) in enumerate(zip(pages, verdicts)):
-        safe = _SCRIPT_TAG.sub("<!-- script removed for viewing -->", page["html"])
+        safe = sanitise_for_viewing(page["html"])
         name = f"page{i:02d}_{'phishing' if page.get('label') == 1 else 'benign'}.html"
         (out_dir / name).write_text(safe, encoding="utf-8", errors="ignore")
         rules = ", ".join(rule for rule, _ in fired[:3]) or "none"
