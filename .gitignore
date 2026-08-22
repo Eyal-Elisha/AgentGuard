@@ -48,6 +48,10 @@ backend/agentguard.db
 # Each row carries full page HTML, so these run multiple GB — never commit them.
 runs/
 data/*.jsonl
+# ...except the small committed samples, so the smoke test and the demo run on
+# a fresh clone without downloading a corpus.
+!data/smoke.jsonl
+!data/demo_sample.jsonl
 data/phreshphish/
 # Any trainset directory, however the corpora were mixed, not just the first one.
 data/semantic_train*/

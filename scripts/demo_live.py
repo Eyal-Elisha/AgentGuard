@@ -15,6 +15,9 @@ engine rather than of a mock-up.
     python scripts/demo_live.py --count 12
     python scripts/demo_live.py --count 40 --only-caught     # for a short slot
 
+`data/demo_sample.jsonl` holds ten real pages and is committed, so this runs on a
+fresh clone with no download. Point --input at a full corpus for a longer run.
+
 Reputation lookups are disabled, matching the offline harness, so nothing here
 depends on a live feed.
 """
@@ -143,8 +146,9 @@ def judge(engine, url: str, html: str):
 
 def main(argv: List[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--input", type=Path, default=Path("data/phreshphish_test_30k.jsonl"),
-                    help="corpus JSONL of {url, html, label} with REAL urls")
+    ap.add_argument("--input", type=Path, default=Path("data/demo_sample.jsonl"),
+                    help="corpus JSONL of {url, html, label} with REAL urls. Defaults to "
+                         "the committed 10-page sample; point it at a full corpus for more")
     ap.add_argument("--count", type=int, default=12)
     ap.add_argument("--seed", type=int, default=11)
     ap.add_argument("--max-kb", type=int, default=400)
