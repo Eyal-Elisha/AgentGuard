@@ -1,0 +1,42 @@
+{
+  "_comment": [
+    "The demo set. Each page is hand-written: no scripts, no external resources,",
+    "nothing captured from a real attacker. The hostname matters as much as the",
+    "markup, because half the rules read the URL, so each entry names the host it",
+    "must be served from and what it is expected to trigger.",
+    "",
+    "Ports 80, 443 and 8080 are the standard set. Serving on 80 keeps the URL free",
+    "of a port, so non_standard_port stays quiet and every rule that fires does so",
+    "for a reason worth showing."
+  ],
+  "pages": [
+    {
+      "file": "microsoft-login.html",
+      "host": "microsoft-verify-account.top",
+      "label": 1,
+      "expect": "block",
+      "why": "high-abuse TLD, brand named in the page but not in its domain, form posts to another host, and the language classifier reads it as phishing"
+    },
+    {
+      "file": "dhl-parcel.html",
+      "host": "dhl-parcel-redelivery.xyz",
+      "label": 1,
+      "expect": "block",
+      "why": "high-abuse TLD, DHL named off-domain, card fields posting to a third host"
+    },
+    {
+      "file": "coastal-notes.html",
+      "host": "coastal-survey-notes.org",
+      "label": 1,
+      "expect": "warn",
+      "why": "an ordinary-looking page on an ordinary domain; only the injection rule fires, and the decision floor lifts it to Warn on its own"
+    },
+    {
+      "file": "library.html",
+      "host": "northfield-library.org",
+      "label": 0,
+      "expect": "allow",
+      "why": "a real-looking local library: nothing should fire at all"
+    }
+  ]
+}

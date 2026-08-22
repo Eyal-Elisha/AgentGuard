@@ -51,7 +51,6 @@ data/*.jsonl
 # ...except the small committed samples, so the smoke test and the demo run on
 # a fresh clone without downloading a corpus.
 !data/smoke.jsonl
-!data/demo_sample.jsonl
 data/phreshphish/
 # Any trainset directory, however the corpora were mixed, not just the first one.
 data/semantic_train*/
@@ -68,5 +67,3 @@ data/*.pkl
 data/kaggle/
 data/benchmark_ids/
 
-# Demo output: real captured pages written by scripts/demo_live.py --save
-demo_out/
