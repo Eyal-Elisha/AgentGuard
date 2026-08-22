@@ -13,12 +13,11 @@ export function ProxyProvider({ children }) {
   // the label stays correct even after that agent's `active` flips mid-request.
   const [pendingActions, setPendingActions] = useState({});
 
-  /** Take live state and the port allocation from the backend.
+  /** Take live state from the backend, and the ports it actually allocated.
    *
    *  Exposed as well as run on mount, because this provider wraps the router
    *  and so mounts before anyone has signed in: that first call is answered
-   *  with a 401 and leaves the endpoints unknown. Screens that show them ask
-   *  again once they are behind the login.
+   *  with a 401. Screens that need it ask again once they are behind the login.
    */
   const refreshStatus = useCallback(async () => {
     const data = await fetchProxyStatus();
@@ -29,8 +28,8 @@ export function ProxyProvider({ children }) {
       if (!next[name]) continue;
       next[name] = {
         active: Boolean(entry.active),
-        proxyPort: entry.proxy_port ?? null,
-        adminPort: entry.admin_port ?? null,
+        proxyPort: entry.proxy_port ?? next[name].proxyPort,
+        adminPort: entry.admin_port ?? next[name].adminPort,
       };
     }
     replaceAgents(next);

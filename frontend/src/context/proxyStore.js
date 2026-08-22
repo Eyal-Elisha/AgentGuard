@@ -1,4 +1,9 @@
-import { AGENT_OPTIONS, normalizeAgentName, resolveStoredAgents } from '../constants/agentOptions.js';
+import {
+  AGENT_OPTIONS,
+  defaultPortsForAgent,
+  normalizeAgentName,
+  resolveStoredAgents,
+} from '../constants/agentOptions.js';
 
 /** The proxy state behind useSyncExternalStore: which agents are up, and which
  *  the power button acts on. Kept outside the provider, the way passiveMode.js
@@ -7,15 +12,16 @@ import { AGENT_OPTIONS, normalizeAgentName, resolveStoredAgents } from '../const
 const AGENTS_KEY = 'agentguard-proxy-agents';
 const SELECTION_KEY = 'agentguard-selected-agents';
 
-/** One entry per agent: whether its proxy is up, and the endpoint it serves. */
+/** One entry per agent: whether its proxy is up, and the endpoint it serves.
+ *  Ports are deterministic, so they start at the allocation the catalogue
+ *  implies rather than at null and wait for the backend to confirm them. */
 function blankAgents() {
   return Object.fromEntries(
-    AGENT_OPTIONS.map((name) => [name, { active: false, proxyPort: null, adminPort: null }]),
+    AGENT_OPTIONS.map((name) => [name, { active: false, ...defaultPortsForAgent(name) }]),
   );
 }
 
-/** Last known state, so the screen is not blank while the status call is out.
- *  Ports are left null: the backend allocates them and reports them back. */
+/** Last known state, so the screen is not blank while the status call is out. */
 function readStored() {
   const agents = blankAgents();
   let stored = null;

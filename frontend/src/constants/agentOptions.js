@@ -11,6 +11,15 @@ export const AGENT_OPTIONS = ['AllTraffic', 'BrowserOS', 'MicrosoftEdge'];
  *  system proxy. */
 export const ALL_TRAFFIC_AGENT = AGENT_OPTIONS[0];
 
+const LISTEN_BASE = 8080;
+const ADMIN_BASE = 8180;
+
+export function defaultPortsForAgent(agentName) {
+  const offset = AGENT_OPTIONS.indexOf(normalizeAgentName(agentName));
+  if (offset < 0) return { proxyPort: null, adminPort: null };
+  return { proxyPort: LISTEN_BASE + offset, adminPort: ADMIN_BASE + offset };
+}
+
 /** Display labels for ids that are not already readable. */
 const AGENT_LABELS = {
   AllTraffic: 'All traffic',
