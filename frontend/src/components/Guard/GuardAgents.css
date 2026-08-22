@@ -43,7 +43,7 @@
   align-items: baseline;
   justify-content: space-between;
   gap: var(--space-md);
-  padding-top: var(--space-sm);
+  padding-top: 14px;
   border-top: 1px solid var(--color-border-subtle);
 }
 
