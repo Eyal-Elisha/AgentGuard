@@ -17,6 +17,21 @@ export function apiFetchHeaders() {
     : { Accept: 'application/json' };
 }
 
+export async function setRuleHardBlock(baseUrl, ruleCode, isHardBlock) {
+  const response = await fetch(
+    `${baseUrl}/rules/${encodeURIComponent(ruleCode)}/hard-block`,
+    {
+      method: 'PATCH',
+      headers: {
+        ...apiFetchHeaders(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ is_hard_block: isHardBlock }),
+    },
+  );
+  return response;
+}
+
 export async function setRuleEnabled(baseUrl, ruleCode, isEnabled) {
   const response = await fetch(
     `${baseUrl}/rules/${encodeURIComponent(ruleCode)}/enabled`,

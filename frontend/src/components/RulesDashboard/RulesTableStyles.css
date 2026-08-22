@@ -82,3 +82,8 @@
 .rules-empty-state { padding: var(--space-xl) 1.1rem; text-align: center; color: var(--color-text-muted); }
 .rules-table tbody tr.rules-row:hover { background-color: var(--color-bg-row-hover); }
 .rules-table .cell-value-empty { color: var(--color-text-muted); }
+
+/* Hard block reads as a warning rather than a plain on/off: switching it on
+   lets a single rule override every other signal on the page. */
+.rules-switch--danger.rules-switch--on .rules-switch-track { background: rgba(220, 38, 38, 0.45); }
+.rules-switch--danger.rules-switch--on .rules-switch-label { color: var(--color-text-danger, #f87171); }
