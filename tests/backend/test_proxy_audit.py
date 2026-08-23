@@ -472,6 +472,7 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         with (
             patch("backend.routes.proxy_control.start_proxy_process", return_value=(True, "started")) as start_proxy,
             patch("backend.routes.proxy_control.proxy_is_running", return_value=True),
+            patch("backend.routes.proxy_control.launch_browser", return_value=(True, "launched")),
         ):
             response = self.client.post(
                 "/api/proxy/control",
@@ -577,6 +578,7 @@ class ProxyAuditRouteTestCase(unittest.TestCase):
         with (
             patch("backend.routes.proxy_control.start_proxy_process", return_value=(True, "started")),
             patch("backend.routes.proxy_control.proxy_is_running", return_value=True),
+            patch("backend.routes.proxy_control.launch_browser", return_value=(True, "launched")),
         ):
             response = self.client.post(
                 "/api/proxy/control",

@@ -27,6 +27,7 @@ export function ProxyProvider({ children }) {
       const name = normalizeAgentName(entry?.agent_name);
       if (!next[name]) continue;
       next[name] = {
+        ...next[name],
         active: Boolean(entry.active),
         proxyPort: entry.proxy_port ?? next[name].proxyPort,
         adminPort: entry.admin_port ?? next[name].adminPort,
@@ -50,6 +51,7 @@ export function ProxyProvider({ children }) {
         active: next,
         ...(result?.proxy_port != null ? { proxyPort: result.proxy_port } : {}),
         ...(result?.admin_port != null ? { adminPort: result.admin_port } : {}),
+        browserError: result?.browser_error ?? null,
       });
       return true;
     } catch (e) {
