@@ -1,4 +1,4 @@
-"""The one-command agent launcher.
+"""Finding each agent's browser.
 
 Browser locations are resolved for every platform here, not only the one the
 tests happen to run on, because the paths differ per platform and only one of
@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 import pytest
 
-from scripts import launch_agent
+from backend.proxy.launcher import browser as launch_agent
 
 
 def _same_path(a, b):
@@ -30,14 +30,14 @@ def test_platform_key_maps_every_platform(platform, expected):
 @pytest.mark.parametrize("agent", ["BrowserOS", "MicrosoftEdge"])
 @pytest.mark.parametrize("platform", ["win32", "darwin", "linux"])
 def test_every_agent_has_candidates_on_every_platform(agent, platform):
-    assert launch_agent._BROWSER_PATHS[agent][launch_agent.platform_key(platform)]
+    assert launch_agent.BROWSER_PATHS[agent][launch_agent.platform_key(platform)]
 
 
 def test_windows_paths_use_environment_variables_not_a_fixed_user():
     """A literal user directory would only ever work on the machine it was
     written on."""
     for agent in ("BrowserOS", "MicrosoftEdge"):
-        for candidate in launch_agent._BROWSER_PATHS[agent]["win32"]:
+        for candidate in launch_agent.BROWSER_PATHS[agent]["win32"]:
             assert ":\\" not in candidate, candidate
 
 

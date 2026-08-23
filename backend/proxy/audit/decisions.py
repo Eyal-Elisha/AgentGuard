@@ -124,7 +124,6 @@ def _ensure_rule_registered(rule_result: RuleResult) -> None:
             weight=RULE_WEIGHTS.get(rule_result.rule_id, 0.0),
             rule_type=rule_type,
             compute_class=compute_class,
-            is_hard_block=rule_result.hard_block,
             description=trimmed,
         )
         return

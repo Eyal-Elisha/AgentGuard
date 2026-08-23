@@ -17,7 +17,10 @@ const SELECTION_KEY = 'agentguard-selected-agents';
  *  implies rather than at null and wait for the backend to confirm them. */
 function blankAgents() {
   return Object.fromEntries(
-    AGENT_OPTIONS.map((name) => [name, { active: false, ...defaultPortsForAgent(name) }]),
+    AGENT_OPTIONS.map((name) => [
+      name,
+      { active: false, browserError: null, ...defaultPortsForAgent(name) },
+    ]),
   );
 }
 

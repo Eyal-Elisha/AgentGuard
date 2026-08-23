@@ -138,3 +138,14 @@ def validate_rule_enabled_payload(payload: dict | None) -> tuple[dict | None, st
         return None, "Invalid is_enabled"
 
     return {"is_enabled": payload["is_enabled"]}, None
+
+
+def validate_rule_hard_block_payload(payload: dict | None) -> tuple[dict | None, str | None]:
+    payload, err = require_dict(payload)
+    if err:
+        return None, err
+
+    if "is_hard_block" not in payload or not isinstance(payload.get("is_hard_block"), bool):
+        return None, "Invalid is_hard_block"
+
+    return {"is_hard_block": payload["is_hard_block"]}, None

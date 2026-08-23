@@ -56,12 +56,19 @@ def warm_up() -> None:
         pass
 
 
-def _rule_enablement_map() -> dict[str, bool]:
+def _rule_settings() -> tuple[dict[str, bool], dict[str, bool]]:
+    """The two operator-owned columns: which rules run, and which may hard-block.
+
+    Read together in one query because they come from the same row and the
+    engine needs both on every request.
+    """
     try:
         rows = store.rules_list_asc()
     except Exception:
-        return {}
-    return {str(row["rule_code"]): bool(row["is_enabled"]) for row in rows}
+        return {}, {}
+    enabled = {str(row["rule_code"]): bool(row["is_enabled"]) for row in rows}
+    hard_block = {str(row["rule_code"]): bool(row["is_hard_block"]) for row in rows}
+    return enabled, hard_block
 
 
 def _score_and_decide(results: List[RuleResult]) -> EvaluationResult:
@@ -107,11 +114,12 @@ def evaluate_http_payload(
         current_timestamp=timestamp,
         current_url=url,
     )
-    enablement = _rule_enablement_map()
+    enablement, hard_block_rules = _rule_settings()
     stage_a_result = _stage_a.evaluate(
         features,
         session=session,
         enabled_rules=enablement,
+        hard_block_rules=hard_block_rules,
     )
 
     if stage_a_result.hard_block_triggered:

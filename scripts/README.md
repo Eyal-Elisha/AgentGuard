@@ -26,16 +26,14 @@ helpers, not part of the eval pipeline.
 ## Launching an agent behind its proxy
 
 A machine has one system proxy setting and `AllTraffic` already uses it, so a
-named agent takes its endpoint on the command line instead. One command does the
-lot — it starts that agent's proxy, opens the browser through it, and stops the
-proxy again when the browser closes:
+named agent takes its endpoint on the command line instead. Turning one on from
+the Guard screen already does this; the script is for doing it without the
+dashboard, or for several agents at once. It starts each agent's proxy, opens
+each browser through it, and stops the proxies it started once the browsers
+close:
 
 ```bash
-python scripts/launch_agent.py --agent BrowserOS
-```
-
-```bash
-python scripts/launch_agent.py --agent MicrosoftEdge
+python scripts/launch_agent.py --agent BrowserOS MicrosoftEdge
 ```
 
 A proxy already running, from the Guard screen or another terminal, is used as

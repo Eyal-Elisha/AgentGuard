@@ -75,3 +75,10 @@
 .guard-agent-row--active .guard-agent-status { color: var(--color-proxy-on-end); }
 .guard-agent-status--start { color: var(--color-proxy-on-end); animation: guard-power-pulse 1.1s ease-in-out infinite; }
 .guard-agent-status--stop { color: var(--color-risk-high); animation: guard-power-pulse 1.1s ease-in-out infinite; }
+
+.guard-agent-note {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--color-risk-medium, var(--color-text-muted));
+}
