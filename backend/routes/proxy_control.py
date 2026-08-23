@@ -15,6 +15,7 @@ from backend.proxy.audit import (
     is_catalogue_agent,
     normalize_proxy_agent_name,
 )
+from backend.proxy.launcher.browser import is_launchable, launch_browser
 from backend.proxy.ports import ports_for_agent
 from backend.settings import get_passive_mode, set_passive_mode
 from backend.storage import sqlite_store as store
@@ -89,6 +90,13 @@ def proxy_control():
         "proxy_port": ports.listen_port,
         "admin_port": ports.web_port,
     }
+    # A named agent only reaches its proxy by being launched at that port, so
+    # protecting one opens it. Failing to is reported, not raised.
+    if active and running and is_launchable(agent_name):
+        launched, detail = launch_browser(agent_name)
+        response["browser_launched"] = launched
+        if not launched:
+            response["browser_error"] = detail
     if session is not None:
         response["session"] = session
     return jsonify(response), 200

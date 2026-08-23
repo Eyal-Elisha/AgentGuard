@@ -30,6 +30,10 @@ export default function GuardAgentRow({ agentName, host, state, pendingAction })
           {port == null ? '—' : `${host}:${port}`}
         </span>
       </div>
+
+      {state?.browserError && (
+        <p className="guard-agent-note">{state.browserError} Point it at the address above.</p>
+      )}
     </li>
   );
 }
